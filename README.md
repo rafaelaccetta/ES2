@@ -1,2 +1,3 @@
-# es2
-Trabalho da disciplina de Engenharia de Software II da UFF.
+# Trabalho de Engenharia de Software II.
+
+O tema do trabalho consiste em fazer um jogo War.
