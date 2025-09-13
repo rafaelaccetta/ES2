@@ -10,7 +10,7 @@ export class Preloader extends Scene
     init ()
     {
         //  We loaded this image in our Boot Scene, so we can display it here
-        this.add.image(512, 384, 'background');
+        // this.add.image(512, 384, 'background');
 
         //  A simple progress bar. This is the outline of the bar.
         this.add.rectangle(512, 384, 468, 32).setStrokeStyle(1, 0xffffff);
@@ -32,16 +32,28 @@ export class Preloader extends Scene
         //  Load the assets for the game - Replace with your own assets
         this.load.setPath('assets');
 
-        this.load.image('logo', 'logo.png');
-        this.load.image('star', 'star.png');
+        this.load.image("botaoInicio", "botao_inicio.png")
+        this.load.image("botaoJogar", "botao_jogar.png")
+        this.load.image("botaoRegras", "botao_regras.png")
+        this.load.image("botaoSair", "botao_sair.png")
+        
+        this.load.image("menu", "menu.png");
+
+
     }
 
     create ()
     {
         //  When all the assets have loaded, it's often worth creating global objects here that the rest of the game can use.
-        //  For example, you can define global animations here, so we can use them in other scenes.
+        //  For example, você pode definir animações globais aqui.
 
-        //  Move to the MainMenu. You could also swap this for a Scene Transition, such as a camera fade.
-        this.scene.start('MainMenu');
+        // Após carregar, vá para a última cena salva (ou MainMenu se não houver)
+        const lastScene = localStorage.getItem('currentScene');
+        const validScenes = ['MainMenu', 'Menu', 'Game', 'Regras', 'Jogo', 'GameOver'];
+        if (lastScene && validScenes.includes(lastScene)) {
+            this.scene.start(lastScene);
+        } else {
+            this.scene.start('MainMenu');
+        }
     }
 }
