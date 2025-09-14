@@ -22,12 +22,10 @@ export class MainMenu extends Scene
             .setInteractive({ useHandCursor: true });
 
         botaoInicio.on('pointerdown', () => {
-            localStorage.setItem('currentScene', 'Menu');
             this.scene.start('Menu');
         });
 
-        // Sempre salva a cena atual ao entrar
-        localStorage.setItem('currentScene', 'MainMenu');
+    // Removido salvamento da cena atual
 
         EventBus.emit('current-scene-ready', this);
     }

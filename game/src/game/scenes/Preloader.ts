@@ -47,13 +47,7 @@ export class Preloader extends Scene
         //  When all the assets have loaded, it's often worth creating global objects here that the rest of the game can use.
         //  For example, você pode definir animações globais aqui.
 
-        // Após carregar, vá para a última cena salva (ou MainMenu se não houver)
-        const lastScene = localStorage.getItem('currentScene');
-        const validScenes = ['MainMenu', 'Menu', 'Game', 'Regras', 'Jogo', 'GameOver'];
-        if (lastScene && validScenes.includes(lastScene)) {
-            this.scene.start(lastScene);
-        } else {
-            this.scene.start('MainMenu');
-        }
+        // Sempre inicia pelo MainMenu ao carregar
+        this.scene.start('MainMenu');
     }
 }
