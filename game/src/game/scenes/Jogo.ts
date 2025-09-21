@@ -5,15 +5,19 @@ import * as ReactDOM from 'react-dom/client';
 import MapSVG from '../../MapSVG';
 
 export class Jogo extends Scene {
+
+    private botaoX?: Phaser.GameObjects.Image;
+
     constructor() {
         super('Jogo');
     }
+
 
     create() {
 
         this.cameras.main.setBackgroundColor('#ffffff');
         
-        // Cria um container HTML para o mapa exatamente do tamanho do Phaser
+
         let mapContainer = document.getElementById('map-container');
         if (!mapContainer) {
             mapContainer = document.createElement('div');
@@ -30,6 +34,12 @@ export class Jogo extends Scene {
             mapContainer.style.zIndex = '10';
             document.body.appendChild(mapContainer);
         }
+
+        this.botaoX = this.add.image(150, 630, 'botaoX')
+                .setInteractive({ useHandCursor: true })
+                .on('pointerdown', () => {
+                    this.scene.start('MainMenu');
+                }).setDepth(1);
 
     const root = ReactDOM.createRoot(mapContainer);
     root.render(React.createElement(MapSVG));
