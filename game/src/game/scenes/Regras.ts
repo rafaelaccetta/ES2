@@ -4,18 +4,10 @@ import { Scene } from 'phaser';
 export class Regras extends Scene {
     private pageIndex = 0;
     private pages = [
-        {
-            bg: 'regras1'
-        },
-        {
-            bg: 'regras2'
-        },
-        {
-            bg: 'regras3'
-        },
-        {
-            bg: 'regras4'
-        }
+        {bg: 'regras1'},
+        {bg: 'regras2'},
+        {bg: 'regras3'},
+        {bg: 'regras4'}
     ];
 
     private setaNext?: Phaser.GameObjects.Image;
