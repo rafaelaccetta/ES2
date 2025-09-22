@@ -16,26 +16,22 @@ export class Menu extends Scene {
     this.add.image(585, 315, 'botaoJogar')
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
-            localStorage.setItem('currentScene', 'Jogo');
             this.scene.start('Jogo');
         });
 
     this.add.image(585, 384, 'botaoRegras')
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
-            localStorage.setItem('currentScene', 'Regras');
             this.scene.start('Regras');
         });
 
     this.add.image(583, 453, 'botaoSair')
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
-            localStorage.setItem('currentScene', 'MainMenu');
             this.scene.start('MainMenu');
         });
 
-    // Sempre salva a cena atual ao entrar
-    localStorage.setItem('currentScene', 'Menu');
+    // Removido salvamento da cena atual
 
     EventBus.emit('current-scene-ready', this);
 
