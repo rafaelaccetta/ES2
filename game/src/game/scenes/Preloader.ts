@@ -36,8 +36,17 @@ export class Preloader extends Scene
         this.load.image("botaoJogar", "botao_jogar.png")
         this.load.image("botaoRegras", "botao_regras.png")
         this.load.image("botaoSair", "botao_sair.png")
+        this.load.image("botaoMenu","botao_menu.png")
         
         this.load.image("menu", "menu.png");
+
+        this.load.image("regras1", "regras1.png")
+        this.load.image("regras2", "regras2.png")
+        this.load.image("regras3", "regras3.png")
+        this.load.image("regras4", "regras4.png")
+
+        this.load.image("setaNext","seta_next.png")
+        this.load.image("botaoX", "botaoX.png")
 
 
     }
