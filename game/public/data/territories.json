@@ -1,0 +1,377 @@
+{
+    "Alaska": {
+        "continent": "North America",
+        "borders": [
+            "Kamchatka",
+            "Northwest Territory",
+            "Alberta"
+        ]
+    },
+    "Northwest Territory": {
+        "continent": "North America",
+        "borders": [
+            "Alaska",
+            "Alberta",
+            "Ontario",
+            "Greenland"
+        ]
+    },
+    "Greenland": {
+        "continent": "North America",
+        "borders": [
+            "Northwest Territory",
+            "Ontario",
+            "Quebec",
+            "Iceland"
+        ]
+    },
+    "Alberta": {
+        "continent": "North America",
+        "borders": [
+            "Alaska",
+            "Northwest Territory",
+            "Ontario",
+            "Western United States"
+        ]
+    },
+    "Ontario": {
+        "continent": "North America",
+        "borders": [
+            "Northwest Territory",
+            "Greenland",
+            "Quebec",
+            "Eastern United States",
+            "Western United States",
+            "Alberta"
+        ]
+    },
+    "Quebec": {
+        "continent": "North America",
+        "borders": [
+            "Greenland",
+            "Ontario",
+            "Eastern United States"
+        ]
+    },
+    "Western United States": {
+        "continent": "North America",
+        "borders": [
+            "Alberta",
+            "Ontario",
+            "Eastern United States",
+            "Central America"
+        ]
+    },
+    "Eastern United States": {
+        "continent": "North America",
+        "borders": [
+            "Quebec",
+            "Ontario",
+            "Western United States",
+            "Central America"
+        ]
+    },
+    "Central America": {
+        "continent": "North America",
+        "borders": [
+            "Western United States",
+            "Eastern United States",
+            "Venezuela"
+        ]
+    },
+    "Venezuela": {
+        "continent": "South America",
+        "borders": [
+            "Central America",
+            "Peru",
+            "Brazil"
+        ]
+    },
+    "Peru": {
+        "continent": "South America",
+        "borders": [
+            "Venezuela",
+            "Brazil",
+            "Argentina"
+        ]
+    },
+    "Brazil": {
+        "continent": "South America",
+        "borders": [
+            "Venezuela",
+            "Peru",
+            "Argentina",
+            "North Africa"
+        ]
+    },
+    "Argentina": {
+        "continent": "South America",
+        "borders": [
+            "Peru",
+            "Brazil"
+        ]
+    },
+    "Iceland": {
+        "continent": "Europe",
+        "borders": [
+            "Greenland",
+            "Great Britain",
+            "Scandinavia"
+        ]
+    },
+    "Great Britain": {
+        "continent": "Europe",
+        "borders": [
+            "Iceland",
+            "Scandinavia",
+            "Northern Europe",
+            "Western Europe"
+        ]
+    },
+    "Scandinavia": {
+        "continent": "Europe",
+        "borders": [
+            "Iceland",
+            "Great Britain",
+            "Northern Europe",
+            "Ukraine"
+        ]
+    },
+    "Northern Europe": {
+        "continent": "Europe",
+        "borders": [
+            "Great Britain",
+            "Scandinavia",
+            "Ukraine",
+            "Southern Europe",
+            "Western Europe"
+        ]
+    },
+    "Western Europe": {
+        "continent": "Europe",
+        "borders": [
+            "Great Britain",
+            "Northern Europe",
+            "Southern Europe",
+            "North Africa"
+        ]
+    },
+    "Southern Europe": {
+        "continent": "Europe",
+        "borders": [
+            "Northern Europe",
+            "Western Europe",
+            "Ukraine",
+            "Egypt",
+            "Middle East"
+        ]
+    },
+    "Ukraine": {
+        "continent": "Europe",
+        "borders": [
+            "Scandinavia",
+            "Northern Europe",
+            "Southern Europe",
+            "Ural",
+            "Afghanistan",
+            "Middle East"
+        ]
+    },
+    "North Africa": {
+        "continent": "Africa",
+        "borders": [
+            "Western Europe",
+            "Southern Europe",
+            "Egypt",
+            "East Africa",
+            "Congo",
+            "Brazil"
+        ]
+    },
+    "Egypt": {
+        "continent": "Africa",
+        "borders": [
+            "Southern Europe",
+            "North Africa",
+            "East Africa",
+            "Middle East"
+        ]
+    },
+    "Congo": {
+        "continent": "Africa",
+        "borders": [
+            "North Africa",
+            "East Africa",
+            "South Africa"
+        ]
+    },
+    "East Africa": {
+        "continent": "Africa",
+        "borders": [
+            "Egypt",
+            "North Africa",
+            "Congo",
+            "South Africa",
+            "Madagascar",
+            "Middle East"
+        ]
+    },
+    "South Africa": {
+        "continent": "Africa",
+        "borders": [
+            "Congo",
+            "East Africa",
+            "Madagascar"
+        ]
+    },
+    "Madagascar": {
+        "continent": "Africa",
+        "borders": [
+            "East Africa",
+            "South Africa"
+        ]
+    },
+    "Middle East": {
+        "continent": "Asia",
+        "borders": [
+            "Southern Europe",
+            "Ukraine",
+            "Egypt",
+            "East Africa",
+            "Afghanistan",
+            "India"
+        ]
+    },
+    "Afghanistan": {
+        "continent": "Asia",
+        "borders": [
+            "Ukraine",
+            "Middle East",
+            "India",
+            "China",
+            "Ural"
+        ]
+    },
+    "Ural": {
+        "continent": "Asia",
+        "borders": [
+            "Ukraine",
+            "Afghanistan",
+            "China",
+            "Siberia"
+        ]
+    },
+    "Siberia": {
+        "continent": "Asia",
+        "borders": [
+            "Ural",
+            "China",
+            "Mongolia",
+            "Irkutsk",
+            "Yakutsk"
+        ]
+    },
+    "Yakutsk": {
+        "continent": "Asia",
+        "borders": [
+            "Siberia",
+            "Kamchatka",
+            "Irkutsk"
+        ]
+    },
+    "Kamchatka": {
+        "continent": "Asia",
+        "borders": [
+            "Yakutsk",
+            "Siberia",
+            "Mongolia",
+            "Japan",
+            "Alaska"
+        ]
+    },
+    "Irkutsk": {
+        "continent": "Asia",
+        "borders": [
+            "Siberia",
+            "Yakutsk",
+            "Kamchatka",
+            "Mongolia"
+        ]
+    },
+    "Mongolia": {
+        "continent": "Asia",
+        "borders": [
+            "Siberia",
+            "Irkutsk",
+            "Kamchatka",
+            "Japan",
+            "China"
+        ]
+    },
+    "Japan": {
+        "continent": "Asia",
+        "borders": [
+            "Kamchatka",
+            "Mongolia"
+        ]
+    },
+    "China": {
+        "continent": "Asia",
+        "borders": [
+            "Afghanistan",
+            "Ural",
+            "Siberia",
+            "Mongolia",
+            "Siam",
+            "India"
+        ]
+    },
+    "India": {
+        "continent": "Asia",
+        "borders": [
+            "Middle East",
+            "Afghanistan",
+            "China",
+            "Siam"
+        ]
+    },
+    "Siam": {
+        "continent": "Asia",
+        "borders": [
+            "India",
+            "China",
+            "Indonesia"
+        ]
+    },
+    "Indonesia": {
+        "continent": "Oceania",
+        "borders": [
+            "Siam",
+            "New Guinea",
+            "Western Australia"
+        ]
+    },
+    "New Guinea": {
+        "continent": "Oceania",
+        "borders": [
+            "Indonesia",
+            "Eastern Australia",
+            "Western Australia"
+        ]
+    },
+    "Eastern Australia": {
+        "continent": "Oceania",
+        "borders": [
+            "New Guinea",
+            "Western Australia"
+        ]
+    },
+    "Western Australia": {
+        "continent": "Oceania",
+        "borders": [
+            "Indonesia",
+            "New Guinea",
+            "Eastern Australia"
+        ]
+    }
+}
