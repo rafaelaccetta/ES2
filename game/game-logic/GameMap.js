@@ -1,7 +1,7 @@
 // Link fonte de paises e cartas: https://pt.scribd.com/document/530667103/Cartas-War
 import territoriesJson  from "../public/data/territories.json" with {type: "json"};
 import continentsJson  from "../public/data/continents.json" with {type: "json"};
-import { Graph} from "./util.js";
+import { Graph} from "./Util.js";
 
 export class GameMap {
     constructor() {
@@ -11,22 +11,22 @@ export class GameMap {
     }
 
     loadMapData() {
-        // leitura de arquivo
         const territoriesData = territoriesJson
-        var territorieskeys = Object.keys(territoriesData);
-        for (var i = 0; i < territorieskeys.length; i++) { 
-            this.territories.addVertex(territorieskeys[i]);
-        }
-        for (i = 0; i < territorieskeys.length ; i++) {
-            for ( var j = 0; j < territoriesData[territorieskeys[i]].borders.length ; j++) {
-                let bordering_country = territoriesData[territorieskeys[i]].borders[j]
-                this.territories.addEdge(territorieskeys[i], bordering_country);
-                let index = territoriesData[bordering_country].borders.indexOf(territorieskeys[i]);
-                territoriesData[bordering_country].borders.splice(index, 1);
+        var territoryNames = Object.keys(territoriesData);
+        const insertedEdges = new Set();
+        for (const name of territoryNames){
+            this.territories.addVertex(name)
+            for (const bordering_country of territoriesData[name].borders) {
+                const edgeKey = [name, bordering_country].sort().join('-');
+                if (!insertedEdges.has(edgeKey)) {
+                    this.territories.addEdge(name, bordering_country);
+                    insertedEdges.add(edgeKey);
+                }
             }
         }
         this.continents = continentsJson
     }
+    
 
     distributeTerritories(players) {
         // embaralhar os territórios e distribuir igualmente entre os jogadores.

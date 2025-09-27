@@ -9,16 +9,8 @@ export class Deck {
     }
     loadCards() {
 
-        // import de cartas (precisando sobrescrever continente por simbolo
-        // e.g {"Brasil":"SA"})
-
 
         this.#_deck_cur = data
-
-        // Sorteio de simbolos
-
-
-
         this.shuffle()
 
     }
