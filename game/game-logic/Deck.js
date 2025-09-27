@@ -24,7 +24,16 @@ export class Deck {
     }
 
     draw() {
-        // puxa uma carta aleatoria ao fim do turno caso tenha conquistado territorio
+        let card = this.#_deck_cur.pop()
+        this.#_deck_next.push(card)
+        if(this.#_deck_cur.length <= 0){
+            // switch current deck and next deck
+            let temp = this.#_deck_cur
+            this.#_deck_cur = this.#_deck_next
+            this.#_deck_next = temp
+            this.shuffle()
+        }
+        return card
     }
 
     show(){
