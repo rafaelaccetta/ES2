@@ -62,16 +62,14 @@ export class CardManager {
             // Use the predefined list for the first few exchanges
             return this.#_exchangeBonuses[this.#_exchangeCount];
         } else {
-            // After the list is exhausted, the bonus increases by 5 for each subsequent exchange
+            // The rule is that after the list is exhausted, the bonus increases by 5 for each subsequent exchange
+            // http://www.gametrack.com.br/jogos/war/instrucoes/tabelas.asp "Tabela II"
             const lastBonusInList = this.#_exchangeBonuses[this.#_exchangeBonuses.length - 1];
             const stepsBeyondList = this.#_exchangeCount - (this.#_exchangeBonuses.length - 1);
             return lastBonusInList + (stepsBeyondList * 5);
         }
     }
-
-    /**
-     * A utility method to show the deck's current status.
-     */
+    
     showDeckStatus() {
         this.#_deck.show();
     }
