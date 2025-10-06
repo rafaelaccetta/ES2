@@ -4,6 +4,7 @@ import data from "../public/data/territories_cards.json" with {type: "json"};
 export class Deck {
     #draw_pile;
     #_discard_pile;
+    #_drawPile;
 
     constructor() {
         this.#draw_pile = [];
@@ -37,6 +38,14 @@ export class Deck {
     
     discard(cards) {
         this.#_discard_pile.push(...cards)
+    }
+
+    get drawPileSize() {
+        return this.#draw_pile.length;
+    }
+
+    get discardPileSize() {
+        return this.#_discard_pile.length;
     }
     
     show() {
