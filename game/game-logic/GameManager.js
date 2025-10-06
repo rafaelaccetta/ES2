@@ -1,3 +1,5 @@
+import { Player } from "./Player";
+
 export class GameManager {
     constructor(players) {
         /*
@@ -50,6 +52,11 @@ export class GameManager {
         for (let i = 0; i < this.players.length; i++) {
             this.players[i].objective = objectives[i];
         }
+    }
+
+    dominate(winner, loser, territory) {
+        loser.removeTerritory(territory);
+        winner.addTerritory(territory);
     }
 }
 
