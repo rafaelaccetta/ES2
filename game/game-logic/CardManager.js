@@ -17,7 +17,7 @@ export class CardManager {
     }
     
     drawCardForPlayer(player) {
-        if (this.#playerCanReceiveCard(player)){
+        if (this.#playerCanReceiveCard(player.cards)){
             return this.#_deck.draw();   
         }
     }

@@ -24,7 +24,7 @@ export class Player {
         this.cards.push(card);
     }
 
-    addArmies() {
+    addArmies(bonus) {
         //logic to add armies to a territory
         // at the begining of the turn or because of card exchange or because of a continent control
     }
