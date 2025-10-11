@@ -1,4 +1,5 @@
 import { Deck } from "./Deck.js";
+import {length} from "@vitejs/plugin-react";
 
 export class CardManager {
     #_deck;
@@ -12,12 +13,14 @@ export class CardManager {
         this.#_exchangeBonuses = [4, 6, 8, 10, 12, 15];
     }
     
-    drawCardForPlayer() {
-        const card = this.#_deck.draw();
-        if (!card) {
-            console.warn("Could not draw a card. The deck and discard pile might be empty.");
+    #playerCanReceiveCard(player){
+        return length(player.cards <5)
+    }
+    
+    drawCardForPlayer(player) {
+        if (this.#playerCanReceiveCard(player)){
+            return this.#_deck.draw();   
         }
-        return card;
     }
     
     exchangeCards(cards) {

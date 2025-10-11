@@ -1,39 +1,41 @@
 import {PlayerCards} from "./PlayerCards.js"; // Adjust path if necessary
 import data from "../public/data/territories_cards.json" with {type: "json"};
+import {length} from "@vitejs/plugin-react";
 
 export class Deck {
-    #draw_pile;
+    #_draw_pile;
     #_discard_pile;
-    #_drawPile;
 
     constructor() {
-        this.#draw_pile = [];
+        this.#_draw_pile = [];
         this.#_discard_pile = [];
         this.loadCards()
     }
 
     loadCards() {
-        this.#draw_pile = Object.entries(data).map(([name, geometricShape]) => {
+        this.#_draw_pile = Object.entries(data).map(([name, geometricShape]) => {
             return new PlayerCards({ name, geometricShape });
         });
         this.shuffle();
     }
 
     shuffle() {
-        for (let i = this.#draw_pile.length - 1; i > 0; i--) {
+        for (let i = this.#_draw_pile.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [this.#draw_pile[i], this.#draw_pile[j]] = [this.#draw_pile[j], this.#draw_pile[i]];
+            [this.#_draw_pile[i], this.#_draw_pile[j]] = [this.#_draw_pile[j], this.#_draw_pile[i]];
         }
     }
     
     draw() {
-        if (this.#draw_pile.length === 0) {
-            this.#draw_pile = this.#_discard_pile;
+        if (this.#_draw_pile.length === 0) {
+            this.#_draw_pile = this.#_discard_pile;
             this.#_discard_pile = [];
             this.shuffle();
         }
-
-        return this.#draw_pile.pop();
+        if (length(this.#_draw_pile <1)) {
+            console.warn("Could not draw a card. The deck and discard pile might be empty.");
+        }
+        return this.#_draw_pile.pop();
     }
     
     discard(cards) {
@@ -41,7 +43,7 @@ export class Deck {
     }
 
     get drawPileSize() {
-        return this.#draw_pile.length;
+        return this.#_draw_pile.length;
     }
 
     get discardPileSize() {
@@ -50,7 +52,7 @@ export class Deck {
     
     show() {
         console.log("--- Deck Status ---");
-        console.log(`Current Deck (${this.#draw_pile.length} cards):`, this.#draw_pile);
+        console.log(`Current Deck (${this.#_draw_pile.length} cards):`, this.#_draw_pile);
         console.log(`Discard Pile (${this.#_discard_pile.length} cards):`, this.#_discard_pile);
         console.log("-------------------");
     }

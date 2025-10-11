@@ -1,3 +1,5 @@
+import {length} from "@vitejs/plugin-react";
+
 export class GameManager {
     constructor(players) {
         /*
@@ -25,6 +27,12 @@ export class GameManager {
 
     passPhase() {
         this.PhaseIdx++;
+        if (this.getPhaseName() === "REINFORCE"){ // ugly double if for now because its expected this will be a whole block
+            if (length(this.getPlayerPlaying().cards) >= 5){
+                print("Cannot pass REINFORCE phase: player has 5 cards and must trade cards in.")
+                return
+            }
+        }
         if (this.PhaseIdx > this.PhaseNames.length - 1) {
             this.PhaseIdx = 0;
             this.#passTurn();
@@ -43,7 +51,9 @@ export class GameManager {
         // likely extra state handling code is going to be here in the future
         // so I put this function here already
     }
-
+    
+    
+    
     // Distributes objective cards to players
     distributeObjectives(objectives) {
         objectives = objectives.sort(() => Math.random() - 0.5);

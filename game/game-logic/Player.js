@@ -1,4 +1,3 @@
-import cardsSymbols from "../public/data/territories_cards.json" assert { type: "json" };
 export class Player {
     constructor(id, color, objective = null) {
         this.id = id;
