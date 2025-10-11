@@ -26,22 +26,7 @@ export class GameMap {
         }
         this.continents = continentsJson
     }
-
-    // cria um objeto continents que armazena os territórios de acordo com o continente que pertencem (será usado para verificar se um jogador já conquistou um continente e consequentemente o bônus)
-    getTerritoriesByContinent() {
-        const continents = {};
-        for (const territoryName in this.territories) {
-            const continentName= this.territories[territoryName].continent;
-            if (!continents[continentName]) {
-                continents[continentName] = [];
-            }
-            continents[continentName].push(territoryName);
-        }
-        return continents;
-    }
-
-
-
+    
 
     distributeTerritories(players) {
         // embaralhar os territórios e distribuir igualmente entre os jogadores.
@@ -63,27 +48,8 @@ export class GameMap {
         // colocar 1 tropa em cada território distribuído.
     }
 
-    // PRA QUEM ESTIVER REVISANDO, a nossa estrutura de json dos continentes faz sentido? por que a gente não coloca esses bônus direto no json dos continentes? lá só tem o mapeamento de abreviação e nome completo
-    // não sei nada de arquitetura de projeto assim, é uma dúvida real
     getContinentBonusForPlayer(player) {
-        const territoriesByContinent = this.getTerritoriesByContinent();
-        let bonus = 0;
-
-        const continentBonuses = {
-            "South America": 2,
-            "North America": 5,
-            "Africa": 3,
-            "Europe": 5,
-            "Asia": 7,
-            "Oceania": 2
-        };
-
-        for (const continent of this.continents) {
-            if (player.hasConqueredContinent(continent.name, territoriesByContinent)) {
-                bonus += continentBonuses[continent.name] || 0;
-            }
-        }
-        return bonus;
+        // verificar se um jogador domina algum continente e retornar o bônus
     }
 }
 
