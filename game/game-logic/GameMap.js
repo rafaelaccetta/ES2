@@ -8,6 +8,7 @@ export class GameMap {
         this.territories = new Graph();
         this.continents = [];
         this.loadMapData();
+        this.territoriesBycontinents = null;
     }
 
     loadMapData() {
@@ -28,6 +29,11 @@ export class GameMap {
     }
     // cria um objeto continents que armazena os territórios de acordo com o continente que pertencem (será usado para verificar se um jogador já conquistou um continente e consequentemente o bônus)
     getTerritoriesByContinent() {
+        // se já tiver sido calculado, retorna o valor armazenado
+        if (this.territoriesBycontinents) {
+            return this.territoriesBycontinents;
+        }
+
         const continents = {};
         for (const territoryName in this.territories) {
             const continentName= this.territories[territoryName].continent;
@@ -36,7 +42,8 @@ export class GameMap {
             }
             continents[continentName].push(territoryName);
         }
-        return continents;
+        this.territoriesBycontinents = continents;
+        return this.territoriesBycontinents;
     }
 
 

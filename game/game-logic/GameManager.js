@@ -1,3 +1,5 @@
+import { GameMap } from './GameMap.js'; 
+
 export class GameManager {
     constructor(players) {
         /*
@@ -13,6 +15,8 @@ export class GameManager {
         this.turn = 0;
         this.PhaseNames = ["REINFORCE", "ATTACK", "FORTIFY"];
         this.PhaseIdx = 0;
+        this.gameMap = new GameMap();
+
     }
 
     getPhaseName() {
@@ -44,29 +48,26 @@ export class GameManager {
         // so I put this function here already
     }
 
-    // PRA QUEM ESTIVER REVISANDO, a nossa estrutura de json dos continentes faz sentido? por que a gente não coloca esses bônus direto no json dos continentes? lá só tem o mapeamento de abreviação e nome completo
-    // não sei nada de arquitetura de projeto assim, é uma dúvida real
-    getContinentBonusForPlayer(player) {
-        // verificar se um jogador domina algum continente e retornar o bônus
-        const territoriesByContinent = this.getTerritoriesByContinent();
-        let bonus = 0;
+    calculateContinentBonus(player) {
+        const territoriesByContinent = this.gameMap.getTerritoriesByContinent();
+        const continentBonuses = {};
 
-        const continentBonuses = {
-            "South America": 2,
-            "North America": 5,
-            "Africa": 3,
-            "Europe": 5,
-            "Asia": 7,
-            "Oceania": 2
-        };
+        const continentNames = Object.keys(territoriesByContinent);
 
-        for (const continent of this.continents) {
-            if (player.hasConqueredContinent(continent.name, territoriesByContinent)) {
-                bonus += continentBonuses[continent.name] || 0;
+        for (const continentName of continentNames) {
+            if (player.hasConqueredContinent(continentName, territoriesByContinent)) {
+                const continentAbbreviation = Object.keys(this.gameMap.continents).find(key => 
+                    this.gameMap.continents[key].name === continentName
+                );
+ 
+                if (continentAbbreviation) {
+                    const bonusValue = this.gameMap.continents[continentAbbreviation].bonus;
+                    continentBonuses[continentName] = bonusValue;
+                }
             }
         }
-        return bonus;
-    }
+    return continentBonuses;
+}
 
     // Distributes objective cards to players
     distributeObjectives(objectives) {
