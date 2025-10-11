@@ -1,5 +1,4 @@
 import { Deck } from "./Deck.js";
-import {length} from "@vitejs/plugin-react";
 
 export class CardManager {
     #_deck;
@@ -13,8 +12,8 @@ export class CardManager {
         this.#_exchangeBonuses = [4, 6, 8, 10, 12, 15];
     }
     
-    #playerCanReceiveCard(player){
-        return length(player.cards <5)
+    #playerCanReceiveCard(playerCards){
+        return playerCards.length < 5
     }
     
     drawCardForPlayer(player) {
@@ -23,7 +22,7 @@ export class CardManager {
         }
     }
     
-    exchangeCards(cards) {
+    exchangeCards(cards, player) {
         if (!this.#_isValidSet(cards)) {
             console.log("Invalid set of cards for exchange.");
             return 0; // Return 0 armies for an invalid set
@@ -31,7 +30,11 @@ export class CardManager {
 
         const bonus = this.#_getCurrentBonus();
         this.#_exchangeCount++;
-        
+        for(const card of cards) {
+            if (player.territories.includes(card.name)){
+                player.addArmiesExclusive(card.name, 2) // Rule: If the player 
+            }
+        }
         this.#_deck.discard(cards)
         
         return bonus;
@@ -72,6 +75,7 @@ export class CardManager {
             return lastBonusInList + (stepsBeyondList * 5);
         }
     }
+    
     
     showDeckStatus() {
         this.#_deck.show();

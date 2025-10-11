@@ -1,5 +1,3 @@
-import {length} from "@vitejs/plugin-react";
-
 export class GameManager {
     constructor(players) {
         /*
@@ -28,8 +26,8 @@ export class GameManager {
     passPhase() {
         this.PhaseIdx++;
         if (this.getPhaseName() === "REINFORCE"){ // ugly double if for now because its expected this will be a whole block
-            if (length(this.getPlayerPlaying().cards) >= 5){
-                print("Cannot pass REINFORCE phase: player has 5 cards and must trade cards in.")
+            if (this.getPlayerPlaying().cards.length >= 5){
+                console.warn("Cannot pass REINFORCE phase: player has 5 cards and must trade cards in.")
                 return
             }
         }

@@ -6,6 +6,7 @@ export class Player {
         this.territories = [];
         this.cards = [];
         this.armies = 0;
+        this.armiesExclusiveToTerritory = new Map() // example: {"Brazil": 2} means 2 troops can only be deployed in Brazil
         this.isActive = true;
     }
 
@@ -27,7 +28,12 @@ export class Player {
         //logic to add armies to a territory
         // at the begining of the turn or because of card exchange or because of a continent control
     }
-
+    
+    addArmiesExclusive(territoryName, amount){
+        const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
+        this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
+    }
+    
     removeArmies() {
         // logic to remove armies of a territory
         // because of attack, defense or movement

@@ -1,6 +1,5 @@
 import {PlayerCards} from "./PlayerCards.js"; // Adjust path if necessary
 import data from "../public/data/territories_cards.json" with {type: "json"};
-import {length} from "@vitejs/plugin-react";
 
 export class Deck {
     #_draw_pile;
@@ -32,7 +31,7 @@ export class Deck {
             this.#_discard_pile = [];
             this.shuffle();
         }
-        if (length(this.#_draw_pile <1)) {
+        if (this.#_draw_pile.length <1) {
             console.warn("Could not draw a card. The deck and discard pile might be empty.");
         }
         return this.#_draw_pile.pop();
