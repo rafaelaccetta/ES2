@@ -44,6 +44,30 @@ export class GameManager {
         // so I put this function here already
     }
 
+    // PRA QUEM ESTIVER REVISANDO, a nossa estrutura de json dos continentes faz sentido? por que a gente não coloca esses bônus direto no json dos continentes? lá só tem o mapeamento de abreviação e nome completo
+    // não sei nada de arquitetura de projeto assim, é uma dúvida real
+    getContinentBonusForPlayer(player) {
+        // verificar se um jogador domina algum continente e retornar o bônus
+        const territoriesByContinent = this.getTerritoriesByContinent();
+        let bonus = 0;
+
+        const continentBonuses = {
+            "South America": 2,
+            "North America": 5,
+            "Africa": 3,
+            "Europe": 5,
+            "Asia": 7,
+            "Oceania": 2
+        };
+
+        for (const continent of this.continents) {
+            if (player.hasConqueredContinent(continent.name, territoriesByContinent)) {
+                bonus += continentBonuses[continent.name] || 0;
+            }
+        }
+        return bonus;
+    }
+
     // Distributes objective cards to players
     distributeObjectives(objectives) {
         objectives = objectives.sort(() => Math.random() - 0.5);
