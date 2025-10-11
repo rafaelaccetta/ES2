@@ -5,6 +5,9 @@ const MapSVG: React.FC<React.SVGProps<SVGElement>> = (props) => (
     xmlns="http://www.w3.org/2000/svg"
     xmlnsXlink="http://www.w3.org/1999/xlink"
     viewBox="182 114 720 405"
+    width="100%"
+    height="100%"
+    style={{ background: '#fff', width: '100%', height: '100%', display: 'block' }}
   >
     <desc>
       Risk game board by CMG Lee, the asterisk denoting the missing link in the

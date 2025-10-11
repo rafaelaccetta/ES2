@@ -5,6 +5,6 @@ import MapSVG from './MapSVG.tsx';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-        <MapSVG />
+        <App />
     </React.StrictMode>,
 )
