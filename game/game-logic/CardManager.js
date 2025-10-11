@@ -22,22 +22,25 @@ export class CardManager {
         }
     }
     
-    exchangeCards(cards, player) {
+    executeCardExchange(cards, player) {
         if (!this.#_isValidSet(cards)) {
-            console.log("Invalid set of cards for exchange.");
-            return 0; // Return 0 armies for an invalid set
+            console.warn("Invalid set of cards for exchange.");
+            return
         }
 
         const bonus = this.#_getCurrentBonus();
-        this.#_exchangeCount++;
-        for(const card of cards) {
-            if (player.territories.includes(card.name)){
-                player.addArmiesExclusive(card.name, 2) // Rule: If the player 
+
+
+        player.addArmies(bonus);
+
+        for (const card of cards) {
+            if (player.hasTerritory(card.name)) {
+                player.addArmiesExclusive(card.name, 2);
             }
         }
-        this.#_deck.discard(cards)
-        
-        return bonus;
+
+        this.#_exchangeCount++;
+        this.#_deck.discard(cards);
     }
     
     #_isValidSet(cards) {

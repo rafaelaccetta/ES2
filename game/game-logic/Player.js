@@ -34,6 +34,10 @@ export class Player {
         this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
     }
     
+    hasTerritory(territoryName){
+        return this.territories.includes(territoryName)
+    }
+    
     removeArmies() {
         // logic to remove armies of a territory
         // because of attack, defense or movement
