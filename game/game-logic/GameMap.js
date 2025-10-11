@@ -26,7 +26,19 @@ export class GameMap {
         }
         this.continents = continentsJson
     }
-    
+    // cria um objeto continents que armazena os territórios de acordo com o continente que pertencem (será usado para verificar se um jogador já conquistou um continente e consequentemente o bônus)
+    getTerritoriesByContinent() {
+        const continents = {};
+        for (const territoryName in this.territories) {
+            const continentName= this.territories[territoryName].continent;
+            if (!continents[continentName]) {
+                continents[continentName] = [];
+            }
+            continents[continentName].push(territoryName);
+        }
+        return continents;
+    }
+
 
     distributeTerritories(players) {
         // embaralhar os territórios e distribuir igualmente entre os jogadores.
@@ -46,10 +58,6 @@ export class GameMap {
             //players[1].addTerritory(territorieskeys[1]);
         }
         // colocar 1 tropa em cada território distribuído.
-    }
-
-    getContinentBonusForPlayer(player) {
-        // verificar se um jogador domina algum continente e retornar o bônus
     }
 }
 

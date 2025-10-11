@@ -26,6 +26,12 @@ export class Player {
             this.forceTradeCards();
         }
     }
+    
+    // chamada na função de calcular o bônus de continente no GameMap
+    hasConqueredContinent(continentName, territoriesByContinent) {
+        const continentTerritories = territoriesByContinent[continentName];
+        return continentTerritories.every((territory) => this.territories.includes(territory));
+    }
 
     forceTradeCards() {
         // go through all combinations of 3 cards to find a valid trade of equals or differents
