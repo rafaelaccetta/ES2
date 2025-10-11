@@ -2,60 +2,83 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { CardManager } from './CardManager.js';
 import { Deck } from './Deck.js';
 import { PlayerCards } from './PlayerCards.js';
+import { Player } from './Player.js';
 
 vi.mock('./Deck.js');
 
 describe('CardManager', () => {
     let cardManager;
+    let player;
 
     beforeEach(() => {
-        cardManager = new CardManager();
-    });
-
-    afterEach(() => {
         vi.clearAllMocks();
+
+        cardManager = new CardManager();
+
+        player = {
+            id: 1,
+            cards: [],
+            territories: [],
+            addArmies: vi.fn(),
+            addArmiesExclusive: vi.fn(),
+            hasTerritory: vi.fn((territoryName) => player.territories.includes(territoryName)),
+        };
+
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
 
-    it('should draw a card by calling deck.draw', () => {
+    it('should draw a card if the player has less than 5 cards', () => {
         const fakeCard = new PlayerCards({ name: 'Test Card', geometricShape: 'Square' });
+        const playerWithFewCards = { cards: [] };
+
         Deck.prototype.draw.mockReturnValue(fakeCard);
 
-        const drawnCard = cardManager.drawCardForPlayer();
+        const drawnCard = cardManager.drawCardForPlayer(playerWithFewCards);
 
         expect(Deck.prototype.draw).toHaveBeenCalledTimes(1);
         expect(drawnCard).toBe(fakeCard);
     });
 
+    it('should NOT draw a card if the player already has 5 cards', () => {
+        const playerWithMaxCards = { cards: [1, 2, 3, 4, 5] };
+
+        const drawnCard = cardManager.drawCardForPlayer(playerWithMaxCards);
+
+        expect(Deck.prototype.draw).not.toHaveBeenCalled();
+        expect(drawnCard).toBeUndefined();
+    });
+
     describe('Card Exchange Logic', () => {
-        it('should return 4 armies for the first valid exchange of same shapes', () => {
+        it('should add 4 armies for the first valid exchange', () => {
             const cards = [
                 new PlayerCards({ name: 'A', geometricShape: 'Square' }),
                 new PlayerCards({ name: 'B', geometricShape: 'Square' }),
                 new PlayerCards({ name: 'C', geometricShape: 'Square' })
             ];
 
-            const bonus = cardManager.exchangeCards(cards);
+            cardManager.executeCardExchange(cards, player);
 
-            expect(bonus).toBe(4);
+            expect(player.addArmies).toHaveBeenCalledWith(4);
             expect(Deck.prototype.discard).toHaveBeenCalledWith(cards);
         });
 
-        it('should return 6 armies for the second valid exchange of different shapes', () => {
-            cardManager.exchangeCards([
+        it('should add 6 armies for the second valid exchange', () => {
+            const firstSet = [
                 new PlayerCards({ name: 'A', geometricShape: 'Square' }),
                 new PlayerCards({ name: 'B', geometricShape: 'Square' }),
                 new PlayerCards({ name: 'C', geometricShape: 'Square' })
-            ]);
+            ];
+            cardManager.executeCardExchange(firstSet, player);
 
-            // Second exchange
-            const cards = [
+            const secondSet = [
                 new PlayerCards({ name: 'D', geometricShape: 'Square' }),
                 new PlayerCards({ name: 'E', geometricShape: 'Circle' }),
                 new PlayerCards({ name: 'F', geometricShape: 'Triangle' })
             ];
 
-            const bonus = cardManager.exchangeCards(cards);
-            expect(bonus).toBe(6);
+            cardManager.executeCardExchange(secondSet, player);
+
+            expect(player.addArmies).toHaveBeenLastCalledWith(6);
         });
 
         it('should correctly process an exchange with a Wildcard', () => {
@@ -65,25 +88,27 @@ describe('CardManager', () => {
                 new PlayerCards({ name: 'W', geometricShape: 'Wildcard' })
             ];
 
-            const bonus = cardManager.exchangeCards(cards);
-            expect(bonus).toBe(4); // First exchange
+            cardManager.executeCardExchange(cards, player);
+
+            expect(player.addArmies).toHaveBeenCalledWith(4);
             expect(Deck.prototype.discard).toHaveBeenCalledWith(cards);
         });
 
-        it('should return 0 for an invalid set and not discard the cards', () => {
+        it('should not add armies or discard cards for an invalid set', () => {
             const cards = [
                 new PlayerCards({ name: 'A', geometricShape: 'Square' }),
                 new PlayerCards({ name: 'B', geometricShape: 'Square' }),
                 new PlayerCards({ name: 'F', geometricShape: 'Triangle' })
             ];
 
-            const bonus = cardManager.exchangeCards(cards);
+            cardManager.executeCardExchange(cards, player);
 
-            expect(bonus).toBe(0);
+            expect(player.addArmies).not.toHaveBeenCalled();
             expect(Deck.prototype.discard).not.toHaveBeenCalled();
+            expect(console.warn).toHaveBeenCalledWith("Invalid set of cards for exchange.");
         });
 
-        it('should return 20 armies for the 7th exchange', () => {
+        it('should add 20 armies for the 7th exchange', () => {
             const validSet = [
                 new PlayerCards({ name: 'A', geometricShape: 'Square' }),
                 new PlayerCards({ name: 'B', geometricShape: 'Square' }),
@@ -91,11 +116,27 @@ describe('CardManager', () => {
             ];
 
             for (let i = 0; i < 6; i++) {
-                cardManager.exchangeCards(validSet);
+                cardManager.executeCardExchange(validSet, player);
             }
 
-            const bonus = cardManager.exchangeCards(validSet);
-            expect(bonus).toBe(20);
+            cardManager.executeCardExchange(validSet, player);
+
+            expect(player.addArmies).toHaveBeenLastCalledWith(20);
+        });
+
+        it('should add 2 exclusive armies if player owns the territory on a card', () => {
+            player.territories = ['A'];
+
+            const cards = [
+                new PlayerCards({ name: 'A', geometricShape: 'Square' }),
+                new PlayerCards({ name: 'B', geometricShape: 'Square' }),
+                new PlayerCards({ name: 'C', geometricShape: 'Square' })
+            ];
+
+            cardManager.executeCardExchange(cards, player);
+
+            expect(player.addArmiesExclusive).toHaveBeenCalledWith('A', 2);
+            expect(player.addArmies).toHaveBeenCalledWith(4);
         });
     });
 });
