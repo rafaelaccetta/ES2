@@ -46,8 +46,8 @@ export class GameMap {
             players[1].addTerritory(territorieskeys[1]);
         }
         // colocar 1 tropa em cada território distribuído.
-        for (var player in players){
-            for (var territory in player.territories){
+        for (var player of players){
+            for (var territory of player.territories){
                 // player.addArmies(territory)
             }
         }
