@@ -13,8 +13,14 @@ export class GameManager {
         this.turn = 0;
         this.PhaseNames = ["REINFORCE", "ATTACK", "FORTIFY"];
         this.PhaseIdx = 0;
+        this.initializeGame()
     }
-
+    
+    initializeGame(){
+        this.players.sort(() => Math.random() - 0.5); // shuffles player order
+        // future game initialization and turn 0 logic is probably going here
+    }
+    
     getPhaseName() {
         return this.PhaseNames[this.PhaseIdx];
     }
