@@ -6,7 +6,7 @@ import { Graph} from "./Util.js";
 export class GameMap {
     constructor() {
         this.territories = new Graph();
-        this.continents = [];
+        this.continents = {};
         this.loadMapData();
         this.territoriesBycontinents = null;
     }
