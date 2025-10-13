@@ -6,8 +6,9 @@ import { Graph} from "./Util.js";
 export class GameMap {
     constructor() {
         this.territories = new Graph();
-        this.continents = [];
+        this.continents = {};
         this.loadMapData();
+        this.territoriesBycontinents = null;
     }
 
     loadMapData() {
@@ -26,7 +27,25 @@ export class GameMap {
         }
         this.continents = continentsJson
     }
-    
+    // cria um objeto continents que armazena os territórios de acordo com o continente que pertencem (será usado para verificar se um jogador já conquistou um continente e consequentemente o bônus)
+    getTerritoriesByContinent() {
+        // se já tiver sido calculado, retorna o valor armazenado
+        if (this.territoriesBycontinents) {
+            return this.territoriesBycontinents;
+        }
+
+        const continents = {};
+        for (const territoryName in this.territories) {
+            const continentName= this.territories[territoryName].continent;
+            if (!continents[continentName]) {
+                continents[continentName] = [];
+            }
+            continents[continentName].push(territoryName);
+        }
+        this.territoriesBycontinents = continents;
+        return this.territoriesBycontinents;
+    }
+
 
     distributeTerritories(players) {
         // embaralhar os territórios e distribuir igualmente entre os jogadores.
@@ -51,10 +70,6 @@ export class GameMap {
                 // player.addArmies(territory)
             }
         }
-    }
-
-    getContinentBonusForPlayer(player) {
-        // verificar se um jogador domina algum continente e retornar o bônus
     }
 }
 

@@ -22,6 +22,15 @@ export class Player {
 
     addCard(card) {
         this.cards.push(card);
+        if (this.cards.length >= 5) {
+            this.forceTradeCards();
+        }
+    }
+    
+    // chamada na função de calcular o bônus de continente no GameMap
+    hasConqueredContinent(continentName, territoriesByContinent) {
+        const continentTerritories = territoriesByContinent[continentName];
+        return continentTerritories.every((territory) => this.territories.includes(territory));
     }
 
     addArmies() {
