@@ -29,6 +29,12 @@ export class GameManager {
 
     passPhase() {
         this.PhaseIdx++;
+        if (this.getPhaseName() === "REINFORCE"){ // ugly double if for now because its expected this will be a whole block
+            if (this.getPlayerPlaying().cards.length >= 5){
+                console.warn("Cannot pass REINFORCE phase: player has 5 cards and must trade cards in.")
+                return
+            }
+        }
         if (this.PhaseIdx > this.PhaseNames.length - 1) {
             this.PhaseIdx = 0;
             this.#passTurn();

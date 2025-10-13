@@ -1,13 +1,9 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { mergeConfig } from 'vite';
+import baseConfig from './config.base.mjs';
 
-// https://vitejs.dev/config/
-export default defineConfig({
-    base: './',
-    plugins: [
-        react(),
-    ],
+// Merges the base config with dev-specific settings
+export default mergeConfig(baseConfig, {
     server: {
         port: 8080
     }
-})
+});
