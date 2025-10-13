@@ -76,5 +76,10 @@ export class GameManager {
             this.players[i].objective = objectives[i];
         }
     }
+
+    dominate(winner, loser, territory) {
+        loser.removeTerritory(territory);
+        winner.addTerritory(territory);
+    }
 }
 
