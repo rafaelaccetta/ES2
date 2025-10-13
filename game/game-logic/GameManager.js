@@ -1,3 +1,5 @@
+import { GameMap } from './GameMap.js'; 
+
 export class GameManager {
     constructor(players) {
         /*
@@ -14,6 +16,8 @@ export class GameManager {
         this.PhaseNames = ["REINFORCE", "ATTACK", "FORTIFY"];
         this.PhaseIdx = 0;
         this.initializeGame()
+        this.gameMap = new GameMap();
+
     }
     
     initializeGame(){
@@ -31,6 +35,12 @@ export class GameManager {
 
     passPhase() {
         this.PhaseIdx++;
+        if (this.getPhaseName() === "REINFORCE"){ // ugly double if for now because its expected this will be a whole block
+            if (this.getPlayerPlaying().cards.length >= 5){
+                console.warn("Cannot pass REINFORCE phase: player has 5 cards and must trade cards in.")
+                return
+            }
+        }
         if (this.PhaseIdx > this.PhaseNames.length - 1) {
             this.PhaseIdx = 0;
             this.#passTurn();
@@ -50,12 +60,38 @@ export class GameManager {
         // so I put this function here already
     }
 
+    calculateContinentBonus(player) {
+        const territoriesByContinent = this.gameMap.getTerritoriesByContinent();
+        const continentBonuses = {};
+
+        const continentNames = Object.keys(territoriesByContinent);
+
+        for (const continentName of continentNames) {
+            if (player.hasConqueredContinent(continentName, territoriesByContinent)) {
+                const continentAbbreviation = Object.keys(this.gameMap.continents).find(key => 
+                    this.gameMap.continents[key].name === continentName
+                );
+ 
+                if (continentAbbreviation) {
+                    const bonusValue = this.gameMap.continents[continentAbbreviation].bonus;
+                    continentBonuses[continentName] = bonusValue;
+                }
+            }
+        }
+    return continentBonuses;
+}
+
     // Distributes objective cards to players
     distributeObjectives(objectives) {
         objectives = objectives.sort(() => Math.random() - 0.5);
         for (let i = 0; i < this.players.length; i++) {
             this.players[i].objective = objectives[i];
         }
+    }
+
+    dominate(winner, loser, territory) {
+        loser.removeTerritory(territory);
+        winner.addTerritory(territory);
     }
 }
 

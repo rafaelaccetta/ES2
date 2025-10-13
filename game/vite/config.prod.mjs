@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { mergeConfig } from 'vite';
+import baseConfig from './config.base.mjs';
 
 const phasermsg = () => {
     return {
@@ -15,12 +15,11 @@ const phasermsg = () => {
             process.stdout.write(`✨ Done ✨\n`);
         }
     }
-}
+}   
 
-export default defineConfig({
-    base: './',
+// Merges the base config with prod-specific settings
+export default mergeConfig(baseConfig, {
     plugins: [
-        react(),
         phasermsg()
     ],
     logLevel: 'warning',
