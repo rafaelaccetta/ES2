@@ -1,14 +1,23 @@
 // Link fonte de paises e cartas: https://pt.scribd.com/document/530667103/Cartas-War
 import territoriesJson  from "../public/data/territories.json" with {type: "json"};
 import continentsJson  from "../public/data/continents.json" with {type: "json"};
-import { Graph} from "./Util.js";
+import { Graph } from "./Util.js";
 
 export class GameMap {
     constructor() {
         this.territories = new Graph();
         this.continents = {};
+        this.armies = {};
+
         this.loadMapData();
+        this.initializeArmies();
         this.territoriesBycontinents = null;
+    }
+
+    initializeArmies() {
+        for (const territory in territoriesJson) {
+            this.armies[territory] = 1;
+        }
     }
 
     loadMapData() {
