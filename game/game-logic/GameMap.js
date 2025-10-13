@@ -35,17 +35,22 @@ export class GameMap {
         for (var i = 0; i < players.length; i++) {
             for (var j = 0; j < lenght; j++) {
                 var index = Math.floor(Math.random() * territorieskeys.length)
-                //players[i].addTerritory(territorieskeys[index]);
+                players[i].addTerritory(territorieskeys[index]);
                 console.log(territorieskeys.length)
                 territorieskeys.splice(index, 1);
             }
         }
         // distribuir os territorios que sobraram para os dois primeiros jogadores
         if(territorieskeys.length > 0 ) {
-            //players[0].addTerritory(territorieskeys[0]);
-            //players[1].addTerritory(territorieskeys[1]);
+            players[0].addTerritory(territorieskeys[0]);
+            players[1].addTerritory(territorieskeys[1]);
         }
         // colocar 1 tropa em cada território distribuído.
+        for (var player of players){
+            for (var territory of player.territories){
+                // player.addArmies(territory)
+            }
+        }
     }
 
     getContinentBonusForPlayer(player) {
