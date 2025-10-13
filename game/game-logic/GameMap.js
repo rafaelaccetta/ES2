@@ -6,8 +6,9 @@ import { Graph} from "./Util.js";
 export class GameMap {
     constructor() {
         this.territories = new Graph();
-        this.continents = [];
+        this.continents = {};
         this.loadMapData();
+        this.territoriesBycontinents = null;
     }
 
     loadMapData() {
@@ -26,7 +27,25 @@ export class GameMap {
         }
         this.continents = continentsJson
     }
-    
+    // cria um objeto continents que armazena os territórios de acordo com o continente que pertencem (será usado para verificar se um jogador já conquistou um continente e consequentemente o bônus)
+    getTerritoriesByContinent() {
+        // se já tiver sido calculado, retorna o valor armazenado
+        if (this.territoriesBycontinents) {
+            return this.territoriesBycontinents;
+        }
+
+        const continents = {};
+        for (const territoryName in this.territories) {
+            const continentName= this.territories[territoryName].continent;
+            if (!continents[continentName]) {
+                continents[continentName] = [];
+            }
+            continents[continentName].push(territoryName);
+        }
+        this.territoriesBycontinents = continents;
+        return this.territoriesBycontinents;
+    }
+
 
     distributeTerritories(players) {
         // embaralhar os territórios e distribuir igualmente entre os jogadores.
@@ -35,21 +54,22 @@ export class GameMap {
         for (var i = 0; i < players.length; i++) {
             for (var j = 0; j < lenght; j++) {
                 var index = Math.floor(Math.random() * territorieskeys.length)
-                //players[i].addTerritory(territorieskeys[index]);
+                players[i].addTerritory(territorieskeys[index]);
                 console.log(territorieskeys.length)
                 territorieskeys.splice(index, 1);
             }
         }
         // distribuir os territorios que sobraram para os dois primeiros jogadores
         if(territorieskeys.length > 0 ) {
-            //players[0].addTerritory(territorieskeys[0]);
-            //players[1].addTerritory(territorieskeys[1]);
+            players[0].addTerritory(territorieskeys[0]);
+            players[1].addTerritory(territorieskeys[1]);
         }
         // colocar 1 tropa em cada território distribuído.
-    }
-
-    getContinentBonusForPlayer(player) {
-        // verificar se um jogador domina algum continente e retornar o bônus
+        for (var player of players){
+            for (var territory of player.territories){
+                // player.addArmies(territory)
+            }
+        }
     }
 }
 
