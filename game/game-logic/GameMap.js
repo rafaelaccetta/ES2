@@ -14,12 +14,6 @@ export class GameMap {
         this.territoriesBycontinents = null;
     }
 
-    initializeArmies() {
-        for (const territory in territoriesJson) {
-            this.armies[territory] = 1;
-        }
-    }
-
     loadMapData() {
         const territoriesData = territoriesJson
         var territoryNames = Object.keys(territoriesData);
@@ -36,6 +30,23 @@ export class GameMap {
         }
         this.continents = continentsJson
     }
+
+    initializeArmies() {
+        for (const territory in territoriesJson) {
+            this.armies[territory] = 1;
+        }
+    }
+
+    addArmy(territory) {
+        this.armies[territory] = this.armies[territory] + 1;
+    }
+
+    removeArmy(territory) {
+        if (this.armies[territory] > 1) {
+            this.armies[territory] = this.armies[territory] - 1;
+        }
+    }
+
     // cria um objeto continents que armazena os territórios de acordo com o continente que pertencem (será usado para verificar se um jogador já conquistou um continente e consequentemente o bônus)
     getTerritoriesByContinent() {
         // se já tiver sido calculado, retorna o valor armazenado
@@ -72,12 +83,6 @@ export class GameMap {
         if(territorieskeys.length > 0 ) {
             players[0].addTerritory(territorieskeys[0]);
             players[1].addTerritory(territorieskeys[1]);
-        }
-        // colocar 1 tropa em cada território distribuído.
-        for (var player of players){
-            for (var territory of player.territories){
-                // player.addArmies(territory)
-            }
         }
     }
 }

@@ -32,7 +32,12 @@ for (const player of players) {
     console.log(`Player ${player.id} (${player.color}):`, player.territories);
 }
 
-console.log("Tropas de cada território:")
+console.log("Tropas de cada território:");
 for (const territory in gameMap.armies) {
-    console.log(`\t ${territory}: ${gameMap.armies[territory]}`)
+    console.log(`\t ${territory}: ${gameMap.armies[territory]}`);
 }
+
+console.log("Add tropas para um território:");
+console.log(`Antes: ${gameMap.armies["Brazil"]}`);
+gameMap.addArmy("Brazil");
+console.log(`Depois: ${gameMap.armies["Brazil"]}`);
