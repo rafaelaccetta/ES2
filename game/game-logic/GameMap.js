@@ -1,13 +1,16 @@
 // Link fonte de paises e cartas: https://pt.scribd.com/document/530667103/Cartas-War
 import territoriesJson  from "../public/data/territories.json" with {type: "json"};
 import continentsJson  from "../public/data/continents.json" with {type: "json"};
-import { Graph} from "./Util.js";
+import { Graph } from "./Util.js";
 
 export class GameMap {
     constructor() {
         this.territories = new Graph();
         this.continents = {};
+        this.armies = {};
+
         this.loadMapData();
+        this.initializeArmies();
         this.territoriesBycontinents = null;
     }
 
@@ -27,6 +30,23 @@ export class GameMap {
         }
         this.continents = continentsJson
     }
+
+    initializeArmies() {
+        for (const territory in territoriesJson) {
+            this.armies[territory] = 1;
+        }
+    }
+
+    addArmy(territory) {
+        this.armies[territory] = this.armies[territory] + 1;
+    }
+
+    removeArmy(territory) {
+        if (this.armies[territory] > 1) {
+            this.armies[territory] = this.armies[territory] - 1;
+        }
+    }
+
     // cria um objeto continents que armazena os territórios de acordo com o continente que pertencem (será usado para verificar se um jogador já conquistou um continente e consequentemente o bônus)
     getTerritoriesByContinent() {
         // se já tiver sido calculado, retorna o valor armazenado
@@ -63,12 +83,6 @@ export class GameMap {
         if(territorieskeys.length > 0 ) {
             players[0].addTerritory(territorieskeys[0]);
             players[1].addTerritory(territorieskeys[1]);
-        }
-        // colocar 1 tropa em cada território distribuído.
-        for (var player of players){
-            for (var territory of player.territories){
-                // player.addArmies(territory)
-            }
         }
     }
 }
