@@ -1,14 +1,8 @@
 export class GameManager {
     constructor(players) {
-        /*
-         A match has multiple rounds
-         A round has multiple turns, one for each player
-         A turn has multiple phases, each with different possible plays
-         
-         Base zero is being used. Turn zero is the turn of the first player. 
-         */
+        
         this.players = players;
-        this.turnsPerRound = this.players.length; // length of players array in the future
+        this.turnsPerRound = this.players.length;
         this.round = 0;
         this.turn = 0;
         this.PhaseNames = ["REINFORCE", "ATTACK", "FORTIFY"];
@@ -40,11 +34,8 @@ export class GameManager {
 
     #passRound() {
         this.round++;
-        // likely extra state handling code is going to be here in the future
-        // so I put this function here already
     }
 
-    // Distributes objective cards to players
     distributeObjectives(objectives) {
         objectives = objectives.sort(() => Math.random() - 0.5);
         for (let i = 0; i < this.players.length; i++) {
