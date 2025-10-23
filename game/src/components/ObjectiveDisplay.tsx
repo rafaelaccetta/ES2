@@ -4,26 +4,59 @@ import './ObjectiveDisplay.css';
 
 interface ObjectiveDisplayProps {
   showObjective: boolean;
+  showConfirmation: boolean;
   onClose: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
 }
 
-const ObjectiveDisplay: React.FC<ObjectiveDisplayProps> = ({ showObjective, onClose }) => {
+const ObjectiveDisplay: React.FC<ObjectiveDisplayProps> = ({ showObjective, showConfirmation, onClose, onConfirm, onCancel }) => {
   const { getCurrentPlayer, getCurrentObjective, currentPhase, currentRound } = useGameContext();
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    if (showObjective) {
+    if (showObjective || showConfirmation) {
       setIsVisible(true);
     } else {
       const timer = setTimeout(() => setIsVisible(false), 300);
       return () => clearTimeout(timer);
     }
-  }, [showObjective]);
+  }, [showObjective, showConfirmation]);
 
   const currentPlayer = getCurrentPlayer();
   const currentObjective = getCurrentObjective();
 
-  if (!isVisible || !currentPlayer || !currentObjective) {
+  if (!isVisible) {
+    return null;
+  }
+
+  // Se deve mostrar confirmação, renderiza o modal de confirmação
+  if (showConfirmation) {
+    return (
+      <div className="objective-confirmation-overlay">
+        <div className="objective-confirmation-modal">
+          <div className="confirmation-content">
+            <h3>Tem certeza?</h3>
+            <p>
+              Deseja realmente ver seu objetivo? Certifique-se de que outros jogadores não possam ver a tela.
+            </p>
+          </div>
+
+          <div className="confirmation-actions">
+            <button className="confirm-btn" onClick={onConfirm}>
+              Sim, mostrar objetivo
+            </button>
+            <button className="cancel-btn" onClick={onCancel}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não tem jogador ou objetivo, não renderiza
+  if (!currentPlayer || !currentObjective) {
     return null;
   }
 

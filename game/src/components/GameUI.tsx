@@ -12,7 +12,11 @@ const GameUI: React.FC = () => {
     currentRound, 
     nextPhase, 
     startGame,
-    players 
+    players,
+    shouldShowAutomaticObjective,
+    markObjectiveAsShown,
+    showObjectiveConfirmation,
+    setShowObjectiveConfirmation
   } = useGameContext();
   
   const [showObjective, setShowObjective] = useState(false);
@@ -24,12 +28,15 @@ const GameUI: React.FC = () => {
     const currentPlayer = getCurrentPlayer();
     if (currentPlayer && gameStarted) {
       if (lastPlayerRef.current !== currentPlayer.id && currentPhase === 'REINFORCE') {
-        setShowTransition(true);
+        // Só mostra a transição automaticamente se deve mostrar o objetivo automaticamente
+        if (shouldShowAutomaticObjective()) {
+          setShowTransition(true);
+        }
         setShowObjective(false);
       }
       lastPlayerRef.current = currentPlayer.id;
     }
-  }, [getCurrentPlayer()?.id, currentPhase, gameStarted]);
+  }, [getCurrentPlayer()?.id, currentPhase, gameStarted, shouldShowAutomaticObjective]);
 
   const handleStartGame = (playerCount: number) => {
     startGame(playerCount);
@@ -38,7 +45,14 @@ const GameUI: React.FC = () => {
   };
 
   const handleShowObjective = () => {
-    setShowObjective(true);
+    // Se estamos na primeira rodada e o jogador ainda não viu o objetivo, mostra direto
+    if (shouldShowAutomaticObjective()) {
+      setShowObjective(true);
+      markObjectiveAsShown();
+    } else {
+      // Caso contrário, mostra o modal de confirmação
+      setShowObjectiveConfirmation(true);
+    }
   };
 
   const handleCloseObjective = () => {
@@ -48,6 +62,16 @@ const GameUI: React.FC = () => {
   const handleTurnTransitionComplete = () => {
     setShowTransition(false);
     setShowObjective(true);
+    markObjectiveAsShown();
+  };
+
+  const handleConfirmShowObjective = () => {
+    setShowObjectiveConfirmation(false);
+    setShowObjective(true);
+  };
+
+  const handleCancelShowObjective = () => {
+    setShowObjectiveConfirmation(false);
   };
 
   const getPlayerColor = (color: string) => {
@@ -92,11 +116,7 @@ const GameUI: React.FC = () => {
     <>
       <div className="game-ui">
         <div className="game-status">
-          <div className="current-player">
-            <div 
-              className="player-color-indicator"
-              style={{ backgroundColor: getPlayerColor(currentPlayer.color) }}
-            />
+          <div className="current-player" style={{display: 'flex', justifyContent: 'center', fontSize: '15px'}}>
             <span>Jogador {currentPlayer.color.charAt(0).toUpperCase() + currentPlayer.color.slice(1)}</span>
           </div>
           
@@ -149,7 +169,10 @@ const GameUI: React.FC = () => {
       
       <ObjectiveDisplay 
         showObjective={showObjective && !showTransition}
+        showConfirmation={showObjectiveConfirmation}
         onClose={handleCloseObjective}
+        onConfirm={handleConfirmShowObjective}
+        onCancel={handleCancelShowObjective}
       />
     </>
   );

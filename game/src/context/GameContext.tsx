@@ -22,6 +22,8 @@ export interface GameState {
   currentRound: number;
   objectives: Objective[];
   gameStarted: boolean;
+  showObjectiveConfirmation: boolean;
+  firstRoundObjectiveShown: Set<number>;
 }
 
 interface GameContextType extends GameState {
@@ -30,6 +32,9 @@ interface GameContextType extends GameState {
   getCurrentObjective: () => Objective | null;
   nextPhase: () => void;
   resetGame: () => void;
+  shouldShowAutomaticObjective: () => boolean;
+  markObjectiveAsShown: () => void;
+  setShowObjectiveConfirmation: (show: boolean) => void;
 }
 
 const initialState: GameState = {
@@ -40,6 +45,8 @@ const initialState: GameState = {
   currentRound: 0,
   objectives: [],
   gameStarted: false,
+  showObjectiveConfirmation: false,
+  firstRoundObjectiveShown: new Set(),
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -137,6 +144,31 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setGameState(initialState);
   };
 
+  const shouldShowAutomaticObjective = (): boolean => {
+    const currentPlayer = getCurrentPlayer();
+    if (!currentPlayer) return false;
+    
+    // Só mostra automaticamente na primeira rodada E se o jogador ainda não viu o objetivo
+    return gameState.currentRound === 0 && !gameState.firstRoundObjectiveShown.has(currentPlayer.id);
+  };
+
+  const markObjectiveAsShown = () => {
+    const currentPlayer = getCurrentPlayer();
+    if (currentPlayer) {
+      setGameState(prevState => ({
+        ...prevState,
+        firstRoundObjectiveShown: new Set(prevState.firstRoundObjectiveShown.add(currentPlayer.id))
+      }));
+    }
+  };
+
+  const setShowObjectiveConfirmation = (show: boolean) => {
+    setGameState(prevState => ({
+      ...prevState,
+      showObjectiveConfirmation: show
+    }));
+  };
+
   const contextValue: GameContextType = {
     ...gameState,
     startGame,
@@ -144,6 +176,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     getCurrentObjective,
     nextPhase,
     resetGame,
+    shouldShowAutomaticObjective,
+    markObjectiveAsShown,
+    setShowObjectiveConfirmation,
   };
 
   return (
