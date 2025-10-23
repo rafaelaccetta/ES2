@@ -79,7 +79,7 @@ const GameUI: React.FC = () => {
       azul: '#2563eb',      
       vermelho: '#dc2626',  
       verde: '#16a34a',     
-      branco: '#d2d9e3ff'     
+      branco: '#b7c0cd'     
     };
     return colorMap[color] || '#d2d9e3ff';
   };
@@ -93,7 +93,7 @@ const GameUI: React.FC = () => {
           <h1>WAR</h1>
           <p>Selecione o número de jogadores para começar</p>
           <div className="player-selection">
-            {[1, 2, 3].map(count => (
+            {[1, 2, 3, 4].map(count => (
               <button
                 key={count}
                 className="player-count-btn"

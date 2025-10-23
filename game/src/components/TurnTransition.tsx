@@ -40,9 +40,9 @@ const TurnTransition: React.FC<TurnTransitionProps> = ({ onObjectiveShown }) => 
       azul: '#2563eb',      
       vermelho: '#dc2626',  
       verde: '#16a34a',     
-      branco: '#d2d9e3ff'     
+      branco: '#b7c0cd'     
     };
-    return colorMap[color] || '#d2d9e3ff';
+    return colorMap[color] || '#999ea9ff';
   };
 
   return (

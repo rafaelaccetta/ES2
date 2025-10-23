@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { GameManager } from '../../game-logic/GameManager.js';
 import { Player } from '../../game-logic/Player.js';
+import { EventBus } from '../game/EventBus';
 
 export interface Objective {
   id: number;
@@ -102,6 +103,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       currentRound: gameManager.round,
       gameStarted: true,
     }));
+
+    // Emitir evento para a cena Jogo saber quantos jogadores há
+    EventBus.emit('players-updated', { playerCount });
   };
 
   const getCurrentPlayer = (): Player | null => {

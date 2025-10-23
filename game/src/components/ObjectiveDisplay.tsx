@@ -80,7 +80,7 @@ const ObjectiveDisplay: React.FC<ObjectiveDisplayProps> = ({ showObjective, show
       azul: '#2563eb',      
       vermelho: '#dc2626',  
       verde: '#16a34a',     
-      branco: '#d2d9e3ff'     
+      branco: '#b7c0cd'     
     };
     return colorMap[color] || '#d2d9e3ff';
   };
