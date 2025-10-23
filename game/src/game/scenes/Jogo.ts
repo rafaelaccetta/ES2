@@ -3,10 +3,9 @@ import { Scene } from 'phaser';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom/client';
 import MapSVG from '../../MapSVG';
+import { EventBus } from '../EventBus';
 
 export class Jogo extends Scene {
-
-    private botaoX?: Phaser.GameObjects.Image;
 
     constructor() {
         super('Jogo');
@@ -35,9 +34,11 @@ export class Jogo extends Scene {
             document.body.appendChild(mapContainer);
         }
 
-        this.botaoX = this.add.image(150, 630, 'botaoX')
+        this.add.image(150, 630, 'botaoX')
                 .setInteractive({ useHandCursor: true })
                 .on('pointerdown', () => {
+                    // Emite evento para esconder o GameUI e voltar ao menu
+                    EventBus.emit('back-to-menu');
                     this.scene.start('MainMenu');
                 }).setDepth(1);
 
