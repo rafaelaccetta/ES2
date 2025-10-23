@@ -1,0 +1,326 @@
+.start-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #1b3738 0%, #3e5e5f 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.start-menu-content {
+  text-align: center;
+  color: white;
+  background: rgba(62, 94, 95, 0.9);
+  padding: 48px 40px;
+  border-radius: 16px;
+  border: 2px solid #a59b7b;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.start-menu-content h1 {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.start-menu-content p {
+  font-size: 1.25rem;
+  color: #a59b7b;
+  margin-bottom: 32px;
+}
+
+.player-selection {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.player-count-btn {
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #a59b7b 0%, #8b8263 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 140px;
+}
+
+.player-count-btn:hover {
+  background: linear-gradient(135deg, #3e5e5f 0%, #1b3738 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px #a59b7b;
+}
+
+.game-ui {
+  position: fixed;
+  top: 20px;
+  left: 10px;
+  background: rgba(27, 55, 56, 0.95);
+  border: 2px solid #a59b7b;
+  border-radius: 12px;
+  padding: 15px;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  z-index: 100;
+  max-width: 280px;
+}
+
+.game-status {
+  margin-bottom: 16px;
+}
+
+.current-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.player-color-indicator {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.game-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: #a59b7b;
+}
+
+.game-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.objective-btn {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #3e5e5f 0%, #1b3738 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(165, 155, 123, 0.3);
+}
+
+.objective-btn:hover {
+  background: linear-gradient(135deg, #3e5e5f 0%, #1b3738 100%);
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #1b3738 0%, #3e5e5f 100%);
+}
+
+.next-phase-btn {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #3e5e5f 0%, #1b3738 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(62, 94, 95, 0.3);
+}
+
+.next-phase-btn:hover {
+  background: linear-gradient(135deg, #1b3738 0%, #3e5e5f 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(62, 94, 95, 0.4);
+}
+
+.back-to-menu-btn {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #8b8263 0%, #a59b7b 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(139, 130, 99, 0.3);
+}
+
+.back-to-menu-btn:hover {
+  background: linear-gradient(135deg, #a59b7b 0%, #8b8263 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(139, 130, 99, 0.4);
+}
+
+.players-info {
+  border-top: 1px solid #a59b7b;
+  padding-top: 16px;
+}
+
+.players-info h4 {
+  margin: 0 0 12px 0;
+  font-size: 0.875rem;
+  color: #a59b7b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.player-item.active {
+  background: rgba(165, 155, 123, 0.2);
+  border: 1px solid rgba(165, 155, 123, 0.3);
+}
+
+.player-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid white;
+}
+
+.active-indicator {
+  margin-left: auto;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .game-ui {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    max-width: none;
+    padding: 16px;
+  }
+  
+  .start-menu-content {
+    padding: 32px 24px;
+    margin: 20px;
+  }
+  
+  .start-menu-content h1 {
+    font-size: 2rem;
+  }
+  
+  .player-selection {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .player-count-btn {
+    width: 100%;
+    max-width: 200px;
+  }
+}
+
+.objective-confirmation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 3000;
+}
+
+.objective-confirmation-modal {
+  background: linear-gradient(135deg, #3e5e5f 0%, #1b3738 100%);
+  padding: 32px;
+  border-radius: 16px;
+  border: 2px solid #a59b7b;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  color: white;
+  max-width: 400px;
+  margin: 20px;
+}
+
+.objective-confirmation-modal h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.5rem;
+  color: #a59b7b;
+}
+
+.objective-confirmation-modal p {
+  margin: 0 0 24px 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.confirmation-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.confirm-btn {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.confirm-btn:hover {
+  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
+}
+
+.cancel-btn {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+}
+
+.cancel-btn:hover {
+  background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(107, 114, 128, 0.4);
+}
