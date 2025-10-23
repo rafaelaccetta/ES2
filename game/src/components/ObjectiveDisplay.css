@@ -1,0 +1,212 @@
+.objective-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.objective-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.objective-overlay.hide {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.objective-modal {
+  background: linear-gradient(135deg, #1b3738 0%, #3e5e5f 100%);
+  border-radius: 16px;
+  border: 2px solid #a59b7b;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  transform: scale(1);
+  transition: transform 0.3s ease;
+  color: white;
+  overflow: hidden;
+}
+
+.objective-overlay.hide .objective-modal {
+  transform: scale(0.95);
+}
+
+.objective-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #a59b7b;
+  background: rgba(165, 155, 123, 0.1);
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.player-indicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.objective-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #a59b7b;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #a59b7b;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.close-btn:hover {
+  color: #f1f5f9;
+  background: rgba(165, 155, 123, 0.2);
+}
+
+.objective-content {
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.objective-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.objective-title {
+  margin: 0 0 12px 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #f8fafc;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.objective-description {
+  margin: 0 0 24px 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #a59b7b;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.game-info {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-top: 24px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.info-item .label {
+  font-size: 0.875rem;
+  color: #a59b7b;
+  font-weight: 500;
+}
+
+.info-item .value {
+  font-size: 1.125rem;
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+.objective-footer {
+  padding: 20px 24px;
+  border-top: 1px solid #a59b7b;
+  background: rgba(27, 55, 56, 0.3);
+}
+
+.privacy-notice {
+  margin: 0 0 16px 0;
+  font-size: 0.875rem;
+  color: #fbbf24;
+  text-align: center;
+  padding: 8px 12px;
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.continue-btn {
+  width: 100%;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #a59b7b 0%, #3e5e5f 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(165, 155, 123, 0.3);
+}
+
+.continue-btn:hover {
+  background: linear-gradient(135deg, #3e5e5f 0%, #1b3738 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(165, 155, 123, 0.4);
+}
+
+.continue-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(165, 155, 123, 0.3);
+}
+
+/* Responsividade */
+@media (max-width: 640px) {
+  .objective-modal {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .objective-header {
+    padding: 16px 20px;
+  }
+  
+  .objective-header h2 {
+    font-size: 1.25rem;
+  }
+  
+  .objective-content {
+    padding: 24px 20px;
+  }
+  
+  .objective-title {
+    font-size: 1.5rem;
+  }
+  
+  .game-info {
+    gap: 24px;
+  }
+}
