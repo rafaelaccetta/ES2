@@ -94,13 +94,15 @@ export class Jogo extends Scene {
                 return ownersMap;
             }, [playersData]);
 
-            // Exemplo vindo do backend (remover depois) para pegar a lista retornada pelo backend
-            const [selectedTerritories] = React.useState<string[]>([
-                "argentina",
-                "venezuela",
-                "peru",
-                "inglaterra",
-            ]);
+            // Territórios selecionados baseados no jogador ativo
+            const selectedTerritories = React.useMemo(() => {
+                if (!activePlayer || !playersData.length) return [];
+                
+                const playerIndex = parseInt(activePlayer.replace('player', '')) - 1;
+                const player = playersData[playerIndex];
+                
+                return player?.territories || [];
+            }, [activePlayer, playersData]);
 
             const territoriesByPlayer = React.useMemo(() => {
                 const map: Record<string, string[]> = {};
