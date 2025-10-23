@@ -8,16 +8,22 @@ export class Player {
         this.cards = [];
         this.armies = 0;
         this.isActive = true;
+        this.territoriesArmies = {}; // objeto para armazenar exércitos por território
     }
 
     addTerritory(territory) {
         if (!this.territories.includes(territory)) {
             this.territories.push(territory);
+            this.territoriesArmies[territory] = 0;
         }
     }
 
     removeTerritory(territory) {
         this.territories = this.territories.filter((t) => t !== territory);
+        if (this.territoriesArmies[territory]) {
+            this.armies -= this.territoriesArmies[territory];
+            delete this.territoriesArmies[territory];
+        }
     }
 
     addCard(card) {
@@ -77,9 +83,16 @@ export class Player {
         }
     }
 
-    addArmies() {
+    addArmies(territory, quantity) {
         //logic to add armies to a territory
         // at the begining of the turn or because of card exchange or because of a continent control
+        if (this.territories.includes(territory)) {
+            if (!this.territoriesArmies[territory]) {
+                this.territoriesArmies[territory] = 0;
+            }
+            this.territoriesArmies[territory] += quantity;
+            this.armies += quantity;
+        }
     }
 
     removeArmies() {

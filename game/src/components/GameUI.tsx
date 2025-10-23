@@ -27,7 +27,7 @@ const GameUI: React.FC = () => {
   useEffect(() => {
     const currentPlayer = getCurrentPlayer();
     if (currentPlayer && gameStarted) {
-      if (lastPlayerRef.current !== currentPlayer.id && currentPhase === 'REINFORCE') {
+      if (lastPlayerRef.current !== currentPlayer.id && currentPhase === 'REFORÇAR') {
         // Só mostra a transição automaticamente se deve mostrar o objetivo automaticamente
         if (shouldShowAutomaticObjective()) {
           setShowTransition(true);

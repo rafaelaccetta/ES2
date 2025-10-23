@@ -41,13 +41,17 @@ export class Jogo extends Scene {
         const root = ReactDOM.createRoot(mapContainer);
 
         const AppOverlay: React.FC = () => {
-            // Usar estado para controlar o número de jogadores
+            // Usar estado para controlar o número de jogadores e seus territórios
             const [playerCount, setPlayerCount] = React.useState<number>(0);
+            const [playersData, setPlayersData] = React.useState<any[]>([]);
             
             React.useEffect(() => {
-                // Escutar evento do EventBus para saber quantos jogadores há
-                const handlePlayersUpdate = (data: { playerCount: number }) => {
+                // Escutar evento do EventBus para saber quantos jogadores há e seus territórios
+                const handlePlayersUpdate = (data: { playerCount: number, players?: any[] }) => {
                     setPlayerCount(data.playerCount);
+                    if (data.players) {
+                        setPlayersData(data.players);
+                    }
                 };
                 
                 EventBus.on('players-updated', handlePlayersUpdate);
@@ -76,9 +80,20 @@ export class Jogo extends Scene {
 
             const [activePlayer, setActivePlayer] =
                 React.useState<string>("");
-            const [owners, setOwners] = React.useState<Record<string, string>>(
-                {}
-            );
+            
+            // Criar mapa de owners baseado nos territórios distribuídos
+            const owners = React.useMemo(() => {
+                const ownersMap: Record<string, string> = {};
+                playersData.forEach((player, index) => {
+                    if (player && player.territories) {
+                        player.territories.forEach((territory: string) => {
+                            ownersMap[territory] = `player${index + 1}`;
+                        });
+                    }
+                });
+                return ownersMap;
+            }, [playersData]);
+
             // Exemplo vindo do backend (remover depois) para pegar a lista retornada pelo backend
             const [selectedTerritories] = React.useState<string[]>([
                 "argentina",
@@ -89,13 +104,19 @@ export class Jogo extends Scene {
 
             const territoriesByPlayer = React.useMemo(() => {
                 const map: Record<string, string[]> = {};
+                // Inicializar com arrays vazios
                 for (const pid of playerIds) map[pid] = [];
-                for (const [id, owner] of Object.entries(owners)) {
-                    if (!map[owner]) map[owner] = [];
-                    map[owner].push(id);
-                }
+                
+                // Usar territórios reais dos jogadores
+                playersData.forEach((player, index) => {
+                    if (player && player.territories) {
+                        const playerId = `player${index + 1}`;
+                        map[playerId] = player.territories;
+                    }
+                });
+                
                 return map;
-            }, [owners, playerIds]);
+            }, [playerIds, playersData]);
 
             return React.createElement(
                 React.Fragment,
@@ -103,9 +124,8 @@ export class Jogo extends Scene {
                 React.createElement(MapSVG, {
                     owners,
                     highlightOwner: activePlayer,
-                    allowEditOwner: true,
+                    allowEditOwner: false, // Desabilitar edição já que territórios são pré-distribuídos
                     selectedTerritories,
-                    onOwnersChange: (next) => setOwners(next),
                 }),
                 // Renderiza badges na direita para mostrar territórios por jogador (remover depois)
                 ...playerIds.map((pid, index) =>

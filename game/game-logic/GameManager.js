@@ -1,3 +1,5 @@
+import { GameMap } from './GameMap.js';
+
 export class GameManager {
     constructor(players) {
         
@@ -5,8 +7,12 @@ export class GameManager {
         this.turnsPerRound = this.players.length;
         this.round = 0;
         this.turn = 0;
-        this.PhaseNames = ["REINFORCE", "ATTACK", "FORTIFY"];
+        this.PhaseNames = ["REFORÇAR", "ATACAR", "FORTIFICAR"];
         this.PhaseIdx = 0;
+        this.gameMap = new GameMap();
+        
+        // Distribuir territórios automaticamente
+        this.gameMap.distributeTerritories(this.players);
     }
 
     getPhaseName() {

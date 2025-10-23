@@ -42,7 +42,7 @@ const initialState: GameState = {
   gameManager: null,
   players: [],
   currentPlayerIndex: 0,
-  currentPhase: 'REINFORCE',
+  currentPhase: 'REFORÇAR',
   currentRound: 0,
   objectives: [],
   gameStarted: false,
@@ -104,8 +104,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       gameStarted: true,
     }));
 
-    // Emitir evento para a cena Jogo saber quantos jogadores há
-    EventBus.emit('players-updated', { playerCount });
+    // Emitir evento para a cena Jogo saber quantos jogadores há e seus territórios
+    EventBus.emit('players-updated', { 
+      playerCount, 
+      players: gamePlayers.map(player => ({
+        id: player.id,
+        color: player.color,
+        territories: player.territories,
+        territoriesArmies: player.territoriesArmies,
+        armies: player.armies
+      }))
+    });
   };
 
   const getCurrentPlayer = (): Player | null => {
