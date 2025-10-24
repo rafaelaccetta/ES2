@@ -1,4 +1,4 @@
-import { GameObjects, Scene } from 'phaser';
+import { Scene } from 'phaser';
 
 import { EventBus } from '../EventBus';
 
@@ -16,6 +16,8 @@ export class Menu extends Scene {
     this.add.image(585, 315, 'botaoJogar')
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
+            // Emite evento para mostrar o GameUI
+            EventBus.emit('start-game-ui');
             this.scene.start('Jogo');
         });
 
@@ -31,14 +33,9 @@ export class Menu extends Scene {
             this.scene.start('MainMenu');
         });
 
-    // Removido salvamento da cena atual
 
     EventBus.emit('current-scene-ready', this);
 
-    // // DEBUG: Mostra as coordenadas do mouse ao clicar na tela
-    // this.input.on('pointerdown', (pointer) => {
-    //     console.log('x:', pointer.x, 'y:', pointer.y);
-    // });
 
     }
 }

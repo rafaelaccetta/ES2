@@ -86,10 +86,18 @@ const PlayerBadge: React.FC<PlayerBadgeProps> = ({
         right: position?.right ?? 18,
     };
 
+    const getOutlineColor = (playerColor: string) => {
+        // Para cores claras (como branco), usa cinza escuro no outline
+        if (playerColor === "#d2d9e3ff" || playerColor.toLowerCase().includes("fff") || playerColor.toLowerCase().includes("white")) {
+            return "#b1b1b1a1";
+        }
+        return `${playerColor}66`;
+    };
+
     const badgeStyle: React.CSSProperties = {
         ...badgeStyleBase,
         background: color,
-        outline: active ? `3px solid ${color}66` : undefined,
+        outline: active ? `3px solid ${getOutlineColor(color)}` : undefined,
         transform: active ? "scale(1.04)" : undefined,
         transition: "transform 120ms ease, outline-color 120ms ease",
     };
