@@ -1,4 +1,4 @@
-import cardsSymbols from "../public/data/territories_cards.json" assert { type: "json" };
+import cardsSymbols from "../public/data/territories_cards.json" with {type: "json"};
 export class Player {
     constructor(id, color, objective = null) {
         this.id = id;
@@ -8,16 +8,22 @@ export class Player {
         this.cards = [];
         this.armies = 0;
         this.isActive = true;
+        this.territoriesArmies = {}; // objeto para armazenar exércitos por território
     }
 
     addTerritory(territory) {
         if (!this.territories.includes(territory)) {
             this.territories.push(territory);
+            this.territoriesArmies[territory] = 0;
         }
     }
 
     removeTerritory(territory) {
         this.territories = this.territories.filter((t) => t !== territory);
+        if (this.territoriesArmies[territory]) {
+            this.armies -= this.territoriesArmies[territory];
+            delete this.territoriesArmies[territory];
+        }
     }
 
     addCard(card) {
@@ -28,11 +34,6 @@ export class Player {
     }
 
     forceTradeCards() {
-        // go through all combinations of 3 cards to find a valid trade of equals or differents
-
-        //it needs a json with the number of exchanges and their values with a boolean to check which number of armies will be added
-        //it should also check if there is any card to be traded that is a currently occupied territory by the player before forcing the trade
-        // and should use that card if possible because it gives extra armies
         if (this.cards.length < 3) return;
         for (let i = 0; i < this.cards.length; i++) {
             for (let j = i + 1; j < this.cards.length; j++) {
@@ -82,9 +83,16 @@ export class Player {
         }
     }
 
-    addArmies() {
+    addArmies(territory, quantity) {
         //logic to add armies to a territory
         // at the begining of the turn or because of card exchange or because of a continent control
+        if (this.territories.includes(territory)) {
+            if (!this.territoriesArmies[territory]) {
+                this.territoriesArmies[territory] = 0;
+            }
+            this.territoriesArmies[territory] += quantity;
+            this.armies += quantity;
+        }
     }
 
     removeArmies() {

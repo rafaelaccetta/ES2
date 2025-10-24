@@ -13,7 +13,7 @@ interface MapSVGProps extends React.SVGProps<SVGSVGElement> {
 
 const MapSVG: React.FC<MapSVGProps> = ({
     owners,
-    highlightOwner = "player1",
+    highlightOwner = "",
     allowEditOwner = false,
     selectedTerritories,
     onOwnersChange,
@@ -28,7 +28,7 @@ const MapSVG: React.FC<MapSVGProps> = ({
     // sincroniza quando 'owners' ou 'selectedTerritories' vierem de fora
     useEffect(() => {
         const base: OwnersMap = owners ? { ...owners } : {};
-        if (selectedTerritories && selectedTerritories.length > 0) {
+        if (selectedTerritories && selectedTerritories.length > 0 && highlightOwner) {
             for (const id of selectedTerritories) {
                 if (!base[id]) base[id] = highlightOwner;
             }
@@ -60,8 +60,8 @@ const MapSVG: React.FC<MapSVGProps> = ({
         });
     }, [localOwners]);
 
-    const onSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
-        if (!allowEditOwner) return;
+    const handleClick = (e: React.MouseEvent) => {
+        if (!allowEditOwner || !highlightOwner) return;
         const target = e.target as Element | null;
         if (!target || target.tagName.toLowerCase() !== "polygon") return;
         const id = target.getAttribute("id");
@@ -86,7 +86,7 @@ const MapSVG: React.FC<MapSVGProps> = ({
             xmlns="http://www.w3.org/2000/svg"
             viewBox="182 114 750 505"
             ref={svgRef}
-            onClick={onSvgClick}
+            onClick={handleClick}
             {...svgProps}
         >
             <style>
@@ -103,27 +103,16 @@ const MapSVG: React.FC<MapSVGProps> = ({
           cursor: pointer;
         }
 
-                /* Visual de propriedade por jogador */
         g[id] > polygon[data-owner] {
-          /* reforça borda para territórios com dono */
           stroke-width: 3.5px;
           vector-effect: non-scaling-stroke;
           fill-opacity: 0.92;
         }
-                /* Cores para até 6 jogadores */
-                g[id] > polygon[data-owner="player1"] { stroke: #e53935; } /* vermelho */
-                g[id] > polygon[data-owner="player2"] { stroke: #1e88e5; } /* azul */
-                g[id] > polygon[data-owner="player3"] { stroke: #43a047; } /* verde */
-                g[id] > polygon[data-owner="player4"] { stroke: #8e24aa; } /* roxo */
-                g[id] > polygon[data-owner="player5"] { stroke: #fbc02d; } /* amarelo */
-                g[id] > polygon[data-owner="player6"] { stroke: #fb8c00; } /* laranja */
-                /* Compat: chaves antigas */
-                g[id] > polygon[data-owner="playerX"] { stroke: #e53935; }
-                g[id] > polygon[data-owner="playerY"] { stroke: #1e88e5; }
-                g[id] > polygon[data-owner="playerZ"] { stroke: #43a047; }
-        /* fallback genérico */
+                g[id] > polygon[data-owner="player1"] { stroke: #2563eb; }
+                g[id] > polygon[data-owner="player2"] { stroke: #dc2626; }
+                g[id] > polygon[data-owner="player3"] { stroke: #16a34a; }
+                g[id] > polygon[data-owner="player4"] { stroke: #b7c0cd; }
         g[id] > polygon[data-owner]:not([data-owner="playerX"]) {
-          /* leve brilho para diferenciação */
           filter: drop-shadow(0 0 0.75px rgba(0,0,0,0.35));
         }
       `}
@@ -132,12 +121,10 @@ const MapSVG: React.FC<MapSVGProps> = ({
                 <g id="americadonorte" fill="orange">
                     <polygon
                         id="alaska"
-                        onClick={() => alert("alaska")}
                         points="254.000 242.000, 253.000 240.000, 251.000 237.000, 250.000 235.000, 251.000 233.000, 248.000 230.000, 248.000 228.000, 247.000 226.000, 243.000 225.000, 241.000 224.000, 239.000 223.000, 237.000 221.000, 234.000 220.000, 232.000 218.000, 230.000 219.000, 229.000 221.000, 224.000 221.000, 222.000 221.000, 223.000 218.000, 225.000 217.000, 222.000 217.000, 217.000 218.000, 216.000 221.000, 214.000 222.000, 210.000 224.000, 206.000 228.000, 203.000 230.000, 200.000 232.000, 197.000 233.000, 196.000 231.000, 198.000 230.000, 200.000 229.000, 202.000 226.000, 205.000 226.000, 206.000 222.000, 207.000 219.000, 204.000 220.000, 200.000 221.000, 198.000 220.000, 198.000 217.000, 197.000 216.000, 195.000 215.000, 195.000 213.000, 193.000 212.000, 191.000 212.000, 194.000 209.000, 195.000 205.000, 196.000 203.000, 199.000 202.000, 201.000 203.000, 204.000 203.000, 206.000 201.000, 207.000 200.000, 206.000 199.000, 204.000 200.000, 201.000 200.000, 200.000 197.000, 200.000 196.000, 202.000 190.000, 208.000 190.000, 208.000 192.000, 211.000 191.000, 211.000 189.000, 209.000 188.000, 209.000 185.000, 207.000 183.000, 207.000 179.000, 212.000 178.000, 216.000 176.000, 222.000 174.000, 226.000 174.000, 229.000 175.000, 233.000 177.000, 238.000 179.000, 246.000 181.000, 247.000 182.000, 245.000 213.000, 245.000 213.000, 253.000 214.000, 253.000 216.000, 255.000 220.000, 256.000 228.000, 258.000 231.000, 260.000 232.000, 260.000 236.000, 258.000 237.000, 256.000 241.000, 254.000 242.000"
                     />
                     <polygon
                         id="vancouver"
-                        onClick={() => alert("vancouver")}
                         points="253.000 214.000, 253.000 216.000, 255.000 220.000, 256.000 228.000, 258.000 231.000, 260.000 232.000, 260.000 236.000, 258.000 237.000, 256.000 241.000, 254.000 242.000, 256.000 245.000, 257.000 248.000, 259.000 251.000, 261.000 254.000, 261.000 260.000, 264.000 263.000, 264.000 264.000, 312.000 264.000, 316.000 216.000, 253.000 214.000"
                     />
                     <polygon
