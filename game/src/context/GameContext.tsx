@@ -154,7 +154,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   };
 
   const resetGame = () => {
-    setGameState(initialState);
+    setGameState(prevState => ({
+      ...initialState,
+      objectives: prevState.objectives, // Manter os objetivos carregados
+      firstRoundObjectiveShown: new Set(), // Resetar o histórico de objetivos mostrados
+    }));
   };
 
   const shouldShowAutomaticObjective = (): boolean => {
