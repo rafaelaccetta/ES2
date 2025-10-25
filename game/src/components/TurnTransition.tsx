@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameContext } from '../context/GameContext';
 import './TurnTransition.css';
 
@@ -9,17 +9,30 @@ interface TurnTransitionProps {
 const TurnTransition: React.FC<TurnTransitionProps> = ({ onObjectiveShown }) => {
   const { getCurrentPlayer, currentPhase, currentRound } = useGameContext();
   const [countdown, setCountdown] = useState(5);
+  const callbackRef = useRef(onObjectiveShown);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    callbackRef.current = onObjectiveShown;
+  }, [onObjectiveShown]);
 
   const currentPlayer = getCurrentPlayer();
 
   useEffect(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
     setCountdown(5);
     
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
-          clearInterval(timer);
-          onObjectiveShown();
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          callbackRef.current();
           return 0;
         }
         return prev - 1;
@@ -27,9 +40,12 @@ const TurnTransition: React.FC<TurnTransitionProps> = ({ onObjectiveShown }) => 
     }, 1000);
 
     return () => {
-      clearInterval(timer);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
-  }, [onObjectiveShown]);
+  }, []); 
 
   if (!currentPlayer) {
     return null;
@@ -85,6 +101,18 @@ const TurnTransition: React.FC<TurnTransitionProps> = ({ onObjectiveShown }) => 
               <span className="countdown-number">{countdown}</span>
             </div>
             <p>Mostrando objetivo em {countdown} segundos...</p>
+            <button 
+              className="skip-btn" 
+              onClick={() => {
+                if (timerRef.current) {
+                  clearInterval(timerRef.current);
+                  timerRef.current = null;
+                }
+                callbackRef.current();
+              }}
+            >
+              Mostrar Agora
+            </button>
           </div>
         </div>
       </div>
