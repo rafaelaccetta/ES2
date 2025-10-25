@@ -2,7 +2,7 @@ import { Scene } from "phaser";
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
 import MapSVG from "../../MapSVG";
-import { EventBus } from '../EventBus';
+import { EventBus } from "../EventBus";
 import PlayerBadge from "../../PlayerBadge";
 
 export class Jogo extends Scene {
@@ -30,13 +30,15 @@ export class Jogo extends Scene {
             document.body.appendChild(mapContainer);
         }
 
-        this.add.image(150, 630, 'botaoX')
-                .setInteractive({ useHandCursor: true })
-                .on('pointerdown', () => {
-                    // Emite evento para esconder o GameUI e voltar ao menu
-                    EventBus.emit('back-to-menu');
-                    this.scene.start('MainMenu');
-                }).setDepth(1);
+        this.add
+            .image(150, 630, "botaoX")
+            .setInteractive({ useHandCursor: true })
+            .on("pointerdown", () => {
+                // Emite evento para esconder o GameUI e voltar ao menu
+                EventBus.emit("back-to-menu");
+                this.scene.start("MainMenu");
+            })
+            .setDepth(1);
 
         const root = ReactDOM.createRoot(mapContainer);
 
@@ -44,23 +46,26 @@ export class Jogo extends Scene {
             // Usar estado para controlar o número de jogadores e seus territórios
             const [playerCount, setPlayerCount] = React.useState<number>(0);
             const [playersData, setPlayersData] = React.useState<any[]>([]);
-            
+
             React.useEffect(() => {
                 // Escutar evento do EventBus para saber quantos jogadores há e seus territórios
-                const handlePlayersUpdate = (data: { playerCount: number, players?: any[] }) => {
+                const handlePlayersUpdate = (data: {
+                    playerCount: number;
+                    players?: any[];
+                }) => {
                     setPlayerCount(data.playerCount);
                     if (data.players) {
                         setPlayersData(data.players);
                     }
                 };
-                
-                EventBus.on('players-updated', handlePlayersUpdate);
-                
+
+                EventBus.on("players-updated", handlePlayersUpdate);
+
                 return () => {
-                    EventBus.removeListener('players-updated');
+                    EventBus.removeListener("players-updated");
                 };
             }, []);
-            
+
             const playerIds = React.useMemo(
                 () =>
                     Array.from(
@@ -69,38 +74,69 @@ export class Jogo extends Scene {
                     ),
                 [playerCount]
             );
-            const playerColors = ["#2563eb", "#dc2626", "#16a34a", "#d2d9e3ff"];
+            const defaultPlayerColors = [
+                "#2563eb",
+                "#dc2626",
+                "#16a34a",
+                "#b7c0cd",
+            ];
+            // converte nomes de cores vindos do GameManager (azul, vermelho, etc.) para hex
+            const colorByName: Record<string, string> = React.useMemo(
+                () => ({
+                    azul: "#2563eb",
+                    vermelho: "#dc2626",
+                    verde: "#16a34a",
+                    branco: "#b7c0cd",
+                }),
+                []
+            );
             const colors: Record<string, string> = React.useMemo(() => {
                 const colorMap: Record<string, string> = {};
                 for (let i = 0; i < playerCount; i++) {
-                    colorMap[`player${i + 1}`] = playerColors[i];
+                    const fromData = playersData[i]?.color as
+                        | string
+                        | undefined;
+                    colorMap[`player${i + 1}`] =
+                        (fromData && colorByName[fromData]) ??
+                        defaultPlayerColors[i];
                 }
                 return colorMap;
-            }, [playerCount]);
+            }, [playerCount, playersData, colorByName]);
 
-            const [activePlayer, setActivePlayer] =
-                React.useState<string>("");
-            
-            // Criar mapa de owners baseado nos territórios distribuídos
+            const [activePlayer, setActivePlayer] = React.useState<string>("");
+
+            // normaliza nomes dos territórios (acentos, espaços) para bater com IDs do SVG
+            const normalizeId = React.useCallback((name: string) => {
+                return name
+                    .normalize("NFD")
+                    .replace(/\p{Diacritic}+/gu, "")
+                    .toLowerCase()
+                    .replace(/\s+/g, "")
+                    .replace(/[^a-z0-9]/g, "");
+            }, []);
+
+            // Criar mapa de owners baseado nos territórios distribuídos (normalizados para IDs do SVG)
             const owners = React.useMemo(() => {
                 const ownersMap: Record<string, string> = {};
                 playersData.forEach((player, index) => {
                     if (player && player.territories) {
                         player.territories.forEach((territory: string) => {
-                            ownersMap[territory] = `player${index + 1}`;
+                            const id = normalizeId(territory);
+                            ownersMap[id] = `player${index + 1}`;
                         });
                     }
                 });
                 return ownersMap;
-            }, [playersData]);
+            }, [playersData, normalizeId]);
 
             // Territórios selecionados baseados no jogador ativo
             const selectedTerritories = React.useMemo(() => {
                 if (!activePlayer || !playersData.length) return [];
-                
-                const playerIndex = parseInt(activePlayer.replace('player', '')) - 1;
+
+                const playerIndex =
+                    parseInt(activePlayer.replace("player", "")) - 1;
                 const player = playersData[playerIndex];
-                
+
                 return player?.territories || [];
             }, [activePlayer, playersData]);
 
@@ -108,7 +144,7 @@ export class Jogo extends Scene {
                 const map: Record<string, string[]> = {};
                 // Inicializar com arrays vazios
                 for (const pid of playerIds) map[pid] = [];
-                
+
                 // Usar territórios reais dos jogadores
                 playersData.forEach((player, index) => {
                     if (player && player.territories) {
@@ -116,7 +152,7 @@ export class Jogo extends Scene {
                         map[playerId] = player.territories;
                     }
                 });
-                
+
                 return map;
             }, [playerIds, playersData]);
 
@@ -128,6 +164,7 @@ export class Jogo extends Scene {
                     highlightOwner: activePlayer,
                     allowEditOwner: false, // Desabilitar edição já que territórios são pré-distribuídos
                     selectedTerritories,
+                    ownerColors: colors,
                 }),
                 // Renderiza badges na direita para mostrar territórios por jogador (remover depois)
                 ...playerIds.map((pid, index) =>
@@ -138,7 +175,8 @@ export class Jogo extends Scene {
                         territories: territoriesByPlayer[pid] ?? [],
                         position: { top: 24 + index * 68, right: 24 },
                         active: activePlayer === pid,
-                        onSelect: () => setActivePlayer(activePlayer === pid ? "" : pid),
+                        onSelect: () =>
+                            setActivePlayer(activePlayer === pid ? "" : pid),
                     })
                 )
             );

@@ -9,6 +9,7 @@ interface MapSVGProps extends React.SVGProps<SVGSVGElement> {
     allowEditOwner?: boolean; // permite clicar para alternar propriedade para highlightOwner
     selectedTerritories?: string[]; // IDs vindos do backend para marcar como pertencentes ao highlightOwner
     onOwnersChange?: (owners: OwnersMap) => void; // callback quando mapa de donos mudar por interação
+    ownerColors?: Record<string, string>; // ex.: cores de cadfa jogador
 }
 
 const MapSVG: React.FC<MapSVGProps> = ({
@@ -17,6 +18,7 @@ const MapSVG: React.FC<MapSVGProps> = ({
     allowEditOwner = false,
     selectedTerritories,
     onOwnersChange,
+    ownerColors,
     ...svgProps
 }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
@@ -28,7 +30,11 @@ const MapSVG: React.FC<MapSVGProps> = ({
     // sincroniza quando 'owners' ou 'selectedTerritories' vierem de fora
     useEffect(() => {
         const base: OwnersMap = owners ? { ...owners } : {};
-        if (selectedTerritories && selectedTerritories.length > 0 && highlightOwner) {
+        if (
+            selectedTerritories &&
+            selectedTerritories.length > 0 &&
+            highlightOwner
+        ) {
             for (const id of selectedTerritories) {
                 if (!base[id]) base[id] = highlightOwner;
             }
@@ -47,18 +53,90 @@ const MapSVG: React.FC<MapSVGProps> = ({
         const svg = svgRef.current;
         if (!svg) return;
         // limpa marcações antigas
-        svg.querySelectorAll("polygon[data-owner]").forEach((el) =>
-            el.removeAttribute("data-owner")
+        svg.querySelectorAll("polygon[data-owner]").forEach((el) => {
+            el.removeAttribute("data-owner");
+            // limpa stroke inline anterior para voltar ao CSS padrão
+            (el as SVGPolygonElement).style.stroke = "";
+            (el as SVGPolygonElement).style.strokeWidth = "";
+        });
+        // remove bordas internas antigas
+        svg.querySelectorAll(".owner-inner-stroke").forEach((el) =>
+            el.remove()
         );
+
+        // cria defs para clipPaths se ainda não existir
+        const ns = "http://www.w3.org/2000/svg";
+        const xlink = "http://www.w3.org/1999/xlink";
+        let defs = svg.querySelector(
+            'defs[data-owner-defs="true"]'
+        ) as SVGDefsElement | null;
+        if (!defs) {
+            defs = document.createElementNS(ns, "defs");
+            defs.setAttribute("data-owner-defs", "true");
+            svg.insertBefore(defs, svg.firstChild);
+        }
         // aplica novas
+        const defaultOwnerColors: Record<string, string> = {
+            player1: "#2563eb", // azul
+            player2: "#dc2626", // vermelho
+            player3: "#16a34a", // verde
+            player4: "#b7c0cd", // cinza claro
+        };
+
         Object.entries(localOwners).forEach(([id, owner]) => {
             if (!owner) return;
-            const poly = svg.querySelector(
-                `polygon#${id}`
-            ) as SVGPolygonElement | null;
-            if (poly) poly.setAttribute("data-owner", owner);
+            const color =
+                ownerColors?.[owner] ??
+                defaultOwnerColors[owner as keyof typeof defaultOwnerColors] ??
+                "#2563eb";
+
+            // Seleciona polígonos pelo id exato e sufixos numéricos comuns (ex.: inglaterra2, indonesia2..4)
+            const selectors = [
+                `polygon#${id}`,
+                `polygon#${id}2`,
+                `polygon#${id}3`,
+                `polygon#${id}4`,
+            ];
+            const polys = svg.querySelectorAll<SVGPolygonElement>(
+                selectors.join(", ")
+            );
+
+            polys.forEach((poly) => {
+                const polyId = poly.getAttribute("id");
+                if (!polyId) return;
+
+                poly.setAttribute("data-owner", owner);
+
+                // cria/garante um clipPath baseado no próprio polígono
+                let clip = svg.querySelector(
+                    `#clip-${polyId}`
+                ) as SVGClipPathElement | null;
+                if (!clip) {
+                    clip = document.createElementNS(ns, "clipPath");
+                    clip.setAttribute("id", `clip-${polyId}`);
+                    clip.setAttribute("clipPathUnits", "userSpaceOnUse");
+                    const use = document.createElementNS(ns, "use");
+                    // usar href e xlink:href para compatibilidade
+                    (use as any).setAttributeNS?.(xlink, "href", `#${polyId}`);
+                    use.setAttribute("href", `#${polyId}`);
+                    clip.appendChild(use);
+                    defs!.appendChild(clip);
+                }
+
+                // adiciona overlay de borda interna colorida
+                const overlay = poly.cloneNode(false) as SVGPolygonElement;
+                overlay.removeAttribute("id");
+                overlay.classList.add("owner-inner-stroke");
+                overlay.setAttribute("fill", "none");
+                overlay.setAttribute("clip-path", `url(#clip-${polyId})`);
+                overlay.style.pointerEvents = "none";
+                overlay.style.vectorEffect = "non-scaling-stroke";
+                overlay.style.stroke = color;
+                overlay.style.strokeWidth = "4px";
+                poly.parentElement?.insertBefore(overlay, poly.nextSibling);
+            });
         });
-    }, [localOwners]);
+    }, [localOwners, ownerColors]);
 
     const handleClick = (e: React.MouseEvent) => {
         if (!allowEditOwner || !highlightOwner) return;
@@ -75,7 +153,6 @@ const MapSVG: React.FC<MapSVGProps> = ({
             } else {
                 next = { ...prev, [id]: highlightOwner };
             }
-            // notifica parent apenas em interações (evita loops na sync via props)
             onOwnersChange?.(next);
             return next;
         });
@@ -103,18 +180,13 @@ const MapSVG: React.FC<MapSVGProps> = ({
           cursor: pointer;
         }
 
-        g[id] > polygon[data-owner] {
-          stroke-width: 3.5px;
-          vector-effect: non-scaling-stroke;
-          fill-opacity: 0.92;
-        }
-                g[id] > polygon[data-owner="player1"] { stroke: #2563eb; }
-                g[id] > polygon[data-owner="player2"] { stroke: #dc2626; }
-                g[id] > polygon[data-owner="player3"] { stroke: #16a34a; }
-                g[id] > polygon[data-owner="player4"] { stroke: #b7c0cd; }
-        g[id] > polygon[data-owner]:not([data-owner="playerX"]) {
-          filter: drop-shadow(0 0 0.75px rgba(0,0,0,0.35));
-        }
+                /* Quando um território tem dono, sutilmente destaca o preenchimento;
+                     a borda colorida é desenhada por um overlay .owner-inner-stroke via clipPath. */
+                g[id] > polygon[data-owner] {
+                    vector-effect: non-scaling-stroke;
+                    fill-opacity: 0.94;
+                    filter: drop-shadow(0 0 0.75px rgba(0,0,0,0.35));
+                }
       `}
             </style>
             <g stroke="black" strokeWidth="1">
