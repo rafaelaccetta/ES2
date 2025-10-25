@@ -92,10 +92,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({ isVisible, onClose, o
   const handleAllocate = (quantity: number) => {
     console.log('CLICOU ALOCAR:', { quantity, selectedTerritory, remaining: getRemainingTroops });
     
-    if (!selectedTerritory) {
-      console.log('ERRO: Nenhum território selecionado');
-      return;
-    }
+    
     
     if (quantity <= 0) {
       console.log('ERRO: Quantidade inválida');
@@ -249,7 +246,6 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({ isVisible, onClose, o
                 </h4>
                 
                 <div className="debug-info">
-                  <p>Território selecionado: "{selectedTerritory || 'NENHUM'}"</p>
                   <p>Tropas restantes: {getRemainingTroops}</p>
                   <p>Pode alocar: {selectedTerritory && getRemainingTroops > 0 ? 'SIM' : 'NÃO'}</p>
                 </div>
@@ -320,13 +316,6 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({ isVisible, onClose, o
             >
               Confirmar Alocação
             </button>
-          </div>
-
-          <div className="allocation-instructions">
-            <p>• Clique em um território para selecioná-lo</p>
-            <p>• Use os botões para alocar tropas no território selecionado</p>
-            <p>• Você deve alocar todas as tropas disponíveis para prosseguir</p>
-            <p>• Clique no mapa do jogo para também selecionar territórios</p>
           </div>
         </div>
       </div>
