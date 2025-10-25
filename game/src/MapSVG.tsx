@@ -2,6 +2,7 @@ import * as React from "react";
 import { useEffect, useRef, useState } from "react";
 
 type OwnersMap = Record<string, string>;
+type TroopsMap = Record<string, number>;
 
 interface MapSVGProps extends React.SVGProps<SVGSVGElement> {
     owners?: OwnersMap;
@@ -10,6 +11,7 @@ interface MapSVGProps extends React.SVGProps<SVGSVGElement> {
     selectedTerritories?: string[]; // IDs vindos do backend para marcar como pertencentes ao highlightOwner
     onOwnersChange?: (owners: OwnersMap) => void; // callback quando mapa de donos mudar por interação
     ownerColors?: Record<string, string>; // ex.: cores de cadfa jogador
+    troopCounts?: TroopsMap; // quantidade de tropas por território, vindo do backend
 }
 
 const MapSVG: React.FC<MapSVGProps> = ({
@@ -19,6 +21,7 @@ const MapSVG: React.FC<MapSVGProps> = ({
     selectedTerritories,
     onOwnersChange,
     ownerColors,
+    troopCounts,
     ...svgProps
 }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
@@ -116,7 +119,6 @@ const MapSVG: React.FC<MapSVGProps> = ({
                     clip.setAttribute("id", `clip-${polyId}`);
                     clip.setAttribute("clipPathUnits", "userSpaceOnUse");
                     const use = document.createElementNS(ns, "use");
-                    // usar href e xlink:href para compatibilidade
                     (use as any).setAttributeNS?.(xlink, "href", `#${polyId}`);
                     use.setAttribute("href", `#${polyId}`);
                     clip.appendChild(use);
@@ -137,6 +139,62 @@ const MapSVG: React.FC<MapSVGProps> = ({
             });
         });
     }, [localOwners, ownerColors]);
+
+    // desenha números de tropas no centro de cada território
+    useEffect(() => {
+        const svg = svgRef.current;
+        if (!svg) return;
+
+        // remove labels anteriores
+        svg.querySelector('g[data-troop-labels="true"]')?.remove();
+
+        if (!troopCounts || Object.keys(troopCounts).length === 0) return;
+
+        const ns = svg.namespaceURI || "http://www.w3.org/2000/svg";
+        const group = document.createElementNS(ns, "g");
+        group.setAttribute("data-troop-labels", "true");
+
+        // Calcular centro aproximado do polígono para posicionar o label
+        const getPolygonCenter = (poly: SVGPolygonElement) => {
+            const pts = (poly.getAttribute("points") || "").trim();
+            const nums = (pts.match(/-?\d*\.?\d+/g) || []).map(parseFloat);
+            let minX = Infinity,
+                maxX = -Infinity,
+                minY = Infinity,
+                maxY = -Infinity;
+            for (let i = 0; i < nums.length; i += 2) {
+                const x = nums[i];
+                const y = nums[i + 1];
+                if (isFinite(x) && isFinite(y)) {
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+            const cx = (minX + maxX) / 2;
+            const cy = (minY + maxY) / 2;
+            return { x: cx, y: cy };
+        };
+
+        // cria um label para cada território listado para a quantidade de tropas
+        Object.entries(troopCounts).forEach(([territoryId, count]) => {
+            const poly = svg.querySelector<SVGPolygonElement>(
+                `polygon#${territoryId}`
+            );
+            if (!poly) return;
+            const { x, y } = getPolygonCenter(poly);
+            const text = document.createElementNS(ns, "text");
+            text.classList.add("troop-label");
+            text.setAttribute("x", String(x));
+            text.setAttribute("y", String(y));
+            text.setAttribute("text-anchor", "middle");
+            text.setAttribute("dominant-baseline", "middle");
+            text.textContent = String(count ?? 0);
+            group.appendChild(text);
+        });
+        svg.appendChild(group);
+    }, [troopCounts]);
 
     const handleClick = (e: React.MouseEvent) => {
         if (!allowEditOwner || !highlightOwner) return;
@@ -187,6 +245,17 @@ const MapSVG: React.FC<MapSVGProps> = ({
                     fill-opacity: 0.94;
                     filter: drop-shadow(0 0 0.75px rgba(0,0,0,0.35));
                 }
+
+                                /* Rótulo de tropas: número branco com contorno para contraste */
+                                .troop-label {
+                                        font: 700 12px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+                                        fill: #fff;
+                                        stroke: rgba(0,0,0,0.8);
+                                        stroke-width: 2px;
+                                        paint-order: stroke;
+                                        pointer-events: none;
+                                        user-select: none;
+                                }
       `}
             </style>
             <g stroke="black" strokeWidth="1">

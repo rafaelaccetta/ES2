@@ -156,6 +156,20 @@ export class Jogo extends Scene {
                 return map;
             }, [playerIds, playersData]);
 
+            // Mapa de tropas por território
+            const troopCounts = React.useMemo(() => {
+                const counts: Record<string, number> = {};
+                playersData.forEach((player) => {
+                    const armies: Record<string, number> | undefined = player?.territoriesArmies;
+                    if (!armies) return;
+                    Object.entries(armies).forEach(([territoryName, qty]) => {
+                        const id = normalizeId(territoryName);
+                        counts[id] = (qty as number) ?? 0;
+                    });
+                });
+                return counts;
+            }, [playersData, normalizeId]);
+
             return React.createElement(
                 React.Fragment,
                 null,
@@ -165,6 +179,7 @@ export class Jogo extends Scene {
                     allowEditOwner: false, // Desabilitar edição já que territórios são pré-distribuídos
                     selectedTerritories,
                     ownerColors: colors,
+                    troopCounts,
                 }),
                 // Renderiza badges na direita para mostrar territórios por jogador (remover depois)
                 ...playerIds.map((pid, index) =>
