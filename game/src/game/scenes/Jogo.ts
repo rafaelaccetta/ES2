@@ -52,14 +52,65 @@ export class Jogo extends Scene {
                 const handlePlayersUpdate = (data: {
                     playerCount: number;
                     players?: any[];
+                    lastMove?: { source?: string; target?: string; toMove?: number };
                 }) => {
+                    console.log('Jogo: players-updated received', data);
+
+                    // Also print a JSON string so collapsed objects are visible in logs
+                    try {
+                        console.log('Jogo: players-updated (json)');
+                        console.log(JSON.stringify(data, null, 2));
+                    } catch (e) {
+                        // ignore
+                    }
+
+                    // If the emitter provided lastMove info, try to locate the owner and print the exact army value
+                    if (data.lastMove && data.lastMove.target) {
+                        const targetName = data.lastMove.target;
+                        console.log('Jogo: lastMove info:', data.lastMove);
+                        const playersArr = data.players || [];
+                        const ownerIndex = playersArr.findIndex((p: any) =>
+                            Array.isArray(p.territories) && p.territories.includes(targetName)
+                        );
+                        if (ownerIndex !== -1) {
+                            const owner = playersArr[ownerIndex];
+                            const armiesForTarget = owner.territoriesArmies && owner.territoriesArmies[targetName];
+                            console.log(`Jogo: owner found at index ${ownerIndex} (player${ownerIndex + 1}) for territory '${targetName}'. armies:`, armiesForTarget);
+                        } else {
+                            console.log('Jogo: no owner found for target territory (string match). Will also try normalized ids.');
+                            // Try normalizing names as MapSVG does
+                            try {
+                                const normalize = (name: string) =>
+                                    name
+                                        .normalize('NFD')
+                                        .replace(/\p{Diacritic}+/gu, '')
+                                        .toLowerCase()
+                                        .replace(/\s+/g, '')
+                                        .replace(/[^a-z0-9]/g, '');
+                                const normTarget = normalize(targetName);
+                                console.log('Jogo: normalized target:', normTarget);
+                                // Inspect players' territoriesArmies keys
+                                playersArr.forEach((p: any, idx: number) => {
+                                    const armies = p.territoriesArmies || {};
+                                    // find any key that normalizes to the same id
+                                    const matchingKey = Object.keys(armies).find((k) => normalize(k) === normTarget);
+                                    if (matchingKey) {
+                                        console.log(`Jogo: matched owner at index ${idx} via normalized key '${matchingKey}' -> armies:`, armies[matchingKey]);
+                                    }
+                                });
+                            } catch (e) {
+                                console.warn('Jogo: normalization check failed', e);
+                            }
+                        }
+                    }
+
                     setPlayerCount(data.playerCount);
                     if (data.players) {
                         setPlayersData(data.players);
                     }
                 };
 
-                EventBus.on("players-updated", handlePlayersUpdate);
+                EventBus.on("players-updated", handlePlayersUpdate as any);
 
                 return () => {
                     EventBus.removeListener("players-updated");

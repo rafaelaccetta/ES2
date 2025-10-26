@@ -5,8 +5,12 @@ import React, {
     useEffect,
     ReactNode,
 } from "react";
+// @ts-ignore - runtime JS modules in ../game-logic don't have TS declarations in this repo
 import { GameManager } from "../../game-logic/GameManager.js";
+// @ts-ignore - runtime JS modules in ../game-logic don't have TS declarations in this repo
 import { Player } from "../../game-logic/Player.js";
+// @ts-ignore - runtime JS modules in ../game-logic don't have TS declarations in this repo
+import resolveAttack from "../../game-logic/Combat.js";
 import { EventBus } from "../game/EventBus";
 
 export interface Objective {
@@ -45,6 +49,7 @@ interface GameContextType extends GameState {
     setShowObjectiveConfirmation: (show: boolean) => void;
     setTerritorySelectionCallback: (callback: ((territory: string) => void) | null) => void;
     onTerritorySelected: (territory: string) => void;
+    applyPostConquestMove: (source: string, target: string, moved: number) => void;
 }
 
 const initialState: GameState = {
@@ -185,6 +190,190 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         });
     };
 
+    // Handle attack requests emitted from the UI (AttackMenu)
+    useEffect(() => {
+        const handleAttackRequest = (data: { source: string; target: string; troops: number }) => {
+            try {
+                if (!gameState.gameManager) {
+                    console.warn('No game manager available to process attack');
+                    return;
+                }
+
+                const { source, target, troops } = data as any;
+                const currentPlayer = getCurrentPlayer();
+                if (!currentPlayer) {
+                    console.warn('No current player for attack');
+                    return;
+                }
+
+                // Validate ownership of source
+                if (!currentPlayer.territories.includes(source)) {
+                    console.warn('Attack source does not belong to current player:', source);
+                    return;
+                }
+
+                const armiesAtSource = currentPlayer.territoriesArmies?.[source] ?? 0;
+                const maxAttackable = Math.min(3, Math.max(0, armiesAtSource - 1));
+                if (troops > maxAttackable) {
+                    console.warn('Requested troops greater than available to attack', { troops, maxAttackable });
+                    return;
+                }
+
+                // Find defender (may be undefined for unowned territory)
+                const defender = gameState.players.find((p) => p.territories.includes(target));
+                const defenderArmies = defender?.territoriesArmies?.[target] ?? 0;
+
+                // Use shared combat resolver from game-logic/Combat.js (imported at top)
+                // @ts-ignore - resolveAttack is a JS module imported without TS declarations
+                const { attackerLoss, defenderLoss } = resolveAttack(troops, defenderArmies);
+
+                // Apply losses
+                currentPlayer.territoriesArmies[source] = Math.max(0, (currentPlayer.territoriesArmies[source] ?? 0) - attackerLoss);
+                currentPlayer.armies = Math.max(0, currentPlayer.armies - attackerLoss);
+
+                if (defender) {
+                    defender.territoriesArmies[target] = Math.max(0, (defender.territoriesArmies[target] ?? 0) - defenderLoss);
+                    defender.armies = Math.max(0, defender.armies - defenderLoss);
+                }
+
+                let conquered = false;
+                if ((defender ? (defender.territoriesArmies[target] ?? 0) : 0) <= 0) {
+                    // Territory conquered — transfer ownership but defer troop movement until player confirms
+                    conquered = true;
+                    if (defender) defender.removeTerritory(target);
+                    currentPlayer.addTerritory(target);
+
+                    // Determine survivors among the attacking troops used
+                    const survivors = Math.max(0, troops - attackerLoss);
+                    // armiesAtSource holds the count before losses
+                    const armiesBefore = armiesAtSource;
+                    const sourceAfterLosses = Math.max(0, armiesBefore - attackerLoss);
+
+                    // Maximum that can be moved is based on armies remaining after losses (must leave 1 behind)
+                    const maxCanMove = Math.max(0, sourceAfterLosses - 1);
+
+                    // Temporarily set target armies to 0 — UI will prompt player how many to move
+                    currentPlayer.territoriesArmies[target] = 0;
+
+                    // Emit an event so UI can show a PostConquest dialog and ask the player
+                    EventBus.emit('post-conquest', {
+                        source,
+                        target,
+                        troopsRequested: troops,
+                        attackerLoss,
+                        defenderLoss,
+                        survivors,
+                        armiesBefore,
+                        sourceAfterLosses,
+                        maxCanMove,
+                    });
+                }
+
+                // Emit update for UI/map
+                EventBus.emit('players-updated', {
+                    playerCount: gameState.players.length,
+                    players: gameState.players.map((player) => ({
+                        id: player.id,
+                        color: player.color,
+                        territories: player.territories,
+                        territoriesArmies: player.territoriesArmies,
+                        armies: player.armies,
+                    })),
+                });
+
+                // Also emit a detailed result for any UI listeners (optional)
+                EventBus.emit('attack-result', {
+                    source,
+                    target,
+                    troopsRequested: troops,
+                    attackerLoss,
+                    defenderLoss,
+                    conquered,
+                });
+            } catch (err) {
+                console.error('Error processing attack-request', err);
+            }
+        };
+
+        EventBus.on('attack-request', handleAttackRequest as any);
+
+        // Listen for move confirmations after conquest
+        const handleMoveConfirm = (data: { source: string; target: string; moved: number }) => {
+            const { source, target, moved } = data as any;
+            // Delegate to centralized function
+            applyPostConquestMove(source, target, moved);
+        };
+
+        EventBus.on('move-confirm', handleMoveConfirm as any);
+
+        return () => {
+            EventBus.removeListener('attack-request');
+                EventBus.removeListener('move-confirm');
+        };
+    }, [gameState.gameManager, gameState.players, getCurrentPlayer]);
+
+        // Centralized function to apply post-conquest movement from UI or events
+        const applyPostConquestMove = (source: string, target: string, moved: number) => {
+            try {
+                const currentPlayer = getCurrentPlayer();
+                if (!currentPlayer) return;
+
+                // Ensure player owns both territories
+                if (!currentPlayer.territories.includes(source) || !currentPlayer.territories.includes(target)) {
+                    console.warn('applyPostConquestMove invalid: player does not own source or target', { source, target });
+                    return;
+                }
+
+                const sourceAfterLosses = currentPlayer.territoriesArmies?.[source] ?? 0;
+                const maxCanMove = Math.max(0, sourceAfterLosses - 1);
+                const toMove = Math.max(0, Math.min(moved, maxCanMove));
+
+                console.log('applyPostConquestMove', { source, target, moved, sourceAfterLosses, maxCanMove, toMove });
+                console.log('before apply', { src: currentPlayer.territoriesArmies[source], tgt: currentPlayer.territoriesArmies[target] });
+
+                currentPlayer.territoriesArmies[source] = Math.max(1, sourceAfterLosses - toMove);
+                currentPlayer.territoriesArmies[target] = toMove;
+
+                console.log('after apply', { src: currentPlayer.territoriesArmies[source], tgt: currentPlayer.territoriesArmies[target] });
+
+                setGameState((prev) => {
+                    const updatedPlayers = prev.players.map((p) => p);
+
+                    const payload = updatedPlayers.map((player) => ({
+                        id: player.id,
+                        color: player.color,
+                        territories: player.territories,
+                        territoriesArmies: player.territoriesArmies,
+                        armies: player.armies,
+                    }));
+
+                    console.log('GameContext: emitting players-updated with payload', {
+                        playerCount: updatedPlayers.length,
+                        players: payload,
+                        lastMove: { source, target, toMove },
+                    });
+
+                    try {
+                        console.log('GameContext: players-updated (json)', JSON.stringify({
+                            playerCount: updatedPlayers.length,
+                            players: payload,
+                            lastMove: { source, target, toMove },
+                        }, null, 2));
+                    } catch (e) {}
+
+                    EventBus.emit('players-updated', {
+                        playerCount: updatedPlayers.length,
+                        players: payload,
+                        lastMove: { source, target, toMove },
+                    });
+
+                    return { ...prev, players: updatedPlayers };
+                });
+            } catch (err) {
+                console.error('Error in applyPostConquestMove', err);
+            }
+        };
+
     const resetGame = () => {
         setGameState((prevState) => ({
             ...initialState,
@@ -248,6 +437,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         setShowObjectiveConfirmation,
         setTerritorySelectionCallback,
         onTerritorySelected,
+        applyPostConquestMove,
     };
 
     return (

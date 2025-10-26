@@ -1,0 +1,278 @@
+/* Reaproveita estilo do TroopAllocation para manter consistência visual */
+.troop-allocation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 3000;
+}
+
+.troop-allocation-modal {
+  background: linear-gradient(135deg, #1b3738 0%, #3e5e5f 100%);
+  border: 2px solid #a59b7b;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.troop-allocation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px;
+  border-bottom: 1px solid #a59b7b;
+}
+
+.troop-allocation-header h2 {
+  color: #a59b7b;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #a59b7b;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+  background-color: rgba(165, 155, 123, 0.1);
+}
+
+.troop-allocation-content {
+  padding: 32px;
+  color: white;
+}
+
+.troop-info {
+  margin-bottom: 32px;
+}
+
+.allocation-interface {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-bottom: 32px;
+}
+
+.territory-selection h3,
+.allocation-controls h4 {
+  color: #a59b7b;
+  margin-top: -3px;
+  font-size: 1.125rem;
+}
+
+.territories-list {
+  max-height: 300px;
+  overflow-y: auto;
+  background: rgba(62, 94, 95, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid rgba(165, 155, 123, 0.3);
+}
+
+.no-territories {
+  text-align: center;
+  color: #dc2626;
+  font-style: italic;
+  padding: 20px;
+  background: rgba(220, 38, 38, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.neighbors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.territory-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: rgba(62, 94, 95, 0.5);
+  color: white;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  font-size: 1rem;
+}
+
+.territory-btn:hover {
+  background: rgba(165, 155, 123, 0.2);
+  border-color: #a59b7b;
+}
+
+.territory-btn.selected {
+  background: rgba(165, 155, 123, 0.5) !important;
+  border-color: #a59b7b !important;
+  color: #a59b7b;
+  font-weight: 600;
+}
+
+.selected-territory-panel {
+  background: rgba(62, 94, 95, 0.3);
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid #a59b7b;
+  margin-bottom: 24px;
+}
+
+.allocation-input {
+  margin-top: 16px;
+}
+
+.input-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.quantity-input {
+  flex: 1;
+  padding: 12px;
+  background: rgba(62, 94, 95, 0.3);
+  border: 1px solid #a59b7b;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.quantity-input:focus {
+  border-color: #a59b7b;
+  background: rgba(62, 94, 95, 0.5);
+  box-shadow: 0 0 0 2px rgba(165, 155, 123, 0.2);
+}
+
+.quantity-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.allocate-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #a59b7b 0%, #8b8263 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.allocate-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #8b8263 0%, #757049 100%);
+  transform: translateY(-1px);
+}
+
+.allocate-all-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.allocate-all-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+  transform: translateY(-1px);
+}
+
+.allocation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.cancel-btn,
+.confirm-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn {
+  background: rgba(239, 68, 68, 0.8);
+  color: white;
+}
+
+.cancel-btn:hover {
+  background: rgba(239, 68, 68, 1);
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: white;
+}
+
+.confirm-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+}
+
+.confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .troop-allocation-modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+  
+  .allocation-interface {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  
+  .troop-allocation-content {
+    padding: 20px;
+  }
+  
+  .troop-stats {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .stat-item {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}
