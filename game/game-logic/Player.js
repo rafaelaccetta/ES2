@@ -26,9 +26,6 @@ export class Player {
 
     addCard(card) {
         this.cards.push(card);
-        if (this.cards.length >= 5) {
-            this.forceTradeCards();
-        }
     }
     
     // chamada na função de calcular o bônus de continente no GameMap
@@ -37,9 +34,18 @@ export class Player {
         return continentTerritories.every((territory) => this.territories.includes(territory));
     }
 
-    addArmies(bonus) {
-        //logic to add armies to a territory
-        // at the begining of the turn or because of card exchange or because of a continent control
+    //Adiciona tropas para o saldo do jogador. 
+    // Antes das tropas forem alocadas (pela classe responsável), deve ser verificado se o Player tem o saldo necessário.
+    addArmies(amount) {
+        this.armies = this.armies + amount;
+    }
+
+    removeArmies(amount) {
+        this.armies = this.armies >= amount ? this.armies - amount : 0;    
+    }
+
+    hasArmies(amount) {
+        return this.armies >= amount
     }
     
     addArmiesExclusive(territoryName, amount){
@@ -47,13 +53,19 @@ export class Player {
         this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
     }
     
-    hasTerritory(territoryName){
-        return this.territories.includes(territoryName)
+    removeArmiesExclusive(territoryName, amount){
+        const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
+        if (currentAmount >= amount) {    
+            this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
+        }
+    }
+
+    hasArmiesExclusive(territoryName, amount){
+        return this.armiesExclusiveToTerritory.get(territoryName) >= amount;
     }
     
-    removeArmies() {
-        // logic to remove armies of a territory
-        // because of attack, defense or movement
+    hasTerritory(territoryName){
+        return this.territories.includes(territoryName)
     }
 
     deactivate() {
