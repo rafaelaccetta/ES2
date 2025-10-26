@@ -1,0 +1,130 @@
+{
+  "objectives": [
+    {
+      "id": 1,
+      "type": "conquest",
+      "title": "Conquistar América do Sul",
+      "description": "Conquistar e controlar todos os territórios da América do Sul",
+      "target": {
+        "continents": ["SA"]
+      }
+    },
+    {
+      "id": 2,
+      "type": "conquest",
+      "title": "Conquistar América do Norte",
+      "description": "Conquistar e controlar todos os territórios da América do Norte",
+      "target": {
+        "continents": ["NA"]
+      }
+    },
+    {
+      "id": 3,
+      "type": "conquest",
+      "title": "Conquistar Europa",
+      "description": "Conquistar e controlar todos os territórios da Europa",
+      "target": {
+        "continents": ["EU"]
+      }
+    },
+    {
+      "id": 4,
+      "type": "conquest",
+      "title": "Conquistar África",
+      "description": "Conquistar e controlar todos os territórios da África",
+      "target": {
+        "continents": ["AF"]
+      }
+    },
+    {
+      "id": 5,
+      "type": "conquest",
+      "title": "Conquistar Ásia",
+      "description": "Conquistar e controlar todos os territórios da Ásia",
+      "target": {
+        "continents": ["AS"]
+      }
+    },
+    {
+      "id": 6,
+      "type": "conquest",
+      "title": "Conquistar Oceania",
+      "description": "Conquistar e controlar todos os territórios da Oceania",
+      "target": {
+        "continents": ["OC"]
+      }
+    },
+    {
+      "id": 7,
+      "type": "territory_count",
+      "title": "Conquistar 18 Territórios",
+      "description": "Conquistar e manter o controle de pelo menos 18 territórios",
+      "target": {
+        "territory_count": 18
+      }
+    },
+    {
+      "id": 8,
+      "type": "territory_count", 
+      "title": "Conquistar 24 Territórios",
+      "description": "Conquistar e manter o controle de pelo menos 24 territórios",
+      "target": {
+        "territory_count": 24
+      }
+    },
+    {
+      "id": 9,
+      "type": "elimination",
+      "title": "Eliminar o Jogador Azul",
+      "description": "Eliminar completamente o jogador de cor azul do jogo",
+      "target": {
+        "eliminate_player": "azul"
+      }
+    },
+    {
+      "id": 10,
+      "type": "elimination",
+      "title": "Eliminar o Jogador Vermelho", 
+      "description": "Eliminar completamente o jogador de cor vermelha do jogo",
+      "target": {
+        "eliminate_player": "vermelho"
+      }
+    },
+    {
+      "id": 11,
+      "type": "elimination",
+      "title": "Eliminar o Jogador Verde",
+      "description": "Eliminar completamente o jogador de cor verde do jogo", 
+      "target": {
+        "eliminate_player": "verde"
+      }
+    },
+    {
+      "id": 12,
+      "type": "elimination",
+      "title": "Eliminar o Jogador Branco",
+      "description": "Eliminar completamente o jogador de cor branca do jogo",
+      "target": {
+        "eliminate_player": "branco"
+      }
+    },
+    {
+      "id": 13,
+      "type": "mixed",
+      "title": "Conquistar Europa e América do Sul", 
+      "description": "Conquistar e controlar todos os territórios da Europa e América do Sul",
+      "target": {
+        "continents": ["EU", "SA"]
+      }
+    },
+    {
+      "id": 14,
+      "type": "mixed",
+      "title": "Conquistar América do Norte e África",
+      "description": "Conquistar e controlar todos os territórios da América do Norte e África",
+      "target": {
+        "continents": ["NA", "AF"]
+      }
+    }
+  ]
+}

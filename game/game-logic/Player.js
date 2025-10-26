@@ -1,3 +1,4 @@
+import cardsSymbols from "../public/data/territories_cards.json" with {type: "json"};
 export class Player {
     constructor(id, color, objective = null) {
         this.id = id;
@@ -8,16 +9,22 @@ export class Player {
         this.armies = 0;
         this.armiesExclusiveToTerritory = new Map() // example: {"Brazil": 2} means 2 troops can only be deployed in Brazil
         this.isActive = true;
+        this.territoriesArmies = {}; // objeto para armazenar exércitos por território
     }
 
     addTerritory(territory) {
         if (!this.territories.includes(territory)) {
             this.territories.push(territory);
+            this.territoriesArmies[territory] = 0;
         }
     }
 
     removeTerritory(territory) {
         this.territories = this.territories.filter((t) => t !== territory);
+        if (this.territoriesArmies[territory]) {
+            this.armies -= this.territoriesArmies[territory];
+            delete this.territoriesArmies[territory];
+        }
     }
 
     addCard(card) {

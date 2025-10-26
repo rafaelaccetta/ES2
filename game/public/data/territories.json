@@ -1,377 +1,377 @@
 {
     "Alaska": {
-        "continent": "North America",
+        "continent": "América do Norte",
         "borders": [
-            "Kamchatka",
-            "Northwest Territory",
-            "Alberta"
+            "Vladivostok",
+            "Mackenzie",
+            "Vancouver"
         ]
     },
-    "Northwest Territory": {
-        "continent": "North America",
+    "Mackenzie": {
+        "continent": "América do Norte",
         "borders": [
             "Alaska",
-            "Alberta",
-            "Ontario",
-            "Greenland"
+            "Vancouver",
+            "Ottawa",
+            "Groenlândia"
         ]
     },
-    "Greenland": {
-        "continent": "North America",
+    "Groenlândia": {
+        "continent": "América do Norte",
         "borders": [
-            "Northwest Territory",
-            "Ontario",
-            "Quebec",
-            "Iceland"
+            "Mackenzie",
+            "Ottawa",
+            "Labrador",
+            "Islândia"
         ]
     },
-    "Alberta": {
-        "continent": "North America",
+    "Vancouver": {
+        "continent": "América do Norte",
         "borders": [
             "Alaska",
-            "Northwest Territory",
-            "Ontario",
-            "Western United States"
+            "Mackenzie",
+            "Ottawa",
+            "Califórnia"
         ]
     },
-    "Ontario": {
-        "continent": "North America",
+    "Ottawa": {
+        "continent": "América do Norte",
         "borders": [
-            "Northwest Territory",
-            "Greenland",
-            "Quebec",
-            "Eastern United States",
-            "Western United States",
-            "Alberta"
+            "Mackenzie",
+            "Groenlândia",
+            "Labrador",
+            "Nova York",
+            "Califórnia",
+            "Vancouver"
         ]
     },
-    "Quebec": {
-        "continent": "North America",
+    "Labrador": {
+        "continent": "América do Norte",
         "borders": [
-            "Greenland",
-            "Ontario",
-            "Eastern United States"
+            "Groenlândia",
+            "Ottawa",
+            "Nova York"
         ]
     },
-    "Western United States": {
-        "continent": "North America",
+    "Califórnia": {
+        "continent": "América do Norte",
         "borders": [
-            "Alberta",
-            "Ontario",
-            "Eastern United States",
-            "Central America"
+            "Vancouver",
+            "Ottawa",
+            "Nova York",
+            "México"
         ]
     },
-    "Eastern United States": {
-        "continent": "North America",
+    "Nova York": {
+        "continent": "América do Norte",
         "borders": [
-            "Quebec",
-            "Ontario",
-            "Western United States",
-            "Central America"
+            "Labrador",
+            "Ottawa",
+            "Califórnia",
+            "México"
         ]
     },
-    "Central America": {
-        "continent": "North America",
+    "México": {
+        "continent": "América do Norte",
         "borders": [
-            "Western United States",
-            "Eastern United States",
+            "Califórnia",
+            "Nova York",
             "Venezuela"
         ]
     },
     "Venezuela": {
-        "continent": "South America",
+        "continent": "América do Sul",
         "borders": [
-            "Central America",
+            "México",
             "Peru",
-            "Brazil"
+            "Brasil"
         ]
     },
     "Peru": {
-        "continent": "South America",
+        "continent": "América do Sul",
         "borders": [
             "Venezuela",
-            "Brazil",
+            "Brasil",
             "Argentina"
         ]
     },
-    "Brazil": {
-        "continent": "South America",
+    "Brasil": {
+        "continent": "América do Sul",
         "borders": [
             "Venezuela",
             "Peru",
             "Argentina",
-            "North Africa"
+            "Argélia"
         ]
     },
     "Argentina": {
-        "continent": "South America",
+        "continent": "América do Sul",
         "borders": [
             "Peru",
-            "Brazil"
+            "Brasil"
         ]
     },
-    "Iceland": {
-        "continent": "Europe",
+    "Islândia": {
+        "continent": "Europa",
         "borders": [
-            "Greenland",
-            "Great Britain",
-            "Scandinavia"
+            "Groenlândia",
+            "Inglaterra",
+            "Suécia"
         ]
     },
-    "Great Britain": {
-        "continent": "Europe",
+    "Inglaterra": {
+        "continent": "Europa",
         "borders": [
-            "Iceland",
-            "Scandinavia",
-            "Northern Europe",
-            "Western Europe"
+            "Islândia",
+            "Suécia",
+            "Alemanha",
+            "França"
         ]
     },
-    "Scandinavia": {
-        "continent": "Europe",
+    "Suécia": {
+        "continent": "Europa",
         "borders": [
-            "Iceland",
-            "Great Britain",
-            "Northern Europe",
-            "Ukraine"
+            "Islândia",
+            "Inglaterra",
+            "Alemanha",
+            "Moscou"
         ]
     },
-    "Northern Europe": {
-        "continent": "Europe",
+    "Alemanha": {
+        "continent": "Europa",
         "borders": [
-            "Great Britain",
-            "Scandinavia",
-            "Ukraine",
-            "Southern Europe",
-            "Western Europe"
+            "Inglaterra",
+            "Suécia",
+            "Moscou",
+            "Polônia",
+            "França"
         ]
     },
-    "Western Europe": {
-        "continent": "Europe",
+    "França": {
+        "continent": "Europa",
         "borders": [
-            "Great Britain",
-            "Northern Europe",
-            "Southern Europe",
-            "North Africa"
+            "Inglaterra",
+            "Alemanha",
+            "Polônia",
+            "Argélia"
         ]
     },
-    "Southern Europe": {
-        "continent": "Europe",
+    "Polônia": {
+        "continent": "Europa",
         "borders": [
-            "Northern Europe",
-            "Western Europe",
-            "Ukraine",
-            "Egypt",
-            "Middle East"
+            "Alemanha",
+            "França",
+            "Moscou",
+            "Egito",
+            "Oriente Médio"
         ]
     },
-    "Ukraine": {
-        "continent": "Europe",
+    "Moscou": {
+        "continent": "Europa",
         "borders": [
-            "Scandinavia",
-            "Northern Europe",
-            "Southern Europe",
-            "Ural",
-            "Afghanistan",
-            "Middle East"
+            "Suécia",
+            "Alemanha",
+            "Polônia",
+            "Omsk",
+            "Aral",
+            "Oriente Médio"
         ]
     },
-    "North Africa": {
-        "continent": "Africa",
+    "Argélia": {
+        "continent": "África",
         "borders": [
-            "Western Europe",
-            "Southern Europe",
-            "Egypt",
-            "East Africa",
+            "França",
+            "Polônia",
+            "Egito",
+            "Sudão",
             "Congo",
-            "Brazil"
+            "Brasil"
         ]
     },
-    "Egypt": {
-        "continent": "Africa",
+    "Egito": {
+        "continent": "África",
         "borders": [
-            "Southern Europe",
-            "North Africa",
-            "East Africa",
-            "Middle East"
+            "Polônia",
+            "Argélia",
+            "Sudão",
+            "Oriente Médio"
         ]
     },
     "Congo": {
-        "continent": "Africa",
+        "continent": "África",
         "borders": [
-            "North Africa",
-            "East Africa",
-            "South Africa"
+            "Argélia",
+            "Sudão",
+            "África do Sul"
         ]
     },
-    "East Africa": {
-        "continent": "Africa",
+    "Sudão": {
+        "continent": "África",
         "borders": [
-            "Egypt",
-            "North Africa",
+            "Egito",
+            "Argélia",
             "Congo",
-            "South Africa",
+            "África do Sul",
             "Madagascar",
-            "Middle East"
+            "Oriente Médio"
         ]
     },
-    "South Africa": {
-        "continent": "Africa",
+    "África do Sul": {
+        "continent": "África",
         "borders": [
             "Congo",
-            "East Africa",
+            "Sudão",
             "Madagascar"
         ]
     },
     "Madagascar": {
-        "continent": "Africa",
+        "continent": "África",
         "borders": [
-            "East Africa",
-            "South Africa"
+            "Sudão",
+            "África do Sul"
         ]
     },
-    "Middle East": {
-        "continent": "Asia",
+    "Oriente Médio": {
+        "continent": "Ásia",
         "borders": [
-            "Southern Europe",
-            "Ukraine",
-            "Egypt",
-            "East Africa",
-            "Afghanistan",
-            "India"
+            "Polônia",
+            "Moscou",
+            "Egito",
+            "Sudão",
+            "Aral",
+            "Índia"
         ]
     },
-    "Afghanistan": {
-        "continent": "Asia",
+    "Aral": {
+        "continent": "Ásia",
         "borders": [
-            "Ukraine",
-            "Middle East",
-            "India",
+            "Moscou",
+            "Oriente Médio",
+            "Índia",
             "China",
-            "Ural"
+            "Omsk"
         ]
     },
-    "Ural": {
-        "continent": "Asia",
+    "Omsk": {
+        "continent": "Ásia",
         "borders": [
-            "Ukraine",
-            "Afghanistan",
+            "Moscou",
+            "Aral",
             "China",
-            "Siberia"
+            "Dudinka"
         ]
     },
-    "Siberia": {
-        "continent": "Asia",
+    "Dudinka": {
+        "continent": "Ásia",
         "borders": [
-            "Ural",
+            "Omsk",
             "China",
-            "Mongolia",
-            "Irkutsk",
-            "Yakutsk"
+            "Mongólia",
+            "Tchita",
+            "Sibéria"
         ]
     },
-    "Yakutsk": {
-        "continent": "Asia",
+    "Sibéria": {
+        "continent": "Ásia",
         "borders": [
-            "Siberia",
-            "Kamchatka",
-            "Irkutsk"
+            "Dudinka",
+            "Vladivostok",
+            "Tchita"
         ]
     },
-    "Kamchatka": {
-        "continent": "Asia",
+    "Vladivostok": {
+        "continent": "Ásia",
         "borders": [
-            "Yakutsk",
-            "Siberia",
-            "Mongolia",
-            "Japan",
+            "Sibéria",
+            "Dudinka",
+            "Mongólia",
+            "Japão",
             "Alaska"
         ]
     },
-    "Irkutsk": {
-        "continent": "Asia",
+    "Tchita": {
+        "continent": "Ásia",
         "borders": [
-            "Siberia",
-            "Yakutsk",
-            "Kamchatka",
-            "Mongolia"
+            "Dudinka",
+            "Sibéria",
+            "Vladivostok",
+            "Mongólia"
         ]
     },
-    "Mongolia": {
-        "continent": "Asia",
+    "Mongólia": {
+        "continent": "Ásia",
         "borders": [
-            "Siberia",
-            "Irkutsk",
-            "Kamchatka",
-            "Japan",
+            "Dudinka",
+            "Tchita",
+            "Vladivostok",
+            "Japão",
             "China"
         ]
     },
-    "Japan": {
-        "continent": "Asia",
+    "Japão": {
+        "continent": "Ásia",
         "borders": [
-            "Kamchatka",
-            "Mongolia"
+            "Vladivostok",
+            "Mongólia"
         ]
     },
     "China": {
-        "continent": "Asia",
+        "continent": "Ásia",
         "borders": [
-            "Afghanistan",
-            "Ural",
-            "Siberia",
-            "Mongolia",
-            "Siam",
-            "India"
+            "Aral",
+            "Omsk",
+            "Dudinka",
+            "Mongólia",
+            "Vietnã",
+            "Índia"
         ]
     },
-    "India": {
-        "continent": "Asia",
+    "Índia": {
+        "continent": "Ásia",
         "borders": [
-            "Middle East",
-            "Afghanistan",
+            "Oriente Médio",
+            "Aral",
             "China",
-            "Siam"
+            "Vietnã"
         ]
     },
-    "Siam": {
-        "continent": "Asia",
+    "Vietnã": {
+        "continent": "Ásia",
         "borders": [
-            "India",
+            "Índia",
             "China",
-            "Indonesia"
+            "Indonésia"
         ]
     },
-    "Indonesia": {
+    "Indonésia": {
         "continent": "Oceania",
         "borders": [
-            "Siam",
-            "New Guinea",
-            "Western Australia"
+            "Vietnã",
+            "Nova Guiné",
+            "Austrália Oeste"
         ]
     },
-    "New Guinea": {
+    "Nova Guiné": {
         "continent": "Oceania",
         "borders": [
-            "Indonesia",
-            "Eastern Australia",
-            "Western Australia"
+            "Indonésia",
+            "Austrália Leste",
+            "Austrália Oeste"
         ]
     },
-    "Eastern Australia": {
+    "Austrália Leste": {
         "continent": "Oceania",
         "borders": [
-            "New Guinea",
-            "Western Australia"
+            "Nova Guiné",
+            "Austrália Oeste"
         ]
     },
-    "Western Australia": {
+    "Austrália Oeste": {
         "continent": "Oceania",
         "borders": [
-            "Indonesia",
-            "New Guinea",
-            "Eastern Australia"
+            "Indonésia",
+            "Nova Guiné",
+            "Austrália Leste"
         ]
     }
 }
