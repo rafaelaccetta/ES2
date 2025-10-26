@@ -6,12 +6,12 @@ type TroopsMap = Record<string, number>;
 
 interface MapSVGProps extends React.SVGProps<SVGSVGElement> {
     owners?: OwnersMap;
-    highlightOwner?: string; 
-    allowEditOwner?: boolean; 
-    selectedTerritories?: string[]; 
-    onOwnersChange?: (owners: OwnersMap) => void; 
-    ownerColors?: Record<string, string>; 
-    troopCounts?: TroopsMap; 
+    highlightOwner?: string;
+    allowEditOwner?: boolean;
+    selectedTerritories?: string[];
+    onOwnersChange?: (owners: OwnersMap) => void;
+    ownerColors?: Record<string, string>;
+    troopCounts?: TroopsMap;
 }
 
 const MapSVG: React.FC<MapSVGProps> = ({
@@ -71,10 +71,10 @@ const MapSVG: React.FC<MapSVGProps> = ({
             svg.insertBefore(defs, svg.firstChild);
         }
         const defaultOwnerColors: Record<string, string> = {
-            player1: "#2563eb", 
-            player2: "#dc2626", 
-            player3: "#16a34a", 
-            player4: "#b7c0cd", 
+            player1: "#2563eb",
+            player2: "#dc2626",
+            player3: "#16a34a",
+            player4: "#b7c0cd",
         };
 
         Object.entries(localOwners).forEach(([id, owner]) => {
@@ -175,10 +175,16 @@ const MapSVG: React.FC<MapSVGProps> = ({
             text.setAttribute("text-anchor", "middle");
             text.setAttribute("dominant-baseline", "middle");
             text.textContent = String(count ?? 0);
+            // Cor do contorno do número = cor do dono do território
+            const owner = localOwners[territoryId];
+            const color = ownerColors?.[owner] ?? "#fff";
+            text.setAttribute("stroke", color);
+            text.setAttribute("stroke-width", "2");
+            text.setAttribute("fill", "#fff");
             group.appendChild(text);
         });
         svg.appendChild(group);
-    }, [troopCounts]);
+    }, [troopCounts, localOwners, ownerColors]);
 
     const handleClick = (e: React.MouseEvent) => {
         if (!allowEditOwner || !highlightOwner) return;
@@ -234,8 +240,6 @@ const MapSVG: React.FC<MapSVGProps> = ({
                                 .troop-label {
                                         font: 700 12px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
                                         fill: #fff;
-                                        stroke: rgba(0,0,0,0.8);
-                                        stroke-width: 2px;
                                         paint-order: stroke;
                                         pointer-events: none;
                                         user-select: none;
