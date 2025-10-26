@@ -68,22 +68,34 @@ export class GameMap {
 
 
     distributeTerritories(players) {
-        // embaralhar os territórios e distribuir igualmente entre os jogadores.
-        var territorieskeys = Object.keys(territoriesJson);
-        var lenght = Math.floor(territorieskeys.length/players.length);
+        var territoriesKeys = Object.keys(territoriesJson);
+        territoriesKeys = territoriesKeys.sort(() => Math.random() - 0.5);
+        
+        var territoriesPerPlayer = Math.floor(territoriesKeys.length / players.length);
+        var currentIndex = 0;
+        
         for (var i = 0; i < players.length; i++) {
-            for (var j = 0; j < lenght; j++) {
-                var index = Math.floor(Math.random() * territorieskeys.length)
-                players[i].addTerritory(territorieskeys[index]);
-                console.log(territorieskeys.length)
-                territorieskeys.splice(index, 1);
+            for (var j = 0; j < territoriesPerPlayer; j++) {
+                players[i].addTerritory(territoriesKeys[currentIndex]);
+                currentIndex++;
             }
         }
-        // distribuir os territorios que sobraram para os dois primeiros jogadores
-        if(territorieskeys.length > 0 ) {
-            players[0].addTerritory(territorieskeys[0]);
-            players[1].addTerritory(territorieskeys[1]);
+        
+        while (currentIndex < territoriesKeys.length) {
+            var playerIndex = currentIndex % players.length;
+            players[playerIndex].addTerritory(territoriesKeys[currentIndex]);
+            currentIndex++;
         }
+        
+        for (var i = 0; i < players.length; i++) {
+            for (var j = 0; j < players[i].territories.length; j++) {
+                players[i].addArmies(players[i].territories[j], 1);
+            }
+        }
+    }
+
+    getContinentBonusForPlayer(player) {
+        // verificar se um jogador domina algum continente e retornar o bônus
     }
 }
 

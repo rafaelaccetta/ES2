@@ -1,8 +1,7 @@
 import { GameManager } from "./GameManager.js";
 import { DominateContinentObjective, EliminatePlayerObjective, TerritoryControlObjective } from "./Objective.js";
 import { Player } from "./Player.js";
-
-//To run this test, use the command: node game/game-logic/GameManagerTest.js
+import objectivesData from "../public/data/objectives.json" with {type: "json"};
 
 // Exemplo de jogadores
 const players = [
@@ -11,6 +10,8 @@ const players = [
     new Player(2, "verde"),
     new Player(3, "branco"),
 ];
+
+const objetivosJson = objectivesData.objectives;
 
 // Exemplo de objetivos usando as classes definidas em Objective.js
 const objetivos = [

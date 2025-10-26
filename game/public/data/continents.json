@@ -1,8 +1,8 @@
 {
-    "SA" : {"name": "South America", "bonus": 2},
-    "NA" : {"name": "North America", "bonus": 5},
-    "AS" : {"name": "Asia", "bonus": 7},
-    "AF" : {"name": "Africa", "bonus": 3},
-    "EU" : {"name": "Europe", "bonus": 5},
-    "OC" : {"name": "Oceania", "bonus": 2}
+    "SA" : "América do Sul",
+    "NA" : "América do Norte",
+    "AS" : "Ásia",
+    "AF" : "África",
+    "EU" : "Europa",
+    "OC" : "Oceania"
 }
