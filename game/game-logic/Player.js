@@ -20,6 +20,10 @@ export class Player {
         this.territories = this.territories.filter((t) => t !== territory);
     }
 
+    getTerritoriesCount() {
+        return this.territories.length;
+    }
+
     addCard(card) {
         this.cards.push(card);
         if (this.cards.length >= 5) {
@@ -58,6 +62,10 @@ export class Player {
 
     activate() {
         // logic to activate a player
+    }
+
+    checkWin(gameState) {
+        return this.objective.checkWin(this, gameState);   
     }
 }
 

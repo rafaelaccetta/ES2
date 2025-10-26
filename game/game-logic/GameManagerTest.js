@@ -1,5 +1,8 @@
 import { GameManager } from "./GameManager.js";
+import { DominateContinentObjective, EliminatePlayerObjective, TerritoryControlObjective } from "./Objective.js";
 import { Player } from "./Player.js";
+
+//To run this test, use the command: node game/game-logic/GameManagerTest.js
 
 // Exemplo de jogadores
 const players = [
@@ -9,21 +12,21 @@ const players = [
     new Player(3, "branco"),
 ];
 
-// Exemplo de objetivos
+// Exemplo de objetivos usando as classes definidas em Objective.js
 const objetivos = [
-    "Conquistar América do Sul",
-    "Eliminar jogador vermelho",
-    "Conquistar 18 territórios",
-    "Conquistar Europa",
+    new EliminatePlayerObjective(1, 22), // Eliminar o jogador com ID 1 ou conquistar 22 territórios
+    new DominateContinentObjective(["África", "Oceania"], 10), // Controlar África e Oceania + 10 territórios
+    new TerritoryControlObjective(24), // Conquistar 24 territórios
+    new DominateContinentObjective(["América do Norte", "Europa"], 8), // Controlar América do Norte e Europa + 8 territórios
 ];
 
 const manager = new GameManager(players);
-manager.distribuirObjetivos(objetivos);
+manager.distributeObjectives(objetivos);
 
 console.log("Objetivos distribuídos:");
 for (const player of players) {
     console.log(
-        `Player ${player.id} (${player.color}): objetivo -> ${player.objetivo}`
+        'Jogador ' + player.id + ' recebeu o objetivo: ' + player.objective.description
     );
 }
 
