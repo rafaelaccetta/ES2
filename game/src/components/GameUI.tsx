@@ -4,6 +4,8 @@ import { EventBus } from '../game/EventBus';
 import ObjectiveDisplay from './ObjectiveDisplay';
 import TurnTransition from './TurnTransition';
 import TroopAllocation from './TroopAllocation';
+import AttackMenu from './AttackMenu';
+import PostConquestMove from './PostConquestMove';
 import './GameUI.css';
 
 const GameUI: React.FC = () => {
@@ -26,6 +28,7 @@ const GameUI: React.FC = () => {
   const [showStartMenu, setShowStartMenu] = useState(!gameStarted);
   const [showTransition, setShowTransition] = useState(false);
   const [showTroopAllocation, setShowTroopAllocation] = useState(false);
+  const [showAttackMenu, setShowAttackMenu] = useState(false);
   const lastPlayerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -92,6 +95,14 @@ const GameUI: React.FC = () => {
 
   const handleShowTroopAllocation = () => {
     setShowTroopAllocation(true);
+  };
+
+  const handleShowAttackMenu = () => {
+    setShowAttackMenu(true);
+  };
+
+  const handleCloseAttackMenu = () => {
+    setShowAttackMenu(false);
   };
 
   const handleCloseTroopAllocation = () => {
@@ -195,6 +206,16 @@ const GameUI: React.FC = () => {
               Alocar Tropas
             </button>
           )}
+
+          {currentPhase === 'ATACAR' && (
+            <button
+              className="attack-toggle-btn"
+              onClick={handleShowAttackMenu}
+              title="Abrir menu de ataque"
+            >
+              Atacar
+            </button>
+          )}
           <button 
             className="objective-btn"
             onClick={handleShowObjective}
@@ -248,6 +269,12 @@ const GameUI: React.FC = () => {
         onClose={handleCloseTroopAllocation}
         onConfirm={handleConfirmTroopAllocation}
       />
+
+      <AttackMenu
+        isVisible={showAttackMenu}
+        onClose={handleCloseAttackMenu}
+      />
+      <PostConquestMove />
     </>
   );
 };

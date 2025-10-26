@@ -20,8 +20,10 @@ export class Player {
 
     removeTerritory(territory) {
         this.territories = this.territories.filter((t) => t !== territory);
-        if (this.territoriesArmies[territory]) {
-            this.armies -= this.territoriesArmies[territory];
+        // If the player had an entry for this territory in territoriesArmies, remove it.
+        // Use the `in` operator to catch zero values as well (0 is falsy).
+        if (territory in this.territoriesArmies) {
+            this.armies -= this.territoriesArmies[territory] || 0;
             delete this.territoriesArmies[territory];
         }
     }
