@@ -101,6 +101,7 @@ export class Player {
     }
 
     checkWin(gameState) {
+        if (!this.objective || typeof this.objective.checkWin !== "function") return false;
         return this.objective.checkWin(this, gameState);   
     }
 }

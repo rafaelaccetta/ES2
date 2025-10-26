@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { GameManager } from "../../game-logic/GameManager.js";
 import { Player } from "../../game-logic/Player.js";
+import { createObjectiveFromJson } from "../../game-logic/Objective.js";
 import { EventBus } from "../game/EventBus";
 
 export interface Objective {
@@ -99,7 +100,31 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         );
 
         const gameManager = new GameManager(gamePlayers);
-        gameManager.distributeObjectives(gameState.objectives);
+
+        let objectiveInstances = (gameState.objectives || [])
+            .map((o) => createObjectiveFromJson(o))
+            .filter((o) => o !== null);
+
+        const shuffle = (arr: any[]) => {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+        };
+
+        shuffle(objectiveInstances);
+
+        if (objectiveInstances.length < gamePlayers.length) {
+            console.warn("Not enough objectives for players; objectives will be reused.");
+            const needed = gamePlayers.length - objectiveInstances.length;
+            for (let i = 0; i < needed; i++) {
+                objectiveInstances.push(objectiveInstances[i % objectiveInstances.length]);
+            }
+        }
+
+        objectiveInstances = objectiveInstances.slice(0, gamePlayers.length);
+
+        gameManager.distributeObjectives(objectiveInstances);
 
         setGameState((prevState) => ({
             ...prevState,
@@ -137,11 +162,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             return null;
         }
 
-        if (
-            typeof currentPlayer.objective === "object" &&
-            currentPlayer.objective.id
-        ) {
-            return currentPlayer.objective as Objective;
+        if (typeof currentPlayer.objective === "object") {
+            const obj = currentPlayer.objective as any;
+            if (obj.id || obj.title || obj.description) {
+                return {
+                    id: obj.id || -1,
+                    type: obj.type || "custom",
+                    title: obj.title || (obj.description ? obj.description.slice(0, 30) : ""),
+                    description: obj.description || "",
+                    target: obj.target || {},
+                } as Objective;
+            }
         }
 
         return (
