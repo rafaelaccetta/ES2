@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameContext } from '../context/GameContext';
+import { EventBus } from '../game/EventBus';
 import ObjectiveDisplay from './ObjectiveDisplay';
 import TurnTransition from './TurnTransition';
+import TroopAllocation from './TroopAllocation';
 import './GameUI.css';
 
 const GameUI: React.FC = () => {
@@ -16,27 +18,41 @@ const GameUI: React.FC = () => {
     shouldShowAutomaticObjective,
     markObjectiveAsShown,
     showObjectiveConfirmation,
-    setShowObjectiveConfirmation
+    setShowObjectiveConfirmation,
+    firstRoundObjectiveShown
   } = useGameContext();
   
   const [showObjective, setShowObjective] = useState(false);
   const [showStartMenu, setShowStartMenu] = useState(!gameStarted);
   const [showTransition, setShowTransition] = useState(false);
+  const [showTroopAllocation, setShowTroopAllocation] = useState(false);
   const lastPlayerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const currentPlayer = getCurrentPlayer();
-    if (currentPlayer && gameStarted) {
-      if (lastPlayerRef.current !== currentPlayer.id && currentPhase === 'REFORÇAR') {
-        // Só mostra a transição automaticamente se deve mostrar o objetivo automaticamente
-        if (shouldShowAutomaticObjective()) {
+    if (currentPlayer && gameStarted && currentPhase === 'REFORÇAR') {
+      
+      const isNewPlayer = lastPlayerRef.current !== currentPlayer.id;
+      
+      if (isNewPlayer) {
+        const hasSeenObjective = firstRoundObjectiveShown.has(currentPlayer.id);
+        
+        console.log(`🔄 Mudança de jogador para ${currentPlayer.id} (${currentPlayer.color}):`, {
+          previousPlayer: lastPlayerRef.current,
+          hasSeenObjective,
+          willShowTransition: !hasSeenObjective
+        });
+        
+        if (!hasSeenObjective) {
+          console.log(`🎯 Iniciando transição para jogador ${currentPlayer.id}`);
           setShowTransition(true);
+          setShowObjective(false);
         }
-        setShowObjective(false);
       }
+      
       lastPlayerRef.current = currentPlayer.id;
     }
-  }, [getCurrentPlayer()?.id, currentPhase, gameStarted, shouldShowAutomaticObjective]);
+  }, [getCurrentPlayer()?.id, currentPhase, gameStarted, firstRoundObjectiveShown]);
 
   const handleStartGame = (playerCount: number) => {
     startGame(playerCount);
@@ -72,6 +88,46 @@ const GameUI: React.FC = () => {
 
   const handleCancelShowObjective = () => {
     setShowObjectiveConfirmation(false);
+  };
+
+  const handleShowTroopAllocation = () => {
+    setShowTroopAllocation(true);
+  };
+
+  const handleCloseTroopAllocation = () => {
+    setShowTroopAllocation(false);
+  };
+
+  const handleConfirmTroopAllocation = (allocations: Record<string, number>) => {
+    const currentPlayer = getCurrentPlayer();
+    
+    if (!currentPlayer) {
+      console.error('Jogador atual não encontrado');
+      return;
+    }
+
+    console.log('🪖 Aplicando alocações:', allocations);
+    
+    Object.entries(allocations).forEach(([territory, quantity]) => {
+      if (currentPlayer.territories.includes(territory)) {
+        currentPlayer.addArmies(territory, quantity);
+        console.log(`✅ Adicionado ${quantity} tropas ao território ${territory}`);
+      }
+    });
+
+    EventBus.emit('players-updated', {
+      playerCount: players.length,
+      players: players.map((player) => ({
+        id: player.id,
+        color: player.color,
+        territories: player.territories,
+        territoriesArmies: player.territoriesArmies,
+        armies: player.armies,
+      })),
+    });
+
+    console.log('🗺️ Mapa atualizado com novas tropas');
+    setShowTroopAllocation(false);
   };
 
   const getPlayerColor = (color: string) => {
@@ -122,11 +178,23 @@ const GameUI: React.FC = () => {
           
           <div className="game-info">
             <span>Rodada: {currentRound + 1}</span>
-            <span>Fase: {currentPhase}</span>
+            <span className={`phase-indicator ${currentPhase === 'REFORÇAR' ? 'reinforcement-phase' : ''}`}>
+              Fase: {currentPhase}
+              {currentPhase === 'REFORÇAR'}
+            </span>
           </div>
         </div>
 
         <div className="game-controls">
+          {currentPhase === 'REFORÇAR' && (
+            <button 
+              className="troop-allocation-btn"
+              onClick={handleShowTroopAllocation}
+              title="Alocar tropas de reforço nos seus territórios"
+            >
+              Alocar Tropas
+            </button>
+          )}
           <button 
             className="objective-btn"
             onClick={handleShowObjective}
@@ -173,6 +241,12 @@ const GameUI: React.FC = () => {
         onClose={handleCloseObjective}
         onConfirm={handleConfirmShowObjective}
         onCancel={handleCancelShowObjective}
+      />
+
+      <TroopAllocation
+        isVisible={showTroopAllocation}
+        onClose={handleCloseTroopAllocation}
+        onConfirm={handleConfirmTroopAllocation}
       />
     </>
   );

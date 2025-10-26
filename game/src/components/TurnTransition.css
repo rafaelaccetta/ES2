@@ -179,6 +179,24 @@
   font-weight: 500;
 }
 
+.skip-btn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #a59b7b 0%, #8b8263 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.skip-btn:hover {
+  background: linear-gradient(135deg, #8b8263 0%, #757049 100%);
+  transform: translateY(-1px);
+}
+
 /* Responsividade */
 @media (max-width: 640px) {
   .turn-transition-content {
