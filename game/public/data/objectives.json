@@ -3,128 +3,114 @@
     {
       "id": 1,
       "type": "conquest",
-      "title": "Conquistar América do Sul",
-      "description": "Conquistar e controlar todos os territórios da América do Sul",
-      "target": {
-        "continents": ["SA"]
-      }
+      "title": "Conquistar América do Sul (SA)",
+      "description": "Controlar todos os territórios da América do Sul e 20 territórios adicionais.",
+      "target": { "continents": ["SA"], "territory_count": 20 }
     },
     {
       "id": 2,
       "type": "conquest",
-      "title": "Conquistar América do Norte",
-      "description": "Conquistar e controlar todos os territórios da América do Norte",
-      "target": {
-        "continents": ["NA"]
-      }
+      "title": "Conquistar América do Norte (NA)",
+      "description": "Controlar todos os territórios da América do Norte e 15 territórios adicionais.",
+      "target": { "continents": ["NA"], "territory_count": 15 }
     },
     {
       "id": 3,
       "type": "conquest",
-      "title": "Conquistar Europa",
-      "description": "Conquistar e controlar todos os territórios da Europa",
-      "target": {
-        "continents": ["EU"]
-      }
+      "title": "Conquistar Europa (EU)",
+      "description": "Controlar todos os territórios da Europa e 17 territórios adicionais.",
+      "target": { "continents": ["EU"], "territory_count": 17 }
     },
     {
       "id": 4,
       "type": "conquest",
-      "title": "Conquistar África",
-      "description": "Conquistar e controlar todos os territórios da África",
-      "target": {
-        "continents": ["AF"]
-      }
+      "title": "Conquistar África (AF)",
+      "description": "Controlar todos os territórios da África e 18 territórios adicionais.",
+      "target": { "continents": ["AF"], "territory_count": 18 }
     },
     {
       "id": 5,
       "type": "conquest",
-      "title": "Conquistar Ásia",
-      "description": "Conquistar e controlar todos os territórios da Ásia",
-      "target": {
-        "continents": ["AS"]
-      }
+      "title": "Conquistar Ásia (AS)",
+      "description": "Controlar todos os territórios da Ásia e 12 territórios adicionais.",
+      "target": { "continents": ["AS"], "territory_count": 12 }
     },
     {
       "id": 6,
       "type": "conquest",
-      "title": "Conquistar Oceania",
-      "description": "Conquistar e controlar todos os territórios da Oceania",
-      "target": {
-        "continents": ["OC"]
-      }
+      "title": "Conquistar Oceania (OC)",
+      "description": "Controlar todos os territórios da Oceania e 20 territórios adicionais.",
+      "target": { "continents": ["OC"], "territory_count": 20 }
     },
     {
       "id": 7,
       "type": "territory_count",
       "title": "Conquistar 18 Territórios",
-      "description": "Conquistar e manter o controle de pelo menos 18 territórios",
-      "target": {
-        "territory_count": 18
-      }
+      "description": "Controlar pelo menos 18 territórios ao mesmo tempo.",
+      "target": { "territory_count": 18 }
     },
     {
       "id": 8,
-      "type": "territory_count", 
+      "type": "territory_count",
       "title": "Conquistar 24 Territórios",
-      "description": "Conquistar e manter o controle de pelo menos 24 territórios",
-      "target": {
-        "territory_count": 24
-      }
+      "description": "Controlar pelo menos 24 territórios ao mesmo tempo.",
+      "target": { "territory_count": 24 }
     },
     {
       "id": 9,
       "type": "elimination",
       "title": "Eliminar o Jogador Azul",
-      "description": "Eliminar completamente o jogador de cor azul do jogo",
-      "target": {
-        "eliminate_player": "azul"
-      }
+      "description": "Eliminar completamente o jogador de cor azul. Se o alvo for você ou já estiver eliminado, conquiste 24 territórios.",
+      "target": { "eliminate_player": "azul", "fallbackTerritories": 24 }
     },
     {
       "id": 10,
       "type": "elimination",
-      "title": "Eliminar o Jogador Vermelho", 
-      "description": "Eliminar completamente o jogador de cor vermelha do jogo",
-      "target": {
-        "eliminate_player": "vermelho"
-      }
+      "title": "Eliminar o Jogador Vermelho",
+      "description": "Eliminar completamente o jogador de cor vermelha. Se o alvo for você ou já estiver eliminado, conquiste 24 territórios.",
+      "target": { "eliminate_player": "vermelho", "fallbackTerritories": 24 }
     },
     {
       "id": 11,
       "type": "elimination",
       "title": "Eliminar o Jogador Verde",
-      "description": "Eliminar completamente o jogador de cor verde do jogo", 
-      "target": {
-        "eliminate_player": "verde"
-      }
+      "description": "Eliminar completamente o jogador de cor verde. Se o alvo for você ou já estiver eliminado, conquiste 24 territórios.",
+      "target": { "eliminate_player": "verde", "fallbackTerritories": 24 }
     },
     {
       "id": 12,
       "type": "elimination",
       "title": "Eliminar o Jogador Branco",
-      "description": "Eliminar completamente o jogador de cor branca do jogo",
-      "target": {
-        "eliminate_player": "branco"
-      }
+      "description": "Eliminar completamente o jogador de cor branca. Se o alvo for você ou já estiver eliminado, conquiste 24 territórios.",
+      "target": { "eliminate_player": "branco", "fallbackTerritories": 24 }
     },
     {
       "id": 13,
       "type": "mixed",
-      "title": "Conquistar Europa e América do Sul", 
-      "description": "Conquistar e controlar todos os territórios da Europa e América do Sul",
-      "target": {
-        "continents": ["EU", "SA"]
-      }
+      "title": "Conquistar Europa (EU) e América do Sul (SA)",
+      "description": "Controlar todos os territórios da Europa e da América do Sul e controlar outros 13 territórios adicionais.",
+      "target": { "continents": ["EU", "SA"], "territory_count": 13 }
     },
     {
       "id": 14,
       "type": "mixed",
-      "title": "Conquistar América do Norte e África",
-      "description": "Conquistar e controlar todos os territórios da América do Norte e África",
-      "target": {
-        "continents": ["NA", "AF"]
-      }
+      "title": "Conquistar América do Norte (NA) e África (AF)",
+      "description": "Controlar todos os territórios da América do Norte e África e controlar outros 9 territórios adicionais.",
+      "target": { "continents": ["NA", "AF"], "territory_count": 9 }
+    },
+    {
+      "id": 15,
+      "type": "mixed",
+      "title": "Conquistar Ásia (AS) e Oceania (OC)",
+      "description": "Controlar todos os territórios da Ásia e Oceania e controlar outros 8 territórios adicionais.",
+      "target": { "continents": ["AS", "OC"], "territory_count": 8 }
+    },
+    {
+      "id": 16,
+      "type": "mixed",
+      "title": "Conquistar Europa (EU) e Oceania (OC)",
+      "description": "Controlar todos os territórios da Europa e Oceania e controlar outros 13 territórios adicionais.",
+      "target": { "continents": ["EU", "OC"], "territory_count": 13 }
     }
   ]
 }

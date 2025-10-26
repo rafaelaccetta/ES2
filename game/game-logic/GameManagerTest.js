@@ -13,13 +13,13 @@ const players = [
 
 const objetivosJson = objectivesData.objectives;
 
-// Exemplo de objetivos usando as classes definidas em Objective.js
-const objetivos = [
-    new EliminatePlayerObjective(1, 22), // Eliminar o jogador com ID 1 ou conquistar 22 territórios
-    new DominateContinentObjective(["África", "Oceania"], 10), // Controlar África e Oceania + 10 territórios
-    new TerritoryControlObjective(24), // Conquistar 24 territórios
-    new DominateContinentObjective(["América do Norte", "Europa"], 8), // Controlar América do Norte e Europa + 8 territórios
-];
+import { createObjectiveFromJson } from "./Objective.js";
+
+const objetivos = objetivosJson.map((obj) => {
+    const instance = createObjectiveFromJson(obj);
+    if (!instance) throw new Error("Tipo de objetivo desconhecido: " + obj.type);
+    return instance;
+});
 
 const manager = new GameManager(players);
 manager.distributeObjectives(objetivos);
