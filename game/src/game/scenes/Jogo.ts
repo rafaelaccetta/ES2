@@ -13,28 +13,35 @@ export class Jogo extends Scene {
     create() {
         this.cameras.main.setBackgroundColor("#ffffff");
 
-        let mapContainer = document.getElementById("map-container");
-        if (!mapContainer) {
-            mapContainer = document.createElement("div");
-            mapContainer.id = "map-container";
-            mapContainer.style.position = "absolute";
-            mapContainer.style.top = "50%";
-            mapContainer.style.left = "50%";
-            mapContainer.style.transform = "translate(-50%, -50%)";
-            mapContainer.style.width = "1100px";
-            mapContainer.style.height = "500px";
-            mapContainer.style.display = "flex";
-            mapContainer.style.justifyContent = "center";
-            mapContainer.style.alignItems = "center";
-            mapContainer.style.zIndex = "10";
-            document.body.appendChild(mapContainer);
+        const existingMapContainer = document.getElementById("map-container");
+        if (existingMapContainer) {
+            existingMapContainer.remove();
         }
+
+        const mapContainer = document.createElement("div");
+        mapContainer.id = "map-container";
+        mapContainer.style.position = "absolute";
+        mapContainer.style.top = "50%";
+        mapContainer.style.left = "50%";
+        mapContainer.style.transform = "translate(-50%, -50%)";
+        mapContainer.style.width = "1100px";
+        mapContainer.style.height = "500px";
+        mapContainer.style.display = "flex";
+        mapContainer.style.justifyContent = "center";
+        mapContainer.style.alignItems = "center";
+        mapContainer.style.zIndex = "1";
+        document.body.appendChild(mapContainer);
 
         this.add
             .image(150, 630, "botaoX")
             .setInteractive({ useHandCursor: true })
             .on("pointerdown", () => {
-                // Emite evento para esconder o GameUI e voltar ao menu
+                // Limpar o mapa antes de voltar ao menu
+                const mapContainer = document.getElementById("map-container");
+                if (mapContainer) {
+                    mapContainer.remove();
+                }
+                
                 EventBus.emit("back-to-menu");
                 this.scene.start("MainMenu");
             })
@@ -43,12 +50,10 @@ export class Jogo extends Scene {
         const root = ReactDOM.createRoot(mapContainer);
 
         const AppOverlay: React.FC = () => {
-            // Usar estado para controlar o número de jogadores e seus territórios
             const [playerCount, setPlayerCount] = React.useState<number>(0);
             const [playersData, setPlayersData] = React.useState<any[]>([]);
 
             React.useEffect(() => {
-                // Escutar evento do EventBus para saber quantos jogadores há e seus territórios
                 const handlePlayersUpdate = (data: {
                     playerCount: number;
                     players?: any[];
@@ -56,15 +61,12 @@ export class Jogo extends Scene {
                 }) => {
                     console.log('Jogo: players-updated received', data);
 
-                    // Also print a JSON string so collapsed objects are visible in logs
                     try {
                         console.log('Jogo: players-updated (json)');
                         console.log(JSON.stringify(data, null, 2));
                     } catch (e) {
-                        // ignore
                     }
 
-                    // If the emitter provided lastMove info, try to locate the owner and print the exact army value
                     if (data.lastMove && data.lastMove.target) {
                         const targetName = data.lastMove.target;
                         console.log('Jogo: lastMove info:', data.lastMove);
@@ -78,7 +80,6 @@ export class Jogo extends Scene {
                             console.log(`Jogo: owner found at index ${ownerIndex} (player${ownerIndex + 1}) for territory '${targetName}'. armies:`, armiesForTarget);
                         } else {
                             console.log('Jogo: no owner found for target territory (string match). Will also try normalized ids.');
-                            // Try normalizing names as MapSVG does
                             try {
                                 const normalize = (name: string) =>
                                     name
@@ -89,10 +90,8 @@ export class Jogo extends Scene {
                                         .replace(/[^a-z0-9]/g, '');
                                 const normTarget = normalize(targetName);
                                 console.log('Jogo: normalized target:', normTarget);
-                                // Inspect players' territoriesArmies keys
                                 playersArr.forEach((p: any, idx: number) => {
                                     const armies = p.territoriesArmies || {};
-                                    // find any key that normalizes to the same id
                                     const matchingKey = Object.keys(armies).find((k) => normalize(k) === normTarget);
                                     if (matchingKey) {
                                         console.log(`Jogo: matched owner at index ${idx} via normalized key '${matchingKey}' -> armies:`, armies[matchingKey]);
@@ -131,7 +130,6 @@ export class Jogo extends Scene {
                 "#16a34a",
                 "#b7c0cd",
             ];
-            // converte nomes de cores vindos do GameManager (azul, vermelho, etc.) para hex
             const colorByName: Record<string, string> = React.useMemo(
                 () => ({
                     azul: "#2563eb",
@@ -156,7 +154,6 @@ export class Jogo extends Scene {
 
             const [activePlayer, setActivePlayer] = React.useState<string>("");
 
-            // normaliza nomes dos territórios (acentos, espaços) para bater com IDs do SVG
             const normalizeId = React.useCallback((name: string) => {
                 return name
                     .normalize("NFD")
@@ -166,7 +163,6 @@ export class Jogo extends Scene {
                     .replace(/[^a-z0-9]/g, "");
             }, []);
 
-            // Criar mapa de owners baseado nos territórios distribuídos (normalizados para IDs do SVG)
             const owners = React.useMemo(() => {
                 const ownersMap: Record<string, string> = {};
                 playersData.forEach((player, index) => {
@@ -180,7 +176,6 @@ export class Jogo extends Scene {
                 return ownersMap;
             }, [playersData, normalizeId]);
 
-            // Territórios selecionados baseados no jogador ativo
             const selectedTerritories = React.useMemo(() => {
                 if (!activePlayer || !playersData.length) return [];
 
@@ -193,10 +188,8 @@ export class Jogo extends Scene {
 
             const territoriesByPlayer = React.useMemo(() => {
                 const map: Record<string, string[]> = {};
-                // Inicializar com arrays vazios
                 for (const pid of playerIds) map[pid] = [];
 
-                // Usar territórios reais dos jogadores
                 playersData.forEach((player, index) => {
                     if (player && player.territories) {
                         const playerId = `player${index + 1}`;
@@ -207,7 +200,6 @@ export class Jogo extends Scene {
                 return map;
             }, [playerIds, playersData]);
 
-            // Mapa de tropas por território
             const troopCounts = React.useMemo(() => {
                 const counts: Record<string, number> = {};
                 playersData.forEach((player) => {
@@ -227,12 +219,10 @@ export class Jogo extends Scene {
                 React.createElement(MapSVG, {
                     owners,
                     highlightOwner: activePlayer,
-                    allowEditOwner: false, // Desabilitar edição já que territórios são pré-distribuídos
                     selectedTerritories,
                     ownerColors: colors,
                     troopCounts,
                 }),
-                // Renderiza badges na direita para mostrar territórios por jogador (remover depois)
                 ...playerIds.map((pid, index) =>
                     React.createElement(PlayerBadge, {
                         key: pid,
@@ -252,7 +242,10 @@ export class Jogo extends Scene {
 
         this.events.once("shutdown", () => {
             root.unmount();
-            mapContainer!.remove();
+            const existingMapContainer = document.getElementById("map-container");
+            if (existingMapContainer) {
+                existingMapContainer.remove();
+            }
         });
 
         this.input.once("pointerdown", () => {
