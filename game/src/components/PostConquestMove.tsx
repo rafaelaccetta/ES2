@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { EventBus } from '../game/EventBus';
 import { useGameContext } from '../context/GameContext';
 import './TroopAllocation.css';
+import './AttackMenu.css';
 
 interface Payload {
   source: string;
@@ -18,15 +19,14 @@ interface Payload {
 const PostConquestMove: React.FC = () => {
   const [visible, setVisible] = useState(false);
   const [payload, setPayload] = useState<Payload | null>(null);
-  const [moveCount, setMoveCount] = useState(1);
+  const [moveCount, setMoveCount] = useState('1');
 
   useEffect(() => {
     const handler = (data: any) => {
       const p = data as Payload;
       setPayload(p);
-      // default move: survivors or 1, bounded by maxCanMove
-      const defaultMove = Math.min(Math.max(1, p.survivors), Math.max(1, p.maxCanMove));
-      setMoveCount(Math.min(defaultMove, p.maxCanMove));
+      const defaultMove = Math.min(1, Math.max(1, p.maxCanMove));
+      setMoveCount(String(defaultMove));
       setVisible(true);
     };
 
@@ -36,6 +36,19 @@ const PostConquestMove: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!payload) return;
+    
+    const currentMove = parseInt(moveCount) || 1;
+    const maxPossible = Math.min(payload.troopsRequested, payload.maxCanMove);
+    
+    if (currentMove > maxPossible && maxPossible > 0) {
+      setMoveCount(String(maxPossible));
+    } else if (maxPossible === 0) {
+      setMoveCount('1'); 
+    }
+  }, [payload, moveCount]);
+
   if (!visible || !payload) return null;
 
   const { source, target, survivors, sourceAfterLosses, maxCanMove } = payload;
@@ -44,8 +57,7 @@ const PostConquestMove: React.FC = () => {
 
   const handleConfirm = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    const moved = Math.max(0, Math.min(Number(moveCount), maxCanMove));
-    // Use GameContext method directly so changes and players-updated emission happen the same way as TroopAllocation
+    const moved = Math.max(0, Math.min(parseInt(moveCount) || 0, maxCanMove));
     applyPostConquestMove(source, target, moved);
     setVisible(false);
     setPayload(null);
@@ -53,7 +65,6 @@ const PostConquestMove: React.FC = () => {
 
   const handleCancel = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    // fallback: move 1 if possible, else 0
     const fallback = maxCanMove > 0 ? 1 : 0;
     applyPostConquestMove(source, target, fallback);
     setVisible(false);
@@ -64,27 +75,44 @@ const PostConquestMove: React.FC = () => {
     <div className="troop-allocation-overlay" onClick={handleCancel}>
       <div className="troop-allocation-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="troop-allocation-header">
-          <h3>Território Conquistado</h3>
+          <h3>Território Conquistado!</h3>
           <button className="close-btn" onClick={handleCancel} aria-label="Fechar">&times;</button>
         </div>
         <div className="troop-allocation-content">
           <div className="selected-territory-panel">
             <p>Quantas tropas mover de <strong>{source}</strong> para <strong>{target}</strong>?</p>
-            <div>Sobreviventes do ataque: <strong>{survivors}</strong></div>
-            <div>Exércitos no território após perdas: <strong>{sourceAfterLosses}</strong></div>
-            <div>Máximo possível de mover (deixar 1 atrás): <strong>{maxCanMove}</strong></div>
+            <div>Exércitos no território atacante: <strong>{survivors}</strong></div>
+            <div>Exércitos no território conquistado: <strong>{sourceAfterLosses}</strong></div>
           </div>
 
-          <div className="troop-allocation-input">
-            <input
-              type="number"
-              min={0}
-              max={maxCanMove}
-              value={moveCount}
-              onChange={(e) => setMoveCount(Number(e.target.value))}
-              className="quantity-input"
-            />
-            <button className="allocate-btn" onClick={() => setMoveCount(maxCanMove)}>Máx</button>
+          <div className="troop-selection">
+            <h5>Quantas tropas mover:</h5>
+            <div className="troop-buttons">
+              <button
+                className={`troop-btn ${moveCount === '1' ? 'selected' : ''}`}
+                onClick={() => setMoveCount('1')}
+                disabled={payload.troopsRequested < 1 || maxCanMove < 1}
+                title={payload.troopsRequested < 1 || maxCanMove < 1 ? 'Não é possível mover 1 tropa' : 'Mover 1 tropa'}
+              >
+                1
+              </button>
+              <button
+                className={`troop-btn ${moveCount === '2' ? 'selected' : ''}`}
+                onClick={() => setMoveCount('2')}
+                disabled={payload.troopsRequested < 2 || maxCanMove < 2}
+                title={payload.troopsRequested < 2 || maxCanMove < 2 ? 'Não é possível mover 2 tropas' : 'Mover 2 tropas'}
+              >
+                2
+              </button>
+              <button
+                className={`troop-btn ${moveCount === '3' ? 'selected' : ''}`}
+                onClick={() => setMoveCount('3')}
+                disabled={payload.troopsRequested < 3 || maxCanMove < 3}
+                title={payload.troopsRequested < 3 || maxCanMove < 3 ? 'Não é possível mover 3 tropas' : 'Mover 3 tropas'}
+              >
+                3
+              </button>
+            </div>
           </div>
 
           <div className="troop-allocation-actions">
