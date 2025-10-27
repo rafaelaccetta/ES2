@@ -20,6 +20,7 @@ const AttackMenu: React.FC<AttackMenuProps> = ({ isVisible, onClose }) => {
     if (!isVisible) {
       setSelectedSource('');
       setSelectedTarget('');
+      setAttackQuantity('1');
     }
   }, [isVisible]);
 
@@ -29,22 +30,16 @@ const AttackMenu: React.FC<AttackMenuProps> = ({ isVisible, onClose }) => {
 
   const neighborsForSource = useMemo(() => {
     if (!selectedSource || !gameManager) return [];
-    // gameManager.gameMap.territories is a Graph with getNeighbors
     try {
       const neighbors = gameManager.gameMap.territories.getNeighbors(selectedSource) || [];
-      // neighbors are objects like { node: 'territoryName' }
-      // Filter only enemy-owned neighbors
       const enemyNeighbors = neighbors
         .map((n: any) => n.node)
         .filter((name: string) => {
-          // check owner
           const owner = (() => {
-            // gameManager.players contains Player instances
             const p = gameManager.players.find((pl: any) => pl.territories.includes(name));
             return p ? p.id : null;
           })();
-          // owner id not equal to current player's id
-          if (owner === null) return true; // treat as attackable if no owner (shouldn't happen)
+          if (owner === null) return true; 
           return owner !== currentPlayer?.id;
         });
       return enemyNeighbors;
@@ -57,18 +52,35 @@ const AttackMenu: React.FC<AttackMenuProps> = ({ isVisible, onClose }) => {
   const maxAttackable = useMemo(() => {
     if (!selectedSource || !currentPlayer) return 0;
     const armies = currentPlayer.territoriesArmies?.[selectedSource] ?? 0;
-    // attacker must leave at least 1 army behind
     const possible = Math.max(0, armies - 1);
     return Math.min(3, possible);
   }, [selectedSource, currentPlayer]);
+
+  useEffect(() => {
+    const currentQty = parseInt(attackQuantity) || 1;
+    if (maxAttackable === 0) {
+      setAttackQuantity('1'); 
+    } else if (currentQty > maxAttackable) {
+      setAttackQuantity(String(maxAttackable));
+    }
+  }, [maxAttackable, attackQuantity]);
+
+  const getTerritoryTroops = (territory: string): number => {
+    if (!gameManager) return 0;
+    
+    for (const player of gameManager.players) {
+      if (player.territories.includes(territory)) {
+        return player.territoriesArmies?.[territory] ?? 0;
+      }
+    }
+    return 0;
+  };
 
   const handleAttack = () => {
     if (!selectedSource || !selectedTarget) return;
     const qty = parseInt(attackQuantity) || 0;
     if (qty <= 0 || qty > maxAttackable) return;
-    // Emit event via EventBus so GameManager / logic can handle it
     EventBus.emit('attack-request', { source: selectedSource, target: selectedTarget, troops: qty });
-    // Optionally close menu or keep open depending on game flow
     onClose();
   };
 
@@ -132,7 +144,7 @@ const AttackMenu: React.FC<AttackMenuProps> = ({ isVisible, onClose }) => {
                 <div className="neighbors-list">
                   {selectedSource ? (
                     neighborsForSource.length === 0 ? (
-                      <div className="no-neighbors">Nenhum vizinho atacável</div>
+                      <div className="no-neighbors" >Nenhum vizinho atacável</div>
                     ) : (
                       neighborsForSource.map((n: string) => (
                         <button
@@ -140,45 +152,46 @@ const AttackMenu: React.FC<AttackMenuProps> = ({ isVisible, onClose }) => {
                           className={`territory-btn ${selectedTarget === n ? 'selected' : ''}`}
                           onClick={() => setSelectedTarget(n)}
                         >
-                          {n}
+                          {n} ({getTerritoryTroops(n)})
                         </button>
                       ))
                     )
                   ) : (
-                    <div className="no-neighbors">Selecione um território de origem</div>
+                    <div className="no-neighbors" style={{ marginBottom: '10px' }}>Selecione um território de origem</div>
                   )}
                 </div>
 
                 <div className="selected-territory-panel">
                   <h4>{selectedSource ? `Origem: ${selectedSource}` : 'Selecione origem'}</h4>
-                  <p className="current-troops">Tropas no território: {selectedSource ? (currentPlayer.territoriesArmies?.[selectedSource] ?? 0) : '-'}</p>
-                  <div className="allocation-input">
-                    <div className="input-group">
-                      <input
-                        type="number"
-                        min={1}
-                        max={maxAttackable}
-                        placeholder="Quantidade"
-                        value={attackQuantity}
-                        onChange={(e) => setAttackQuantity(e.target.value)}
-                        className="quantity-input"
-                        disabled={!selectedSource || maxAttackable <= 0}
-                      />
+                  <div className="troop-selection">
+                    <h5>Tropas para atacar:</h5>
+                    <div className="troop-buttons">
                       <button
-                        className="allocate-btn"
-                        onClick={() => setAttackQuantity(String(Math.max(1, Math.min(maxAttackable, parseInt(attackQuantity || '0') || 1))))}
-                        disabled={!selectedSource || maxAttackable <= 0}
+                        className={`troop-btn ${attackQuantity === '1' ? 'selected' : ''}`}
+                        onClick={() => setAttackQuantity('1')}
+                        disabled={maxAttackable < 1}
+                        title={maxAttackable < 1 ? 'Não há tropas suficientes' : 'Atacar com 1 tropa'}
                       >
-                        Aplicar
+                        1
+                      </button>
+                      <button
+                        className={`troop-btn ${attackQuantity === '2' ? 'selected' : ''}`}
+                        onClick={() => setAttackQuantity('2')}
+                        disabled={maxAttackable < 2}
+                        title={maxAttackable < 2 ? 'Não há tropas suficientes' : 'Atacar com 2 tropas'}
+                      >
+                        2
+                      </button>
+                      <button
+                        className={`troop-btn ${attackQuantity === '3' ? 'selected' : ''}`}
+                        onClick={() => setAttackQuantity('3')}
+                        disabled={maxAttackable < 3}
+                        title={maxAttackable < 3 ? 'Não há tropas suficientes' : 'Atacar com 3 tropas'}
+                      >
+                        3
                       </button>
                     </div>
-                    <button
-                      className="allocate-all-btn"
-                      onClick={() => setAttackQuantity(String(maxAttackable))}
-                      disabled={!selectedSource || maxAttackable <= 0}
-                    >
-                      Máx ({maxAttackable})
-                    </button>
+                    
                   </div>
                 </div>
               </div>
@@ -188,7 +201,7 @@ const AttackMenu: React.FC<AttackMenuProps> = ({ isVisible, onClose }) => {
           <div className="allocation-actions">
             <button className="cancel-btn" onClick={onClose}>Cancelar</button>
             <button className="confirm-btn" onClick={handleAttack} disabled={!selectedSource || !selectedTarget || !(parseInt(attackQuantity) > 0 && parseInt(attackQuantity) <= maxAttackable)}>
-              Atacar ({attackQuantity})
+              Atacar
             </button>
           </div>
         </div>
