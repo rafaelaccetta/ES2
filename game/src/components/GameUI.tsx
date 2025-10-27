@@ -5,12 +5,13 @@ import ObjectiveDisplay from './ObjectiveDisplay';
 import TurnTransition from './TurnTransition';
 import TroopAllocation from './TroopAllocation';
 import AttackMenu from './AttackMenu';
+import AttackResult from './AttackResult';
 import PostConquestMove from './PostConquestMove';
 import './GameUI.css';
 
 const GameUI: React.FC = () => {
-  const { 
-    gameStarted, 
+  const {
+    gameStarted,
     getCurrentPlayer, 
     currentPhase, 
     currentRound, 
@@ -21,14 +22,16 @@ const GameUI: React.FC = () => {
     markObjectiveAsShown,
     showObjectiveConfirmation,
     setShowObjectiveConfirmation,
-    firstRoundObjectiveShown
-  } = useGameContext();
-  
-  const [showObjective, setShowObjective] = useState(false);
+    firstRoundObjectiveShown,
+    hasTroopsAllocatedThisPhase,
+    markTroopsAllocated
+  } = useGameContext();  const [showObjective, setShowObjective] = useState(false);
   const [showStartMenu, setShowStartMenu] = useState(!gameStarted);
   const [showTransition, setShowTransition] = useState(false);
   const [showTroopAllocation, setShowTroopAllocation] = useState(false);
   const [showAttackMenu, setShowAttackMenu] = useState(false);
+  const [showAttackResult, setShowAttackResult] = useState(false);
+  const [battleResult, setBattleResult] = useState<any>(null);
   const lastPlayerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -64,12 +67,10 @@ const GameUI: React.FC = () => {
   };
 
   const handleShowObjective = () => {
-    // Se estamos na primeira rodada e o jogador ainda não viu o objetivo, mostra direto
     if (shouldShowAutomaticObjective()) {
       setShowObjective(true);
       markObjectiveAsShown();
     } else {
-      // Caso contrário, mostra o modal de confirmação
       setShowObjectiveConfirmation(true);
     }
   };
@@ -94,6 +95,10 @@ const GameUI: React.FC = () => {
   };
 
   const handleShowTroopAllocation = () => {
+    if (hasTroopsAllocatedThisPhase()) {
+      console.warn('[GameUI] Troops already allocated this phase - cannot open allocation window');
+      return;
+    }
     setShowTroopAllocation(true);
   };
 
@@ -105,43 +110,104 @@ const GameUI: React.FC = () => {
     setShowAttackMenu(false);
   };
 
+  const handleCloseAttackResult = () => {
+    setShowAttackResult(false);
+    setBattleResult(null);
+  };
+
+  useEffect(() => {
+    console.log('🎧 GameUI: Configurando listener para attack-result');
+    
+    const handleAttackResult = (result: any) => {
+      console.log('🎯 GameUI: Resultado do combate recebido:', {
+        conquered: result.conquered,
+        source: result.source,
+        target: result.target,
+        attackerLoss: result.attackerLoss,
+        defenderLoss: result.defenderLoss,
+        attackerDice: result.attackerDice,
+        defenderDice: result.defenderDice
+      });
+      
+      if (result.conquered) {
+        console.log('� GameUI: VITÓRIA - território conquistado');
+      } else {
+        console.log('🛡️ GameUI: DERROTA - ataque falhou');
+      }
+      
+      const attacker = players?.find(p => p.territories.includes(result.source));
+      const defender = players?.find(p => p.territories.includes(result.target));
+      
+      const battleData = {
+        source: result.source,
+        target: result.target,
+        troopsUsed: result.troopsRequested,
+        attackerDice: result.attackerDice,
+        defenderDice: result.defenderDice,
+        attackerLoss: result.attackerLoss,
+        defenderLoss: result.defenderLoss,
+        conquered: result.conquered,
+        attackerColor: attacker?.color,
+        defenderColor: defender?.color
+      };
+      
+      console.log('📝 GameUI: Configurando battleResult:', battleData);
+      setBattleResult(battleData);
+      
+      console.log('� GameUI: Configurando battleResult e exibindo modal');
+      setBattleResult(battleData);
+      setShowAttackResult(true);
+      
+      console.log('🎯 GameUI: Modal de resultado configurado para mostrar:', {
+        conquered: battleData.conquered,
+        isVisible: true
+      });
+    };
+
+    EventBus.on('attack-result', handleAttackResult);
+    console.log('🎧 GameUI: Listener configurado com sucesso');
+    
+    const handleAttackRequest = (data: any) => {
+      console.log('🎯 GameUI: Interceptou attack-request (debug):', data);
+    };
+    EventBus.on('attack-request', handleAttackRequest);
+
+    return () => {
+      console.log('🔇 GameUI: Removendo listeners');
+      EventBus.off('attack-result', handleAttackResult);
+      EventBus.off('attack-request', handleAttackRequest);
+    };
+  }, []);
+
   const handleCloseTroopAllocation = () => {
     setShowTroopAllocation(false);
   };
 
-  const handleConfirmTroopAllocation = (allocations: Record<string, number>) => {
-    const currentPlayer = getCurrentPlayer();
-    
-    if (!currentPlayer) {
-      console.error('Jogador atual não encontrado');
-      return;
-    }
-
-    console.log('🪖 Aplicando alocações:', allocations);
-    
-    Object.entries(allocations).forEach(([territory, quantity]) => {
-      if (currentPlayer.territories.includes(territory)) {
-        currentPlayer.addArmies(territory, quantity);
-        console.log(`✅ Adicionado ${quantity} tropas ao território ${territory}`);
-      }
-    });
-
-    EventBus.emit('players-updated', {
-      playerCount: players.length,
-      players: players.map((player) => ({
-        id: player.id,
-        color: player.color,
-        territories: player.territories,
-        territoriesArmies: player.territoriesArmies,
-        armies: player.armies,
-      })),
-    });
-
-    console.log('🗺️ Mapa atualizado com novas tropas');
-    setShowTroopAllocation(false);
-  };
-
-  const getPlayerColor = (color: string) => {
+    const handleConfirmTroopAllocation = (allocations: { [territoryId: string]: number }) => {
+        console.log('[GameUI] Confirming troop allocation:', allocations);
+        
+        if (hasTroopsAllocatedThisPhase()) {
+            console.warn('[GameUI] Troops already allocated this phase - ignoring duplicate allocation');
+            setShowTroopAllocation(false);
+            return;
+        }
+        
+        const currentPlayer = getCurrentPlayer();
+        if (currentPlayer) {
+            Object.entries(allocations).forEach(([territoryId, troops]) => {
+                if (troops > 0) {
+                    currentPlayer.addArmies(territoryId, troops);
+                    console.log(`[GameUI] Allocated ${troops} troops to territory ${territoryId}`);
+                }
+            });
+        }
+        
+        markTroopsAllocated();
+        
+        setShowTroopAllocation(false);
+        
+        console.log('[GameUI] Allocation confirmed, phase marked, and window closed');
+    };  const getPlayerColor = (color: string) => {
     const colorMap: Record<string, string> = {
       azul: '#2563eb',      
       vermelho: '#dc2626',  
@@ -199,11 +265,15 @@ const GameUI: React.FC = () => {
         <div className="game-controls">
           {currentPhase === 'REFORÇAR' && (
             <button 
-              className="troop-allocation-btn"
+              className={`troop-allocation-btn ${hasTroopsAllocatedThisPhase() ? 'allocation-completed' : ''}`}
               onClick={handleShowTroopAllocation}
-              title="Alocar tropas de reforço nos seus territórios"
+              title={hasTroopsAllocatedThisPhase() 
+                ? "Tropas já foram alocadas nesta fase" 
+                : "Alocar tropas de reforço nos seus territórios"
+              }
+              disabled={hasTroopsAllocatedThisPhase()}
             >
-              Alocar Tropas
+              {hasTroopsAllocatedThisPhase() ? 'Tropas Alocadas' : 'Alocar Tropas'}
             </button>
           )}
 
@@ -274,6 +344,14 @@ const GameUI: React.FC = () => {
         isVisible={showAttackMenu}
         onClose={handleCloseAttackMenu}
       />
+      
+      <AttackResult
+        isVisible={showAttackResult}
+        result={battleResult}
+        onClose={handleCloseAttackResult}
+      />
+      
+      
       <PostConquestMove />
     </>
   );
