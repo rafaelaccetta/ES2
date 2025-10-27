@@ -23,6 +23,30 @@ const GameUI: React.FC = () => {
     setShowObjectiveConfirmation,
     firstRoundObjectiveShown
   } = useGameContext();
+
+  // Estado para rastrear se tropas já foram alocadas nesta fase
+  const [troopsAllocatedThisPhase, setTroopsAllocatedThisPhase] = useState(false);
+
+  // Função para calcular tropas disponíveis para alocar
+  const getAvailableTroopsToAllocate = () => {
+    const currentPlayer = getCurrentPlayer();
+    if (!currentPlayer || troopsAllocatedThisPhase) return 0;
+    
+    // Calcular tropas base (mesmo cálculo do TroopAllocation)
+    let territoryBonus = Math.max(3, Math.floor(currentPlayer.territories.length / 2));
+    const roundBonus = currentPlayer.id % 3;
+    let continentBonus = 0;
+    if (currentPlayer.territories.length > 10) {
+      continentBonus = 2;
+    }
+    let cardBonus = 0;
+    if (currentPlayer.id === 0) {
+      cardBonus = 4;
+    }
+    
+    const totalTroops = Math.min(territoryBonus + roundBonus + continentBonus + cardBonus, 20);
+    return totalTroops;
+  };
   
   const [showObjective, setShowObjective] = useState(false);
   const [showStartMenu, setShowStartMenu] = useState(!gameStarted);
@@ -138,8 +162,15 @@ const GameUI: React.FC = () => {
     });
 
     console.log('🗺️ Mapa atualizado com novas tropas');
+    setTroopsAllocatedThisPhase(true); // Marcar que tropas foram alocadas
     setShowTroopAllocation(false);
   };
+
+  // Reset do estado quando muda de jogador ou fase
+  useEffect(() => {
+    // Reset quando muda jogador, rodada ou fase
+    setTroopsAllocatedThisPhase(false);
+  }, [getCurrentPlayer()?.id, currentRound, currentPhase]);
 
   const getPlayerColor = (color: string) => {
     const colorMap: Record<string, string> = {
@@ -199,11 +230,14 @@ const GameUI: React.FC = () => {
         <div className="game-controls">
           {currentPhase === 'REFORÇAR' && (
             <button 
-              className="troop-allocation-btn"
-              onClick={handleShowTroopAllocation}
-              title="Alocar tropas de reforço nos seus territórios"
+              className={`troop-allocation-btn ${getAvailableTroopsToAllocate() === 0 ? 'disabled' : ''}`}
+              onClick={getAvailableTroopsToAllocate() > 0 ? handleShowTroopAllocation : undefined}
+              disabled={getAvailableTroopsToAllocate() === 0}
+              title={getAvailableTroopsToAllocate() > 0 
+                ? "Alocar tropas de reforço nos seus territórios" 
+                : "Tropas já foram alocadas nesta fase"}
             >
-              Alocar Tropas
+              {getAvailableTroopsToAllocate() > 0 ? 'Alocar Tropas' : 'Tropas Alocadas'}
             </button>
           )}
 
