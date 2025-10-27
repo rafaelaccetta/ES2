@@ -143,9 +143,9 @@ const AttackMenu: React.FC<AttackMenuProps> = ({ isVisible, onClose }) => {
                           className={`territory-btn ${selectedSource === territory ? 'selected' : ''} ${validatedAttack ? 'disabled' : ''}`}
                           onClick={() => {
                             if (!validatedAttack) {
-                            setSelectedSource(territory);
-                            setSelectedTarget('');
-                            setAttackQuantity('1');
+                              setSelectedSource(territory);
+                              setSelectedTarget('');
+                              setAttackQuantity('1');
                             }
                           }}
                           disabled={!!validatedAttack}
@@ -172,8 +172,8 @@ const AttackMenu: React.FC<AttackMenuProps> = ({ isVisible, onClose }) => {
                         })();
                         
                         return (
-                        <button
-                          key={n}
+                          <button
+                            key={n}
                             className={`territory-btn ${selectedTarget === n ? 'selected' : ''} ${validatedAttack ? 'disabled' : ''}`}
                             onClick={() => {
                               if (!validatedAttack) {
