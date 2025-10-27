@@ -6,7 +6,7 @@ import TurnTransition from './TurnTransition';
 import TroopAllocation from './TroopAllocation';
 import AttackMenu from './AttackMenu';
 import PostConquestMove from './PostConquestMove';
-import AttackResult2 from './AttackResult2';
+import AttackResult from './AttackResult';
 import './GameUI.css';
 
 const GameUI: React.FC = () => {
@@ -338,7 +338,7 @@ const GameUI: React.FC = () => {
         onClose={handleCloseAttackMenu}
       />
       
-      <AttackResult2
+      <AttackResult
         isVisible={showAttackResult}
         result={attackResultData}
         onClose={handleCloseAttackResult}

@@ -29,6 +29,7 @@
   align-items: center;
   padding: 24px 32px;
   border-bottom: 1px solid #a59b7b;
+  font-size: large;
 }
 
 .troop-allocation-header h2 {
@@ -36,6 +37,10 @@
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+.troop-allocation-header h3 {
+  margin: auto;
 }
 
 .close-btn {
@@ -61,6 +66,7 @@
 .troop-allocation-content {
   padding: 32px;
   color: white;
+  margin: auto;
 }
 
 .troop-info {
@@ -140,6 +146,10 @@
   padding: 20px;
   border: 1px solid #a59b7b;
   margin-bottom: 24px;
+}
+
+div.selected-territory-panel p {
+  margin-top: -4px;
 }
 
 .allocation-input {
@@ -240,6 +250,7 @@
 .confirm-btn {
   background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
   color: white;
+  margin-left: 15px;
 }
 
 .confirm-btn:hover:not(:disabled) {
@@ -249,6 +260,74 @@
 .confirm-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Estilos para seleção de tropas */
+.troop-selection {
+  margin-top: 16px;
+}
+
+.troop-selection h5 {
+  color: #a59b7b;
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.troop-buttons {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.troop-btn {
+  min-width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #3e5e5f 0%, #2a4142 100%);
+  border: 2px solid #a59b7b;
+  border-radius: 8px;
+  color: #f4e4bc;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.troop-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4a6b6d 0%, #364e50 100%);
+  border-color: #c5b18a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.troop-btn.selected {
+  background: linear-gradient(135deg, #a59b7b 0%, #8b8263 100%);
+  border-color: #f4e4bc;
+  color: #1b3738;
+  box-shadow: 0 4px 12px rgba(165, 155, 123, 0.4);
+}
+
+.troop-btn:disabled {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-color: #555;
+  color: #666;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.troop-btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.troop-info-text {
+  color: #8a9ba8;
+  font-size: 0.875rem;
+  margin: 0;
+  font-style: italic;
 }
 
 @media (max-width: 768px) {
@@ -274,5 +353,9 @@
   .stat-item {
     flex-direction: row;
     justify-content: space-between;
+  }
+
+  .troop-buttons {
+    justify-content: center;
   }
 }
