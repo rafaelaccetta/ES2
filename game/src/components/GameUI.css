@@ -167,7 +167,7 @@
 
 .attack-toggle-btn {
   padding: 12px 20px;
-  background: linear-gradient(135deg, #16a34a 0%, #10b981 100%);
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -179,7 +179,7 @@
 }
 
 .attack-toggle-btn:hover {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
   transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
 }
