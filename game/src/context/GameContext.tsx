@@ -32,6 +32,7 @@ export interface GameState {
     gameStarted: boolean;
     showObjectiveConfirmation: boolean;
     firstRoundObjectiveShown: Set<number>;
+    territorySelectionCallback: ((territory: string) => void) | null;
 }
 
 interface GameContextType extends GameState {
@@ -43,6 +44,8 @@ interface GameContextType extends GameState {
     shouldShowAutomaticObjective: () => boolean;
     markObjectiveAsShown: () => void;
     setShowObjectiveConfirmation: (show: boolean) => void;
+    setTerritorySelectionCallback: (callback: ((territory: string) => void) | null) => void;
+    onTerritorySelected: (territory: string) => void;
 }
 
 const initialState: GameState = {
@@ -55,6 +58,7 @@ const initialState: GameState = {
     gameStarted: false,
     showObjectiveConfirmation: false,
     firstRoundObjectiveShown: new Set(),
+    territorySelectionCallback: null,
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -74,7 +78,6 @@ interface GameProviderProps {
 export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const [gameState, setGameState] = useState<GameState>(initialState);
 
-    // Carregar objectives do arquivo JSON
     useEffect(() => {
         const loadObjectives = async () => {
             try {
@@ -98,6 +101,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             { length: playerCount },
             (_, index) => new Player(index, playerColors[index])
         );
+
+        console.log('🎮 Iniciando jogo com jogadores:', gamePlayers.map(p => ({ id: p.id, color: p.color })));
 
         const gameManager = new GameManager(gamePlayers);
 
@@ -134,9 +139,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentPhase: gameManager.getPhaseName(),
             currentRound: gameManager.round,
             gameStarted: true,
+            firstRoundObjectiveShown: new Set(), // Reset para novo jogo
         }));
 
-        // Emitir evento para a cena Jogo saber quantos jogadores há e seus territórios
+        console.log('🎯 Estado inicial - firstRoundObjectiveShown resetado');
+
         EventBus.emit("players-updated", {
             playerCount,
             players: gamePlayers.map((player) => ({
@@ -212,8 +219,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const resetGame = () => {
         setGameState((prevState) => ({
             ...initialState,
-            objectives: prevState.objectives, // Manter os objetivos carregados
-            firstRoundObjectiveShown: new Set(), // Resetar o histórico de objetivos mostrados
+            objectives: prevState.objectives, 
+            firstRoundObjectiveShown: new Set(), 
         }));
     };
 
@@ -221,7 +228,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         const currentPlayer = getCurrentPlayer();
         if (!currentPlayer) return false;
 
-        // Só mostra automaticamente na primeira rodada E se o jogador ainda não viu o objetivo
         return (
             gameState.currentRound === 0 &&
             !gameState.firstRoundObjectiveShown.has(currentPlayer.id)
@@ -231,6 +237,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const markObjectiveAsShown = () => {
         const currentPlayer = getCurrentPlayer();
         if (currentPlayer) {
+            console.log(`Marcando objetivo como visto para jogador ${currentPlayer.id}`);
             setGameState((prevState) => ({
                 ...prevState,
                 firstRoundObjectiveShown: new Set(
@@ -247,6 +254,19 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         }));
     };
 
+    const setTerritorySelectionCallback = (callback: ((territory: string) => void) | null) => {
+        setGameState((prevState) => ({
+            ...prevState,
+            territorySelectionCallback: callback,
+        }));
+    };
+
+    const onTerritorySelected = (territory: string) => {
+        if (gameState.territorySelectionCallback) {
+            gameState.territorySelectionCallback(territory);
+        }
+    };
+
     const contextValue: GameContextType = {
         ...gameState,
         startGame,
@@ -257,6 +277,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         shouldShowAutomaticObjective,
         markObjectiveAsShown,
         setShowObjectiveConfirmation,
+        setTerritorySelectionCallback,
+        onTerritorySelected,
     };
 
     return (
