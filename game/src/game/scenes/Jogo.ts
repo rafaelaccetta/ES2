@@ -3,7 +3,6 @@ import * as React from "react";
 import * as ReactDOM from "react-dom/client";
 import MapSVG from "../../MapSVG";
 import { EventBus } from "../EventBus";
-import PlayerBadge from "../../PlayerBadge";
 
 export class Jogo extends Scene {
     constructor() {
@@ -66,14 +65,6 @@ export class Jogo extends Scene {
                 };
             }, []);
 
-            const playerIds = React.useMemo(
-                () =>
-                    Array.from(
-                        { length: playerCount },
-                        (_, i) => `player${i + 1}`
-                    ),
-                [playerCount]
-            );
             const defaultPlayerColors = [
                 "#2563eb",
                 "#dc2626",
@@ -103,7 +94,7 @@ export class Jogo extends Scene {
                 return colorMap;
             }, [playerCount, playersData, colorByName]);
 
-            const [activePlayer, setActivePlayer] = React.useState<string>("");
+            const activePlayer: string = "";
 
             // normaliza nomes dos territórios (acentos, espaços) para bater com IDs do SVG
             const normalizeId = React.useCallback((name: string) => {
@@ -140,27 +131,14 @@ export class Jogo extends Scene {
                 return player?.territories || [];
             }, [activePlayer, playersData]);
 
-            const territoriesByPlayer = React.useMemo(() => {
-                const map: Record<string, string[]> = {};
-                // Inicializar com arrays vazios
-                for (const pid of playerIds) map[pid] = [];
-
-                // Usar territórios reais dos jogadores
-                playersData.forEach((player, index) => {
-                    if (player && player.territories) {
-                        const playerId = `player${index + 1}`;
-                        map[playerId] = player.territories;
-                    }
-                });
-
-                return map;
-            }, [playerIds, playersData]);
+            // Removido: mapeamento de territórios por jogador para os badges laterais
 
             // Mapa de tropas por território
             const troopCounts = React.useMemo(() => {
                 const counts: Record<string, number> = {};
                 playersData.forEach((player) => {
-                    const armies: Record<string, number> | undefined = player?.territoriesArmies;
+                    const armies: Record<string, number> | undefined =
+                        player?.territoriesArmies;
                     if (!armies) return;
                     Object.entries(armies).forEach(([territoryName, qty]) => {
                         const id = normalizeId(territoryName);
@@ -180,20 +158,7 @@ export class Jogo extends Scene {
                     selectedTerritories,
                     ownerColors: colors,
                     troopCounts,
-                }),
-                // Renderiza badges na direita para mostrar territórios por jogador (remover depois)
-                ...playerIds.map((pid, index) =>
-                    React.createElement(PlayerBadge, {
-                        key: pid,
-                        playerNumber: index + 1,
-                        color: colors[pid],
-                        territories: territoriesByPlayer[pid] ?? [],
-                        position: { top: 24 + index * 68, right: 24 },
-                        active: activePlayer === pid,
-                        onSelect: () =>
-                            setActivePlayer(activePlayer === pid ? "" : pid),
-                    })
-                )
+                })
             );
         };
 

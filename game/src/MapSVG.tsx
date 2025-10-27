@@ -6,12 +6,12 @@ type TroopsMap = Record<string, number>;
 
 interface MapSVGProps extends React.SVGProps<SVGSVGElement> {
     owners?: OwnersMap;
-    highlightOwner?: string; 
-    allowEditOwner?: boolean; 
-    selectedTerritories?: string[]; 
-    onOwnersChange?: (owners: OwnersMap) => void; 
-    ownerColors?: Record<string, string>; 
-    troopCounts?: TroopsMap; 
+    highlightOwner?: string;
+    allowEditOwner?: boolean;
+    selectedTerritories?: string[];
+    onOwnersChange?: (owners: OwnersMap) => void;
+    ownerColors?: Record<string, string>;
+    troopCounts?: TroopsMap;
 }
 
 const MapSVG: React.FC<MapSVGProps> = ({
@@ -28,7 +28,39 @@ const MapSVG: React.FC<MapSVGProps> = ({
     const [localOwners, setLocalOwners] = useState<OwnersMap>(
         () => owners ?? {}
     );
+    const [idToName, setIdToName] = useState<Record<string, string>>({});
 
+    // Carrega o arquivo de territórios para exibir o nome correto (com acentos e espaçamento)
+    useEffect(() => {
+        let cancelled = false;
+        const normalize = (s: string) =>
+            s
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, "");
+        const load = async () => {
+            try {
+                const resp = await fetch("/data/territories.json", {
+                    cache: "no-cache",
+                });
+                if (!resp.ok) return;
+                const data = (await resp.json()) as Record<string, any>;
+                const map: Record<string, string> = {};
+                Object.keys(data).forEach((prettyName) => {
+                    map[normalize(prettyName)] = prettyName;
+                });
+                if (!cancelled) setIdToName(map);
+            } catch (_e) {
+                // Silencia falha de rede; fallback para nomes derivados do id
+            }
+        };
+        load();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+    // Sincroniza os donos locais com as props e seleção atual
     useEffect(() => {
         const base: OwnersMap = owners ? { ...owners } : {};
         if (
@@ -71,10 +103,10 @@ const MapSVG: React.FC<MapSVGProps> = ({
             svg.insertBefore(defs, svg.firstChild);
         }
         const defaultOwnerColors: Record<string, string> = {
-            player1: "#2563eb", 
-            player2: "#dc2626", 
-            player3: "#16a34a", 
-            player4: "#b7c0cd", 
+            player1: "#2563eb",
+            player2: "#dc2626",
+            player3: "#16a34a",
+            player4: "#b7c0cd",
         };
 
         Object.entries(localOwners).forEach(([id, owner]) => {
@@ -82,7 +114,7 @@ const MapSVG: React.FC<MapSVGProps> = ({
             const color =
                 ownerColors?.[owner] ??
                 defaultOwnerColors[owner as keyof typeof defaultOwnerColors] ??
-                "#2563eb";
+                "none";
 
             const selectors = [
                 `polygon#${id}`,
@@ -162,23 +194,152 @@ const MapSVG: React.FC<MapSVGProps> = ({
             return { x: cx, y: cy };
         };
 
+        const normalize = (s: string) =>
+            s
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, "");
+
         Object.entries(troopCounts).forEach(([territoryId, count]) => {
             const poly = svg.querySelector<SVGPolygonElement>(
                 `polygon#${territoryId}`
             );
             if (!poly) return;
             const { x, y } = getPolygonCenter(poly);
+            // Offsets específicos por território (ajustes finos de posição)
+            const labelOffsets: Record<
+                string,
+                {
+                    number?: number | { dx?: number; dy?: number };
+                    name?: number | { dx?: number; dy?: number };
+                }
+            > = {
+                //america do norte, menos ottawa e labrador
+                alaska: { number: -5, name: -5 },
+                vancouver: { number: 2, name: 2 },
+                mexico: { number: -2, name: { dx: 10, dy: -2 } },
+                novayork: {
+                    number: { dx: -10, dy: 3 },
+                    name: { dx: -10, dy: 3 },
+                },
+                groenlandia: { number: -3, name: { dx: 5, dy: -3 } },
+                mackenzie: { number: 12, name: 12 },
+                california: { number: -2, name: -2 },
+                //america do sul
+                argentina: {
+                    number: { dx: -5, dy: -10 },
+                    name: { dx: -5, dy: -10 },
+                },
+                brasil: {
+                    number: { dx: 15, dy: -5 },
+                    name: { dx: 15, dy: -5 },
+                },
+                venezuela: {
+                    number: { dx: -7, dy: -6 },
+                    name: { dx: -7, dy: -6 },
+                },
+                peru: { number: 5, name: 5 },
+                //europa, menos islandia, alemanha, moscou
+                inglaterra: {
+                    number: { dx: 15, dy: -3 },
+                    name: { dx: 15, dy: -3 },
+                },
+                suecia: {
+                    number: { dx: -13, dy: 7 },
+                    name: { dx: -13, dy: 7 },
+                },
+                polonia: { number: -5, name: -5 },
+                franca: {
+                    number: { dx: -7, dy: 15 },
+                    name: { dx: -7, dy: 15 },
+                },
+                //africa, menos congo, egito, argelia
+                sudao: { number: -15, name: -15 },
+                madagascar: { number: 2, name: 2 },
+                africadosul: {
+                    number: { dx: -3, dy: 0 },
+                    name: { dx: -3, dy: 0 },
+                },
+                //asia, menos aral, tchita, siberia
+                china: { number: 5, name: 5 },
+                india: { number: -5, name: -5 },
+                japao: { number: { dx: 7, dy: 6 }, name: { dx: 7, dy: 6 } },
+                vladivostok: {
+                    number: { dx: 4, dy: -35 },
+                    name: { dx: 4, dy: -35 },
+                },
+                orientemedio: {
+                    number: { dx: 12, dy: -27 },
+                    name: { dx: 12, dy: -27 },
+                },
+                mongolia: { number: 4, name: 4 },
+                vietna: { number: { dx: 0, dy: -5 }, name: { dx: 0, dy: -5 } },
+                dudinka: {
+                    number: { dx: 5, dy: -15 },
+                    name: { dx: 5, dy: -15 },
+                },
+                omsk: { number: { dx: -6, dy: 0 }, name: { dx: -6, dy: 0 } },
+                //oceania, menos australiaoeste
+                australialeste: { number: -12, name: -12 },
+                novaguine: {
+                    number: { dx: 6, dy: -2 },
+                    name: { dx: 6, dy: -2 },
+                },
+                indonesia: {
+                    number: { dx: -10, dy: -20 },
+                    name: { dx: -10, dy: -20 },
+                },
+            };
+            const extraOffset = labelOffsets[territoryId] || {};
             const text = document.createElementNS(ns, "text");
             text.classList.add("troop-label");
-            text.setAttribute("x", String(x));
-            text.setAttribute("y", String(y));
+            // offsets do número (aceita valor numérico = dy ou objeto {dx, dy})
+            const numOff = extraOffset.number;
+            const numDx = typeof numOff === "number" ? 0 : numOff?.dx ?? 0;
+            const numDy = typeof numOff === "number" ? numOff : numOff?.dy ?? 0;
+            text.setAttribute("x", String(x + numDx));
+            // sobe um pouco o número globalmente (-5) e aplica ajuste específico se existir
+            text.setAttribute("y", String(y - 6 + numDy));
             text.setAttribute("text-anchor", "middle");
             text.setAttribute("dominant-baseline", "middle");
             text.textContent = String(count ?? 0);
+            // Cor do contorno do número = cor do dono do território
+            const owner = localOwners[territoryId];
+            const color = ownerColors?.[owner] ?? "#fff";
+            text.setAttribute("stroke", color);
+            text.setAttribute("stroke-width", "2");
+            text.setAttribute("fill", "#fff");
             group.appendChild(text);
+
+            // Nome do território abaixo do número
+            const nameText = document.createElementNS(ns, "text");
+            nameText.classList.add("territory-name-label");
+            // offsets do nome (aceita valor numérico = dy ou objeto {dx, dy})
+            const nameOff = extraOffset.name;
+            const nameDx = typeof nameOff === "number" ? 0 : nameOff?.dx ?? 0;
+            const nameDy =
+                typeof nameOff === "number" ? nameOff : nameOff?.dy ?? 0;
+            nameText.setAttribute("x", String(x + nameDx));
+            // desloca alguns pixels para baixo do número
+            nameText.setAttribute("y", String(y + nameDy));
+            nameText.setAttribute("text-anchor", "middle");
+            nameText.setAttribute("dominant-baseline", "hanging");
+            const normId = normalize(territoryId);
+            const displayName =
+                idToName[normId] ??
+                territoryId.charAt(0).toUpperCase() + territoryId.slice(1);
+            nameText.textContent = displayName;
+            // Estilo para legibilidade, discreto
+            nameText.setAttribute("fill", "#fff");
+            nameText.setAttribute("stroke", color);
+            nameText.setAttribute("stroke-width", "2");
+            // Garante que o contorno seja pintado antes do preenchimento
+            nameText.setAttribute("style", "paint-order: stroke");
+            group.appendChild(nameText);
         });
         svg.appendChild(group);
-    }, [troopCounts]);
+    }, [troopCounts, localOwners, ownerColors, idToName]);
 
     const handleClick = (e: React.MouseEvent) => {
         if (!allowEditOwner || !highlightOwner) return;
@@ -231,15 +392,20 @@ const MapSVG: React.FC<MapSVGProps> = ({
                 }
 
                                 /* Rótulo de tropas: número branco com contorno para contraste */
-                                .troop-label {
-                                        font: 700 12px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
-                                        fill: #fff;
-                                        stroke: rgba(0,0,0,0.8);
-                                        stroke-width: 2px;
-                                        paint-order: stroke;
-                                        pointer-events: none;
-                                        user-select: none;
-                                }
+                .troop-label {
+                    font: 700 10px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+                    fill: #fff;
+                    paint-order: stroke;
+                    pointer-events: none;
+                    user-select: none;
+                }
+                .territory-name-label {
+            font: 600 8px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+                    fill: #fff;
+                    paint-order: stroke;
+                    pointer-events: none;
+                    user-select: none;
+                }
       `}
             </style>
             <g stroke="black" strokeWidth="1">
