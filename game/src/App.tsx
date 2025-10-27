@@ -16,9 +16,13 @@ const AppContent = () => {
 
         const handleBackToMenu = () => {
             setShowGameUI(false);
-            // Resetar completamente o jogo quando voltar ao menu
+            
+            const mapContainer = document.getElementById("map-container");
+            if (mapContainer) {
+                mapContainer.remove();
+            }
+            
             resetGame();
-            // Voltar para o MainMenu, tela inicial
             if (phaserRef.current?.scene) {
                 phaserRef.current.scene.scene.start('MainMenu');
             }

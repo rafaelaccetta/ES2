@@ -5,11 +5,11 @@ import React, {
     useEffect,
     ReactNode,
 } from "react";
-// @ts-ignore - runtime JS modules in ../game-logic don't have TS declarations in this repo
+
 import { GameManager } from "../../game-logic/GameManager.js";
-// @ts-ignore - runtime JS modules in ../game-logic don't have TS declarations in this repo
+
 import { Player } from "../../game-logic/Player.js";
-// @ts-ignore - runtime JS modules in ../game-logic don't have TS declarations in this repo
+
 import resolveAttack from "../../game-logic/Combat.js";
 import { EventBus } from "../game/EventBus";
 
@@ -36,6 +36,7 @@ export interface GameState {
     showObjectiveConfirmation: boolean;
     firstRoundObjectiveShown: Set<number>;
     territorySelectionCallback: ((territory: string) => void) | null;
+    troopsAllocatedThisPhase: boolean;
 }
 
 interface GameContextType extends GameState {
@@ -50,6 +51,8 @@ interface GameContextType extends GameState {
     setTerritorySelectionCallback: (callback: ((territory: string) => void) | null) => void;
     onTerritorySelected: (territory: string) => void;
     applyPostConquestMove: (source: string, target: string, moved: number) => void;
+    hasTroopsAllocatedThisPhase: () => boolean;
+    markTroopsAllocated: () => void;
 }
 
 const initialState: GameState = {
@@ -63,6 +66,7 @@ const initialState: GameState = {
     showObjectiveConfirmation: false,
     firstRoundObjectiveShown: new Set(),
     territorySelectionCallback: null,
+    troopsAllocatedThisPhase: false,
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -119,7 +123,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentPhase: gameManager.getPhaseName(),
             currentRound: gameManager.round,
             gameStarted: true,
-            firstRoundObjectiveShown: new Set(), // Reset para novo jogo
+            firstRoundObjectiveShown: new Set(), 
         }));
 
         console.log('🎯 Estado inicial - firstRoundObjectiveShown resetado');
@@ -175,9 +179,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentPlayerIndex: gameState.gameManager!.turn,
             currentPhase: gameState.gameManager!.getPhaseName(),
             currentRound: gameState.gameManager!.round,
+            troopsAllocatedThisPhase: false, // Reset allocation flag when phase changes
         }));
 
-        // Notificar a cena Jogo com os estados atualizados
         EventBus.emit("players-updated", {
             playerCount: gameState.players.length,
             players: gameState.players.map((player) => ({
@@ -190,27 +194,31 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         });
     };
 
-    // Handle attack requests emitted from the UI (AttackMenu)
     useEffect(() => {
         const handleAttackRequest = (data: { source: string; target: string; troops: number }) => {
+            console.log('🎯 GameContext recebeu attack-request:', data);
+            
             try {
                 if (!gameState.gameManager) {
-                    console.warn('No game manager available to process attack');
+                    console.warn('❌ No game manager available to process attack');
                     return;
                 }
 
                 const { source, target, troops } = data as any;
+                console.log('🔍 Processando ataque:', { source, target, troops });
+                
                 const currentPlayer = getCurrentPlayer();
                 if (!currentPlayer) {
-                    console.warn('No current player for attack');
+                    console.warn('❌ No current player for attack');
                     return;
                 }
 
-                // Validate ownership of source
                 if (!currentPlayer.territories.includes(source)) {
-                    console.warn('Attack source does not belong to current player:', source);
+                    console.warn('❌ Attack source does not belong to current player:', source);
                     return;
                 }
+                
+                console.log('✅ Validações iniciais passaram, iniciando combate...');
 
                 const armiesAtSource = currentPlayer.territoriesArmies?.[source] ?? 0;
                 const maxAttackable = Math.min(3, Math.max(0, armiesAtSource - 1));
@@ -219,15 +227,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                     return;
                 }
 
-                // Find defender (may be undefined for unowned territory)
                 const defender = gameState.players.find((p) => p.territories.includes(target));
                 const defenderArmies = defender?.territoriesArmies?.[target] ?? 0;
 
-                // Use shared combat resolver from game-logic/Combat.js (imported at top)
-                // @ts-ignore - resolveAttack is a JS module imported without TS declarations
-                const { attackerLoss, defenderLoss } = resolveAttack(troops, defenderArmies);
+                
+                const { aDice, dDice, attackerLoss, defenderLoss } = resolveAttack(troops, defenderArmies);
 
-                // Apply losses
                 currentPlayer.territoriesArmies[source] = Math.max(0, (currentPlayer.territoriesArmies[source] ?? 0) - attackerLoss);
                 currentPlayer.armies = Math.max(0, currentPlayer.armies - attackerLoss);
 
@@ -238,24 +243,18 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
                 let conquered = false;
                 if ((defender ? (defender.territoriesArmies[target] ?? 0) : 0) <= 0) {
-                    // Territory conquered — transfer ownership but defer troop movement until player confirms
                     conquered = true;
                     if (defender) defender.removeTerritory(target);
                     currentPlayer.addTerritory(target);
 
-                    // Determine survivors among the attacking troops used
                     const survivors = Math.max(0, troops - attackerLoss);
-                    // armiesAtSource holds the count before losses
                     const armiesBefore = armiesAtSource;
                     const sourceAfterLosses = Math.max(0, armiesBefore - attackerLoss);
 
-                    // Maximum that can be moved is based on armies remaining after losses (must leave 1 behind)
                     const maxCanMove = Math.max(0, sourceAfterLosses - 1);
 
-                    // Temporarily set target armies to 0 — UI will prompt player how many to move
                     currentPlayer.territoriesArmies[target] = 0;
 
-                    // Emit an event so UI can show a PostConquest dialog and ask the player
                     EventBus.emit('post-conquest', {
                         source,
                         target,
@@ -269,7 +268,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                     });
                 }
 
-                // Emit update for UI/map
                 EventBus.emit('players-updated', {
                     playerCount: gameState.players.length,
                     players: gameState.players.map((player) => ({
@@ -281,15 +279,19 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                     })),
                 });
 
-                // Also emit a detailed result for any UI listeners (optional)
-                EventBus.emit('attack-result', {
+                const attackResult = {
                     source,
                     target,
                     troopsRequested: troops,
+                    attackerDice: aDice,
+                    defenderDice: dDice,
                     attackerLoss,
                     defenderLoss,
                     conquered,
-                });
+                };
+                
+                console.log('📡 Emitindo attack-result:', attackResult);
+                EventBus.emit('attack-result', attackResult);
             } catch (err) {
                 console.error('Error processing attack-request', err);
             }
@@ -297,10 +299,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
         EventBus.on('attack-request', handleAttackRequest as any);
 
-        // Listen for move confirmations after conquest
         const handleMoveConfirm = (data: { source: string; target: string; moved: number }) => {
             const { source, target, moved } = data as any;
-            // Delegate to centralized function
             applyPostConquestMove(source, target, moved);
         };
 
@@ -312,13 +312,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         };
     }, [gameState.gameManager, gameState.players, getCurrentPlayer]);
 
-        // Centralized function to apply post-conquest movement from UI or events
         const applyPostConquestMove = (source: string, target: string, moved: number) => {
             try {
                 const currentPlayer = getCurrentPlayer();
                 if (!currentPlayer) return;
 
-                // Ensure player owns both territories
                 if (!currentPlayer.territories.includes(source) || !currentPlayer.territories.includes(target)) {
                     console.warn('applyPostConquestMove invalid: player does not own source or target', { source, target });
                     return;
@@ -425,6 +423,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         }
     };
 
+    const hasTroopsAllocatedThisPhase = () => {
+        return gameState.troopsAllocatedThisPhase;
+    };
+
+    const markTroopsAllocated = () => {
+        setGameState(prevState => ({
+            ...prevState,
+            troopsAllocatedThisPhase: true
+        }));
+    };
+
     const contextValue: GameContextType = {
         ...gameState,
         startGame,
@@ -438,6 +447,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         setTerritorySelectionCallback,
         onTerritorySelected,
         applyPostConquestMove,
+        hasTroopsAllocatedThisPhase,
+        markTroopsAllocated,
     };
 
     return (
