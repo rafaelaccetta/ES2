@@ -6,6 +6,7 @@ import TurnTransition from './TurnTransition';
 import TroopAllocation from './TroopAllocation';
 import AttackMenu from './AttackMenu';
 import PostConquestMove from './PostConquestMove';
+import AttackResult2 from './AttackResult2';
 import './GameUI.css';
 
 const GameUI: React.FC = () => {
@@ -53,6 +54,8 @@ const GameUI: React.FC = () => {
   const [showTransition, setShowTransition] = useState(false);
   const [showTroopAllocation, setShowTroopAllocation] = useState(false);
   const [showAttackMenu, setShowAttackMenu] = useState(false);
+  const [showAttackResult, setShowAttackResult] = useState(false);
+  const [attackResultData, setAttackResultData] = useState<any>(null);
   const lastPlayerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -129,6 +132,18 @@ const GameUI: React.FC = () => {
     setShowAttackMenu(false);
   };
 
+  const handleCloseAttackResult = () => {
+    setShowAttackResult(false);
+    setAttackResultData(null);
+  };
+
+  const handleSendTroops = () => {
+    // Fechar o modal de resultado de ataque
+    setShowAttackResult(false);
+    // O PostConquestMove já deve estar escutando o evento 'post-conquest'
+    // que será emitido automaticamente quando necessário
+  };
+
   const handleCloseTroopAllocation = () => {
     setShowTroopAllocation(false);
   };
@@ -171,6 +186,20 @@ const GameUI: React.FC = () => {
     // Reset quando muda jogador, rodada ou fase
     setTroopsAllocatedThisPhase(false);
   }, [getCurrentPlayer()?.id, currentRound, currentPhase]);
+
+  // Event listener para resultados de ataque
+  useEffect(() => {
+    const handleAttackResult = (data: any) => {
+      console.log('🎲 Resultado do ataque recebido:', data);
+      setAttackResultData(data);
+      setShowAttackResult(true);
+    };
+
+    EventBus.on('attack-result', handleAttackResult);
+    return () => {
+      EventBus.removeListener('attack-result', handleAttackResult);
+    };
+  }, []);
 
   const getPlayerColor = (color: string) => {
     const colorMap: Record<string, string> = {
@@ -308,6 +337,14 @@ const GameUI: React.FC = () => {
         isVisible={showAttackMenu}
         onClose={handleCloseAttackMenu}
       />
+      
+      <AttackResult2
+        isVisible={showAttackResult}
+        result={attackResultData}
+        onClose={handleCloseAttackResult}
+        onSendTroops={handleSendTroops}
+      />
+      
       <PostConquestMove />
     </>
   );
