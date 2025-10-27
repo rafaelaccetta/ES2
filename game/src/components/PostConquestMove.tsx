@@ -81,8 +81,7 @@ const PostConquestMove: React.FC = () => {
         <div className="troop-allocation-content">
           <div className="selected-territory-panel">
             <p>Quantas tropas mover de <strong>{source}</strong> para <strong>{target}</strong>?</p>
-            <div>Exércitos no território atacante: <strong>{survivors}</strong></div>
-            <div>Exércitos no território conquistado: <strong>{sourceAfterLosses}</strong></div>
+            <div>Exércitos no território atacante: <strong>{sourceAfterLosses}</strong></div>
           </div>
 
           <div className="troop-selection">
