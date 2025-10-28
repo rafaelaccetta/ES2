@@ -4,6 +4,9 @@ import { EventBus } from '../game/EventBus';
 import ObjectiveDisplay from './ObjectiveDisplay';
 import TurnTransition from './TurnTransition';
 import TroopAllocation from './TroopAllocation';
+import AttackMenu from './AttackMenu';
+import PostConquestMove from './PostConquestMove';
+import AttackResult from './AttackResult';
 import './GameUI.css';
 
 const GameUI: React.FC = () => {
@@ -21,11 +24,38 @@ const GameUI: React.FC = () => {
     setShowObjectiveConfirmation,
     firstRoundObjectiveShown
   } = useGameContext();
+
+  // Estado para rastrear se tropas já foram alocadas nesta fase
+  const [troopsAllocatedThisPhase, setTroopsAllocatedThisPhase] = useState(false);
+
+  // Função para calcular tropas disponíveis para alocar
+  const getAvailableTroopsToAllocate = () => {
+    const currentPlayer = getCurrentPlayer();
+    if (!currentPlayer || troopsAllocatedThisPhase) return 0;
+    
+    // Calcular tropas base (mesmo cálculo do TroopAllocation)
+    let territoryBonus = Math.max(3, Math.floor(currentPlayer.territories.length / 2));
+    const roundBonus = currentPlayer.id % 3;
+    let continentBonus = 0;
+    if (currentPlayer.territories.length > 10) {
+      continentBonus = 2;
+    }
+    let cardBonus = 0;
+    if (currentPlayer.id === 0) {
+      cardBonus = 4;
+    }
+    
+    const totalTroops = Math.min(territoryBonus + roundBonus + continentBonus + cardBonus, 20);
+    return totalTroops;
+  };
   
   const [showObjective, setShowObjective] = useState(false);
   const [showStartMenu, setShowStartMenu] = useState(!gameStarted);
   const [showTransition, setShowTransition] = useState(false);
   const [showTroopAllocation, setShowTroopAllocation] = useState(false);
+  const [showAttackMenu, setShowAttackMenu] = useState(false);
+  const [showAttackResult, setShowAttackResult] = useState(false);
+  const [attackResultData, setAttackResultData] = useState<any>(null);
   const lastPlayerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -94,6 +124,26 @@ const GameUI: React.FC = () => {
     setShowTroopAllocation(true);
   };
 
+  const handleShowAttackMenu = () => {
+    setShowAttackMenu(true);
+  };
+
+  const handleCloseAttackMenu = () => {
+    setShowAttackMenu(false);
+  };
+
+  const handleCloseAttackResult = () => {
+    setShowAttackResult(false);
+    setAttackResultData(null);
+  };
+
+  const handleSendTroops = () => {
+    // Fechar o modal de resultado de ataque
+    setShowAttackResult(false);
+    // O PostConquestMove já deve estar escutando o evento 'post-conquest'
+    // que será emitido automaticamente quando necessário
+  };
+
   const handleCloseTroopAllocation = () => {
     setShowTroopAllocation(false);
   };
@@ -127,8 +177,29 @@ const GameUI: React.FC = () => {
     });
 
     console.log('🗺️ Mapa atualizado com novas tropas');
+    setTroopsAllocatedThisPhase(true); // Marcar que tropas foram alocadas
     setShowTroopAllocation(false);
   };
+
+  // Reset do estado quando muda de jogador ou fase
+  useEffect(() => {
+    // Reset quando muda jogador, rodada ou fase
+    setTroopsAllocatedThisPhase(false);
+  }, [getCurrentPlayer()?.id, currentRound, currentPhase]);
+
+  // Event listener para resultados de ataque
+  useEffect(() => {
+    const handleAttackResult = (data: any) => {
+      console.log('🎲 Resultado do ataque recebido:', data);
+      setAttackResultData(data);
+      setShowAttackResult(true);
+    };
+
+    EventBus.on('attack-result', handleAttackResult);
+    return () => {
+      EventBus.removeListener('attack-result', handleAttackResult);
+    };
+  }, []);
 
   const getPlayerColor = (color: string) => {
     const colorMap: Record<string, string> = {
@@ -188,11 +259,24 @@ const GameUI: React.FC = () => {
         <div className="game-controls">
           {currentPhase === 'REFORÇAR' && (
             <button 
-              className="troop-allocation-btn"
-              onClick={handleShowTroopAllocation}
-              title="Alocar tropas de reforço nos seus territórios"
+              className={`troop-allocation-btn ${getAvailableTroopsToAllocate() === 0 ? 'disabled' : ''}`}
+              onClick={getAvailableTroopsToAllocate() > 0 ? handleShowTroopAllocation : undefined}
+              disabled={getAvailableTroopsToAllocate() === 0}
+              title={getAvailableTroopsToAllocate() > 0 
+                ? "Alocar tropas de reforço nos seus territórios" 
+                : "Tropas já foram alocadas nesta fase"}
             >
-              Alocar Tropas
+              {getAvailableTroopsToAllocate() > 0 ? 'Alocar Tropas' : 'Tropas Alocadas'}
+            </button>
+          )}
+
+          {currentPhase === 'ATACAR' && (
+            <button
+              className="attack-toggle-btn"
+              onClick={handleShowAttackMenu}
+              title="Abrir menu de ataque"
+            >
+              Atacar
             </button>
           )}
           <button 
@@ -248,6 +332,20 @@ const GameUI: React.FC = () => {
         onClose={handleCloseTroopAllocation}
         onConfirm={handleConfirmTroopAllocation}
       />
+
+      <AttackMenu
+        isVisible={showAttackMenu}
+        onClose={handleCloseAttackMenu}
+      />
+      
+      <AttackResult
+        isVisible={showAttackResult}
+        result={attackResultData}
+        onClose={handleCloseAttackResult}
+        onSendTroops={handleSendTroops}
+      />
+      
+      <PostConquestMove />
     </>
   );
 };
