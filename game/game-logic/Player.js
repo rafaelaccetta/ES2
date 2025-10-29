@@ -7,6 +7,7 @@ export class Player {
         this.territories = [];
         this.cards = [];
         this.armies = 0;
+        this.armiesExclusiveToTerritory = new Map() // example: {"Brazil": 2} means 2 troops can only be deployed in Brazil
         this.isActive = true;
         this.territoriesArmies = {}; // objeto para armazenar exércitos por território
     }
@@ -20,67 +21,60 @@ export class Player {
 
     removeTerritory(territory) {
         this.territories = this.territories.filter((t) => t !== territory);
-        if (this.territoriesArmies[territory]) {
-            this.armies -= this.territoriesArmies[territory];
+        // If the player had an entry for this territory in territoriesArmies, remove it.
+        // Use the `in` operator to catch zero values as well (0 is falsy).
+        if (territory in this.territoriesArmies) {
+            this.armies -= this.territoriesArmies[territory] || 0;
             delete this.territoriesArmies[territory];
         }
     }
 
+    getTerritoriesCount() {
+        return this.territories.length;
+    }
+
     addCard(card) {
         this.cards.push(card);
-        if (this.cards.length >= 5) {
-            this.forceTradeCards();
+    }
+    
+    // chamada na função de calcular o bônus de continente no GameMap
+    hasConqueredContinent(continentName, territoriesByContinent) {
+        const continentTerritories = territoriesByContinent[continentName];
+        return continentTerritories.every((territory) => this.territories.includes(territory));
+    }
+
+    //Adiciona tropas para o saldo do jogador. 
+    // Antes das tropas forem alocadas (pela classe responsável), deve ser verificado se o Player tem o saldo necessário.
+    addArmies(amount) {
+        this.armies = this.armies + amount;
+    }
+
+    removeArmies(amount) {
+        this.armies = this.armies >= amount ? this.armies - amount : 0;    
+    }
+
+    hasArmies(amount) {
+        return this.armies >= amount
+    }
+    
+    addArmiesExclusive(territoryName, amount){
+        const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
+        this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
+    }
+    
+    removeArmiesExclusive(territoryName, amount){
+        const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
+        if (currentAmount >= amount) {    
+            this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
         }
     }
 
-    forceTradeCards() {
-        if (this.cards.length < 3) return;
-        for (let i = 0; i < this.cards.length; i++) {
-            for (let j = i + 1; j < this.cards.length; j++) {
-                for (let k = j + 1; k < this.cards.length; k++) {
-                    const c1 = this.cards[i];
-                    const c2 = this.cards[j];
-                    const c3 = this.cards[k];
-                    const s1 = cardsSymbols[c1];
-                    const s2 = cardsSymbols[c2];
-                    const s3 = cardsSymbols[c3];
-                    if (s1 === s2 && s2 === s3) {
-                        this.cards = this.cards.filter(
-                            (card) => card !== c1 && card !== c2 && card !== c3
-                        );
-                        console.log(
-                            `Player ${this.id} made the exchange of 3 identical cards:`,
-                            [c1, c2, c3],
-                            `Symbols: [${s1}, ${s2}, ${s3}]`
-                        );
-                        return;
-                    }
-                }
-            }
-        }
-        for (let i = 0; i < this.cards.length; i++) {
-            for (let j = i + 1; j < this.cards.length; j++) {
-                for (let k = j + 1; k < this.cards.length; k++) {
-                    const c1 = this.cards[i];
-                    const c2 = this.cards[j];
-                    const c3 = this.cards[k];
-                    const s1 = cardsSymbols[c1];
-                    const s2 = cardsSymbols[c2];
-                    const s3 = cardsSymbols[c3];
-                    if (s1 !== s2 && s2 !== s3 && s1 !== s3) {
-                        this.cards = this.cards.filter(
-                            (card) => card !== c1 && card !== c2 && card !== c3
-                        );
-                        console.log(
-                            `Player ${this.id} made the exchange of 3 different cards:`,
-                            [c1, c2, c3],
-                            `Symbols: [${s1}, ${s2}, ${s3}]`
-                        );
-                        return;
-                    }
-                }
-            }
-        }
+    hasArmiesExclusive(territoryName, amount){
+        return this.armiesExclusiveToTerritory.get(territoryName) >= amount;
+    }
+    
+    hasTerritory(territoryName){
+        return this.territories.includes(territoryName)
     }
 
     addArmies(territory, quantity) {
@@ -106,6 +100,11 @@ export class Player {
 
     activate() {
         // logic to activate a player
+    }
+
+    checkWin(gameState) {
+        if (!this.objective || typeof this.objective.checkWin !== "function") return false;
+        return this.objective.checkWin(this, gameState);   
     }
 }
 

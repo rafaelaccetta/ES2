@@ -275,7 +275,7 @@
   justify-content: center;
 }
 
-.confirm-btn, .cancel-btn {
+.confirm-btn-objective, .cancel-btn {
   padding: 12px 24px;
   border: none;
   border-radius: 8px;
@@ -286,12 +286,12 @@
   min-width: 140px;
 }
 
-.confirm-btn {
+.confirm-btn-objective {
   background: #dc2626;
   color: white;
 }
 
-.confirm-btn:hover {
+.confirm-btn-objective:hover {
   background: #b91c1c;
   transform: translateY(-1px);
 }
@@ -316,7 +316,7 @@
     flex-direction: column;
   }
   
-  .confirm-btn, .cancel-btn {
+  .confirm-btn-objective, .cancel-btn {
     width: 100%;
   }
 }

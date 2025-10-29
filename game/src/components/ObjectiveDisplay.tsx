@@ -43,7 +43,7 @@ const ObjectiveDisplay: React.FC<ObjectiveDisplayProps> = ({ showObjective, show
           </div>
 
           <div className="confirmation-actions">
-            <button className="confirm-btn" onClick={onConfirm}>
+            <button className="confirm-btn-objective" onClick={onConfirm}>
               Sim, mostrar objetivo
             </button>
             <button className="cancel-btn" onClick={onCancel}>

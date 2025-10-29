@@ -104,6 +104,7 @@
   color: #a59b7b;
 }
 
+
 .game-controls {
   display: flex;
   flex-direction: column;
@@ -117,17 +118,70 @@
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(165, 155, 123, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .objective-btn:hover {
-  background: linear-gradient(135deg, #3e5e5f 0%, #1b3738 100%);
-  transform: translateY(-1px);
   background: linear-gradient(135deg, #1b3738 0%, #3e5e5f 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.troop-allocation-btn {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.troop-allocation-btn:hover {
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.troop-allocation-btn.disabled,
+.troop-allocation-btn:disabled {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.troop-allocation-btn.disabled:hover,
+.troop-allocation-btn:disabled:hover {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  transform: none;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.attack-toggle-btn {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.attack-toggle-btn:hover {
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
 }
 
 .next-phase-btn {
@@ -136,7 +190,7 @@
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -145,7 +199,7 @@
 
 .next-phase-btn:hover {
   background: linear-gradient(135deg, #1b3738 0%, #3e5e5f 100%);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(62, 94, 95, 0.4);
 }
 
@@ -287,7 +341,7 @@
   flex-wrap: wrap;
 }
 
-.confirm-btn {
+.confirm-btn-objective {
   padding: 12px 20px;
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   color: white;
@@ -300,7 +354,7 @@
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
 }
 
-.confirm-btn:hover {
+.confirm-btn-objective:hover {
   background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
