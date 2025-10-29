@@ -15,8 +15,7 @@ export class GameManager {
         // Distribuir territórios automaticamente
         this.gameMap.distributeTerritories(this.players);
     }
-
-    }
+    
     
     initializeGame(){
         this.players.sort(() => Math.random() - 0.5); // shuffles player order
