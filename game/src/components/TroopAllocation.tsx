@@ -22,7 +22,9 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
     const [allocations, setAllocations] = useState<Record<string, number>>({});
     const [lastRoundPlayer, setLastRoundPlayer] = useState<string>("");
     const [initialTroops, setInitialTroops] = useState(0);
+    const [countdown, setCountdown] = useState<number | null>(null);
     const lastClickTimestampRef = useRef<number>(0);
+    const allocatedCountRef = useRef<number>(0);
 
     const currentPlayer = getCurrentPlayer();
 
@@ -70,6 +72,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 );
                 setInitialTroops(calculatedTroops);
                 setAllocations({});
+                allocatedCountRef.current = 0;
                 setLastRoundPlayer(currentRoundPlayer);
                 console.log(
                     "Tropas calculadas para jogador",
@@ -98,16 +101,45 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
         return Math.max(0, initialTroops - allocated);
     }, [initialTroops, allocations]);
 
-    // Fechar automaticamente quando todas as tropas forem alocadas
+    // Cancelar countdown quando componente não está visível
     useEffect(() => {
-        if (getRemainingTroops === 0 && initialTroops > 0) {
-            console.log("TroopAllocation: all troops allocated, closing...");
-            // Pequeno delay para o usuário ver que chegou a zero
-            setTimeout(() => {
-                onClose();
-            }, 500);
+        if (!isVisible) {
+            console.log("TroopAllocation: not visible, canceling countdown");
+            setCountdown(null);
         }
-    }, [getRemainingTroops, initialTroops, onClose]);
+    }, [isVisible]);
+
+    // Temporizador de 5 segundos quando todas as tropas forem alocadas
+    useEffect(() => {
+        if (!isVisible) return; // Não iniciar countdown se não estiver visível
+
+        if (getRemainingTroops === 0 && initialTroops > 0) {
+            console.log(
+                "TroopAllocation: all troops allocated, starting countdown..."
+            );
+            setCountdown(5);
+        } else {
+            // Se ainda há tropas, cancelar countdown
+            setCountdown(null);
+        }
+    }, [getRemainingTroops, initialTroops, isVisible]);
+
+    // Gerenciar contagem regressiva
+    useEffect(() => {
+        if (countdown === null || !isVisible) return;
+
+        if (countdown === 0) {
+            console.log("TroopAllocation: countdown finished, closing...");
+            onClose();
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setCountdown(countdown - 1);
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [countdown, onClose, isVisible]);
 
     const normalizeId = useCallback((name: string) => {
         return name
@@ -118,7 +150,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
             .replace(/[^a-z0-9]/g, "");
     }, []);
 
-    // Callback memoizado para alocar 1 tropa ao clicar no território
+    // Callback memorizado para alocar 1 tropa ao clicar no território
     const handleTerritorySelected = useCallback(
         (territoryId: string) => {
             const now = Date.now();
@@ -135,9 +167,9 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 now - lastTime
             );
 
-            // Debounce: ignorar cliques que acontecem em menos de 200ms
+            // Debounce para ignorar os cliques que acontecem em menos de 200ms
             if (now - lastTime < 200) {
-                console.log("⚠️ Clique duplicado ignorado (debounce)");
+                console.log("Clique duplicado ignorado (debounce)");
                 return;
             }
 
@@ -167,15 +199,26 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 return;
             }
 
-            // Primeiro verificar se podemos alocar
-            const currentAllocated = Object.values(allocations).reduce(
-                (sum, val) => sum + val,
-                0
+            // Verificar usando o ref para garantir que temos o valor mais atualizado
+            const remaining = Math.max(
+                0,
+                initialTroops - allocatedCountRef.current
             );
-            const remaining = Math.max(0, initialTroops - currentAllocated);
+
+            console.log(
+                "Verificando alocação:",
+                "initialTroops:",
+                initialTroops,
+                "allocated:",
+                allocatedCountRef.current,
+                "remaining:",
+                remaining
+            );
 
             if (remaining <= 0) {
-                console.log("TroopAllocation: no troops remaining");
+                console.log(
+                    "TroopAllocation: no troops remaining, blocking allocation"
+                );
                 return;
             }
 
@@ -184,18 +227,21 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 matchingTerritory
             );
 
-            // Atualizar o jogador imediatamente (ANTES de atualizar o state)
+            // Incrementar o contador ANTES de qualquer outra operação
+            allocatedCountRef.current += 1;
+
+            // Atualizar o jogador imediatamente
             console.log(
-                "🪖 Before addArmies - territoriesArmies:",
+                "Before addArmies - territoriesArmies:",
                 cp.territoriesArmies[matchingTerritory]
             );
             (cp as any).addArmies(matchingTerritory, 1);
             console.log(
-                "🪖 After addArmies - territoriesArmies:",
+                "After addArmies - territoriesArmies:",
                 cp.territoriesArmies[matchingTerritory]
             );
 
-            // Emitir evento para atualizar o mapa com TODOS os jogadores
+            // Emitir evento para atualizar o mapa inteiro
             EventBus.emit("players-updated", {
                 playerCount: players.length,
                 players: players.map((player) => ({
@@ -232,8 +278,65 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
         };
     }, [isVisible, handleTerritorySelected]);
 
+    // Função para remover uma alocação específica
+    const handleRemoveAllocation = useCallback(
+        (territory: string) => {
+            if (!currentPlayer) return;
+
+            const allocated = allocations[territory];
+            if (!allocated || allocated <= 0) return;
+
+            console.log(` Removendo 1 tropa de ${territory}`);
+
+            // Decrementar o contador
+            allocatedCountRef.current = Math.max(
+                0,
+                allocatedCountRef.current - 1
+            );
+            console.log("Contador atualizado:", allocatedCountRef.current);
+
+            // Remover 1 tropa do jogador
+            const currentArmies =
+                currentPlayer.territoriesArmies[territory] || 0;
+            if (currentArmies > 0) {
+                currentPlayer.territoriesArmies[territory] = currentArmies - 1;
+                if (currentPlayer.armies > 0) {
+                    currentPlayer.armies -= 1;
+                }
+            }
+
+            // Emitir evento para atualizar o mapa
+            EventBus.emit("players-updated", {
+                playerCount: players.length,
+                players: players.map((player) => ({
+                    id: player.id,
+                    color: player.color,
+                    territories: player.territories,
+                    territoriesArmies: player.territoriesArmies,
+                    armies: player.armies,
+                })),
+            });
+
+            // Atualizar o state local
+            setAllocations((prev) => {
+                const newValue = prev[territory] - 1;
+                if (newValue <= 0) {
+                    const { [territory]: _, ...rest } = prev;
+                    return rest;
+                }
+                return {
+                    ...prev,
+                    [territory]: newValue,
+                };
+            });
+        },
+        [currentPlayer, allocations, players]
+    );
+
     if (!isVisible) return null;
     if (!currentPlayer) return null;
+
+    const hasAllocations = Object.keys(allocations).length > 0;
 
     return (
         <div className="troop-allocation-bar">
@@ -242,10 +345,41 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                     Tropas para alocar: <b>{initialTroops}</b> | Restantes:{" "}
                     <b>{getRemainingTroops}</b>
                 </span>
+                {countdown !== null && (
+                    <span className="countdown-badge">
+                        Fechando em {countdown}s
+                    </span>
+                )}
             </div>
-            <div className="troop-allocation-bar-hint">
-                Clique em seus territórios para alocar tropas (+1 por clique)
-            </div>
+
+            {hasAllocations && (
+                <div className="allocations-summary">
+                    <div className="allocations-header">Tropas alocadas:</div>
+                    <div className="allocations-list-inline">
+                        {Object.entries(allocations).map(
+                            ([territory, count]) => (
+                                <div
+                                    key={territory}
+                                    className="allocation-chip"
+                                >
+                                    <span className="allocation-chip-text">
+                                        {territory}: <b>+{count}</b>
+                                    </span>
+                                    <button
+                                        className="allocation-chip-remove"
+                                        onClick={() =>
+                                            handleRemoveAllocation(territory)
+                                        }
+                                        title="Remover 1 tropa"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            )
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

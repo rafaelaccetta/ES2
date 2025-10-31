@@ -15,6 +15,7 @@ const GameUI: React.FC = () => {
         getCurrentPlayer,
         currentPhase,
         currentRound,
+        currentPlayerIndex,
         nextPhase,
         startGame,
         players,
@@ -32,6 +33,12 @@ const GameUI: React.FC = () => {
     // Função para calcular tropas disponíveis para alocar
     const getAvailableTroopsToAllocate = () => {
         const currentPlayer = getCurrentPlayer();
+        console.log(
+            "getAvailableTroopsToAllocate - Player:",
+            currentPlayer?.id,
+            "troopsAllocatedThisPhase:",
+            troopsAllocatedThisPhase
+        );
         if (!currentPlayer || troopsAllocatedThisPhase) return 0;
 
         // Calcular tropas base (mesmo cálculo do TroopAllocation)
@@ -76,7 +83,7 @@ const GameUI: React.FC = () => {
                 );
 
                 console.log(
-                    `🔄 Mudança de jogador para ${currentPlayer.id} (${currentPlayer.color}):`,
+                    `Mudança de jogador para ${currentPlayer.id} (${currentPlayer.color}):`,
                     {
                         previousPlayer: lastPlayerRef.current,
                         hasSeenObjective,
@@ -86,7 +93,7 @@ const GameUI: React.FC = () => {
 
                 if (!hasSeenObjective) {
                     console.log(
-                        `🎯 Iniciando transição para jogador ${currentPlayer.id}`
+                        `Iniciando transição para jogador ${currentPlayer.id}`
                     );
                     setShowTransition(true);
                     setShowObjective(false);
@@ -163,20 +170,40 @@ const GameUI: React.FC = () => {
     };
 
     const handleCloseTroopAllocation = () => {
+        console.log("handleCloseTroopAllocation called");
         setShowTroopAllocation(false);
-        setTroopsAllocatedThisPhase(true); // Marcar que tropas foram alocadas quando fechar
+        // Marcar como alocado quando fecha
+        setTroopsAllocatedThisPhase(true);
     };
 
-    // Reset do estado quando muda de jogador ou fase
+    // Reset do estado apenas quando muda de jogador ou fase (não abre automaticamente)
     useEffect(() => {
-        // Reset quando muda jogador, rodada ou fase
-        setTroopsAllocatedThisPhase(false);
-    }, [getCurrentPlayer()?.id, currentRound, currentPhase]);
+        const currentPlayer = getCurrentPlayer();
+        console.log(
+            "Reset troopsAllocatedThisPhase - Jogador:",
+            currentPlayer?.id,
+            "PlayerIndex:",
+            currentPlayerIndex,
+            "Fase:",
+            currentPhase,
+            "Rodada:",
+            currentRound
+        );
+
+        // Fechar a barra primeiro (sem marcar como alocado)
+        setShowTroopAllocation(false);
+
+        // Depois resetar o estado - isso garante que o reset acontece por último
+        setTimeout(() => {
+            setTroopsAllocatedThisPhase(false);
+            console.log("troopsAllocatedThisPhase resetado para false");
+        }, 0);
+    }, [currentPlayerIndex, currentRound, currentPhase]);
 
     // Event listener para resultados de ataque
     useEffect(() => {
         const handleAttackResult = (data: any) => {
-            console.log("🎲 Resultado do ataque recebido:", data);
+            console.log("Resultado do ataque recebido:", data);
             setAttackResultData(data);
             setShowAttackResult(true);
         };
@@ -303,9 +330,23 @@ const GameUI: React.FC = () => {
                     </button>
 
                     <button
-                        className="next-phase-btn"
+                        className={`next-phase-btn ${
+                            currentPhase === "REFORÇAR" &&
+                            getAvailableTroopsToAllocate() > 0
+                                ? "disabled"
+                                : ""
+                        }`}
                         onClick={nextPhase}
-                        title="Avançar para próxima fase"
+                        disabled={
+                            currentPhase === "REFORÇAR" &&
+                            getAvailableTroopsToAllocate() > 0
+                        }
+                        title={
+                            currentPhase === "REFORÇAR" &&
+                            getAvailableTroopsToAllocate() > 0
+                                ? "Você deve alocar todas as tropas antes de avançar"
+                                : "Avançar para próxima fase"
+                        }
                     >
                         Próxima Fase
                     </button>
