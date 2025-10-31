@@ -12,6 +12,7 @@ interface MapSVGProps extends React.SVGProps<SVGSVGElement> {
     onOwnersChange?: (owners: OwnersMap) => void;
     ownerColors?: Record<string, string>;
     troopCounts?: TroopsMap;
+    onTerritorySelected?: (territoryId: string) => void;
 }
 
 const MapSVG: React.FC<MapSVGProps> = ({
@@ -22,6 +23,7 @@ const MapSVG: React.FC<MapSVGProps> = ({
     onOwnersChange,
     ownerColors,
     troopCounts,
+    onTerritorySelected,
     ...svgProps
 }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
@@ -342,23 +344,31 @@ const MapSVG: React.FC<MapSVGProps> = ({
     }, [troopCounts, localOwners, ownerColors, idToName]);
 
     const handleClick = (e: React.MouseEvent) => {
-        if (!allowEditOwner || !highlightOwner) return;
         const target = e.target as Element | null;
         if (!target || target.tagName.toLowerCase() !== "polygon") return;
         const id = target.getAttribute("id");
         if (!id) return;
-        setLocalOwners((prev) => {
-            const current = prev[id];
-            let next: OwnersMap;
-            if (current === highlightOwner) {
-                const { [id]: _removed, ...rest } = prev;
-                next = rest;
-            } else {
-                next = { ...prev, [id]: highlightOwner };
-            }
-            onOwnersChange?.(next);
-            return next;
-        });
+
+        // Always call onTerritorySelected if provided
+        if (onTerritorySelected) {
+            onTerritorySelected(id);
+        }
+
+        // Only allow owner editing if enabled
+        if (allowEditOwner && highlightOwner) {
+            setLocalOwners((prev) => {
+                const current = prev[id];
+                let next: OwnersMap;
+                if (current === highlightOwner) {
+                    const { [id]: _removed, ...rest } = prev;
+                    next = rest;
+                } else {
+                    next = { ...prev, [id]: highlightOwner };
+                }
+                onOwnersChange?.(next);
+                return next;
+            });
+        }
     };
 
     return (
