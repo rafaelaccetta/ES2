@@ -330,20 +330,24 @@ const GameUI: React.FC = () => {
 
                     <button
                         className={`next-phase-btn ${
-                            currentPhase === "REFORÇAR" &&
-                            getAvailableTroopsToAllocate() > 0
+                            (currentPhase === "REFORÇAR" &&
+                                getAvailableTroopsToAllocate() > 0) ||
+                            (currentPhase === "ATACAR" && showAttackBar)
                                 ? "disabled"
                                 : ""
                         }`}
                         onClick={nextPhase}
                         disabled={
-                            currentPhase === "REFORÇAR" &&
-                            getAvailableTroopsToAllocate() > 0
+                            (currentPhase === "REFORÇAR" &&
+                                getAvailableTroopsToAllocate() > 0) ||
+                            (currentPhase === "ATACAR" && showAttackBar)
                         }
                         title={
                             currentPhase === "REFORÇAR" &&
                             getAvailableTroopsToAllocate() > 0
                                 ? "Você deve alocar todas as tropas antes de avançar"
+                                : currentPhase === "ATACAR" && showAttackBar
+                                ? "Feche a barra de ataque antes de avançar"
                                 : "Avançar para próxima fase"
                         }
                     >
