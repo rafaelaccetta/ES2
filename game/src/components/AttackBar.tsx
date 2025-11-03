@@ -31,8 +31,9 @@ const AttackBar: React.FC<AttackBarProps> = ({
     const currentPlayer = getCurrentPlayer();
 
     // Estado para controlar as fases de seleção
-    type AttackPhase = 'SELECT_SOURCE' | 'SELECT_TARGET' | 'SELECT_TROOPS';
-    const [attackPhase, setAttackPhase] = useState<AttackPhase>('SELECT_SOURCE');
+    type AttackPhase = "SELECT_SOURCE" | "SELECT_TARGET" | "SELECT_TROOPS";
+    const [attackPhase, setAttackPhase] =
+        useState<AttackPhase>("SELECT_SOURCE");
 
     // Estado para ataque
     const [selectedSource, setSelectedSource] = useState<string>("");
@@ -63,7 +64,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
             );
 
             // Fase 1: Selecionando território de origem
-            if (attackPhase === 'SELECT_SOURCE' && isOwned) {
+            if (attackPhase === "SELECT_SOURCE" && isOwned) {
                 const matchingTerritory = currentPlayer.territories.find(
                     (t) =>
                         t
@@ -74,19 +75,27 @@ const AttackBar: React.FC<AttackBarProps> = ({
                             .replace(/[^a-z0-9]/g, "") === normalizedId
                 );
                 if (matchingTerritory) {
-                    const armies = currentPlayer.territoriesArmies?.[matchingTerritory] ?? 0;
+                    const armies =
+                        currentPlayer.territoriesArmies?.[matchingTerritory] ??
+                        0;
                     if (armies <= 1) {
-                        console.log("Território sem tropas suficientes para atacar");
+                        console.log(
+                            "Território sem tropas suficientes para atacar"
+                        );
                         return;
                     }
                     setSelectedSource(matchingTerritory);
                     setSelectedTarget("");
                     setAttackQuantity("1");
-                    setAttackPhase('SELECT_TARGET');
+                    setAttackPhase("SELECT_TARGET");
                 }
             }
             // Fase 2: Selecionando território alvo
-            else if (attackPhase === 'SELECT_TARGET' && selectedSource && !isOwned) {
+            else if (
+                attackPhase === "SELECT_TARGET" &&
+                selectedSource &&
+                !isOwned
+            ) {
                 // Verificar se é vizinho válido
                 try {
                     const gmAny = gameManager as any;
@@ -122,7 +131,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
                                 player.id !== currentPlayer.id
                             ) {
                                 setSelectedTarget(matchingTerritory);
-                                setAttackPhase('SELECT_TROOPS');
+                                setAttackPhase("SELECT_TROOPS");
                                 break;
                             }
                         }
@@ -172,7 +181,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
             setAttackQuantity("1");
             setShowPostConquest(false);
             setPostConquestData(null);
-            setAttackPhase('SELECT_SOURCE');
+            setAttackPhase("SELECT_SOURCE");
         }
     }, [isVisible]);
 
@@ -216,19 +225,19 @@ const AttackBar: React.FC<AttackBarProps> = ({
         setSelectedSource("");
         setSelectedTarget("");
         setAttackQuantity("1");
-        setAttackPhase('SELECT_SOURCE');
+        setAttackPhase("SELECT_SOURCE");
     };
 
     const handleRemoveSource = () => {
         setSelectedSource("");
         setSelectedTarget("");
         setAttackQuantity("1");
-        setAttackPhase('SELECT_SOURCE');
+        setAttackPhase("SELECT_SOURCE");
     };
 
     const handleRemoveTarget = () => {
         setSelectedTarget("");
-        setAttackPhase('SELECT_TARGET');
+        setAttackPhase("SELECT_TARGET");
     };
 
     // Handlers pós-conquista
@@ -278,8 +287,8 @@ const AttackBar: React.FC<AttackBarProps> = ({
             >
                 <div className="attack-bar-content">
                     <span className="conquest-message">
-                        🎉 <strong>{postConquestData.target}</strong>{" "}
-                        conquistado! Mover tropas de{" "}
+                        <strong>{postConquestData.target}</strong> conquistado!
+                        Mover tropas de{" "}
                         <strong>{postConquestData.source}</strong>?
                     </span>
                     <div className="troop-move-controls">
@@ -337,19 +346,39 @@ const AttackBar: React.FC<AttackBarProps> = ({
         <div className={`attack-bar ${isDimmed ? "dimmed" : ""}`}>
             <div className="attack-bar-content">
                 <span className="attack-instruction">
-                    {attackPhase === 'SELECT_SOURCE' && "📍 Selecione um território de origem para atacar"}
-                    {attackPhase === 'SELECT_TARGET' && selectedSource && `🎯 Selecione um território inimigo vizinho de ${selectedSource} para atacar`}
-                    {attackPhase === 'SELECT_TROOPS' && selectedSource && selectedTarget && `⚔️ Escolha quantas tropas usar para atacar ${selectedTarget}`}
+                    {attackPhase === "SELECT_SOURCE" && (
+                        <>
+                            Selecione um <strong>território de origem</strong>{" "}
+                            para atacar
+                        </>
+                    )}
+                    {attackPhase === "SELECT_TARGET" && selectedSource && (
+                        <>
+                            Selecione um{" "}
+                            <strong>território inimigo vizinho</strong> de{" "}
+                            <strong>{selectedSource}</strong> para atacar
+                        </>
+                    )}
+                    {attackPhase === "SELECT_TROOPS" &&
+                        selectedSource &&
+                        selectedTarget && (
+                            <>
+                                Escolha <strong>quantas tropas</strong> usar
+                                para atacar <strong>{selectedTarget}</strong>
+                            </>
+                        )}
                 </span>
-                {canAttack && (
-                    <button className="attack-btn" onClick={handleAttack}>
-                        Atacar com {attackQuantity} tropa
-                        {parseInt(attackQuantity) > 1 ? "s" : ""}
+                <div className="attack-bar-buttons">
+                    {canAttack && (
+                        <button className="attack-btn" onClick={handleAttack}>
+                            Atacar com {attackQuantity} tropa
+                            {parseInt(attackQuantity) > 1 ? "s" : ""}
+                        </button>
+                    )}
+                    <button className="close-attack-btn" onClick={onClose}>
+                        Fechar Ataque
                     </button>
-                )}
-                <button className="close-attack-btn" onClick={onClose}>
-                    Fechar Ataque
-                </button>
+                </div>
             </div>
 
             {hasSelection && (
@@ -394,48 +423,56 @@ const AttackBar: React.FC<AttackBarProps> = ({
                                 </button>
                             </div>
                         )}
-                        {selectedSource && selectedTarget && attackPhase === 'SELECT_TROOPS' && (
-                            <div className="troop-selection-inline">
-                                <span className="troop-selection-label">
-                                    Atacar com:
-                                </span>
-                                <div className="troop-buttons-inline">
-                                    <button
-                                        className={`troop-btn-small ${
-                                            attackQuantity === "1"
-                                                ? "selected"
-                                                : ""
-                                        }`}
-                                        onClick={() => setAttackQuantity("1")}
-                                        disabled={maxAttackable < 1}
-                                    >
-                                        1
-                                    </button>
-                                    <button
-                                        className={`troop-btn-small ${
-                                            attackQuantity === "2"
-                                                ? "selected"
-                                                : ""
-                                        }`}
-                                        onClick={() => setAttackQuantity("2")}
-                                        disabled={maxAttackable < 2}
-                                    >
-                                        2
-                                    </button>
-                                    <button
-                                        className={`troop-btn-small ${
-                                            attackQuantity === "3"
-                                                ? "selected"
-                                                : ""
-                                        }`}
-                                        onClick={() => setAttackQuantity("3")}
-                                        disabled={maxAttackable < 3}
-                                    >
-                                        3
-                                    </button>
+                        {selectedSource &&
+                            selectedTarget &&
+                            attackPhase === "SELECT_TROOPS" && (
+                                <div className="troop-selection-inline">
+                                    <span className="troop-selection-label">
+                                        Atacar com:
+                                    </span>
+                                    <div className="troop-buttons-inline">
+                                        <button
+                                            className={`troop-btn-small ${
+                                                attackQuantity === "1"
+                                                    ? "selected"
+                                                    : ""
+                                            }`}
+                                            onClick={() =>
+                                                setAttackQuantity("1")
+                                            }
+                                            disabled={maxAttackable < 1}
+                                        >
+                                            1
+                                        </button>
+                                        <button
+                                            className={`troop-btn-small ${
+                                                attackQuantity === "2"
+                                                    ? "selected"
+                                                    : ""
+                                            }`}
+                                            onClick={() =>
+                                                setAttackQuantity("2")
+                                            }
+                                            disabled={maxAttackable < 2}
+                                        >
+                                            2
+                                        </button>
+                                        <button
+                                            className={`troop-btn-small ${
+                                                attackQuantity === "3"
+                                                    ? "selected"
+                                                    : ""
+                                            }`}
+                                            onClick={() =>
+                                                setAttackQuantity("3")
+                                            }
+                                            disabled={maxAttackable < 3}
+                                        >
+                                            3
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
                     </div>
                 </div>
             )}

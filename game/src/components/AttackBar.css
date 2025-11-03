@@ -5,10 +5,10 @@
     right: 16px;
     bottom: 16px;
     z-index: 4000;
-    background: linear-gradient(135deg, #5c1a1a 0%, #8b2828 100%);
-    border: 2px solid #dc2626;
+    background: linear-gradient(135deg, #1b3738 0%, #3e5e5f 100%);
+    border: 2px solid #a59b7b;
     border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
     padding: 12px 24px;
     display: flex;
     flex-direction: column;
@@ -18,9 +18,9 @@
 }
 
 .attack-bar.post-conquest {
-    background: linear-gradient(135deg, #1a5c1a 0%, #28a428 100%);
-    border: 2px solid #16a34a;
-    box-shadow: 0 4px 16px rgba(22, 163, 74, 0.4);
+    background: linear-gradient(135deg, #1b3738 0%, #3e5e5f 100%);
+    border: 2px solid #10b981;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
 }
 
 .attack-bar.dimmed {
@@ -30,16 +30,29 @@
 .attack-bar-content {
     display: flex;
     align-items: center;
-    gap: 16px;
+    justify-content: space-between;
+    gap: 24px;
     font-size: 1rem;
     color: #fff;
-    flex-wrap: wrap;
-    justify-content: center;
+    width: 100%;
 }
 
 .attack-instruction {
-    font-weight: 500;
+    font-weight: 400;
     animation: fade-in 0.3s ease;
+    flex: 1;
+}
+
+.attack-instruction strong {
+    color: #fbbf24;
+    font-weight: 600;
+}
+
+.attack-bar-buttons {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
 @keyframes fade-in {
@@ -60,8 +73,8 @@
 
 .attack-btn {
     padding: 10px 24px;
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-    color: white;
+    background: linear-gradient(135deg, #a59b7b 0%, #8b8263 100%);
+    color: #1b3738;
     border: none;
     border-radius: 8px;
     font-size: 1rem;
@@ -73,7 +86,7 @@
 }
 
 .attack-btn:hover {
-    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    background: linear-gradient(135deg, #c5b18a 0%, #a59b7b 100%);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
@@ -180,8 +193,8 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(220, 38, 38, 0.2);
-    border: 1px solid #dc2626;
+    background: rgba(165, 155, 123, 0.2);
+    border: 1px solid #a59b7b;
     border-radius: 20px;
     padding: 6px 12px;
     font-size: 0.875rem;
@@ -202,20 +215,20 @@
 }
 
 .selection-chip.target {
-    background: rgba(239, 68, 68, 0.2);
-    border: 1px solid #ef4444;
+    background: rgba(165, 155, 123, 0.3);
+    border: 1px solid #c5b18a;
 }
 
 .selection-chip:hover {
-    background: rgba(220, 38, 38, 0.3);
+    background: rgba(165, 155, 123, 0.3);
 }
 
 .selection-chip.target:hover {
-    background: rgba(239, 68, 68, 0.3);
+    background: rgba(165, 155, 123, 0.4);
 }
 
 .selection-chip-label {
-    color: #fca5a5;
+    color: #fbbf24;
     font-weight: 600;
 }
 
@@ -224,7 +237,7 @@
 }
 
 .selection-chip-remove {
-    background: rgba(239, 68, 68, 0.8);
+    background: rgba(165, 155, 123, 0.5);
     color: white;
     border: none;
     border-radius: 50%;
@@ -241,7 +254,7 @@
 }
 
 .selection-chip-remove:hover {
-    background: rgba(239, 68, 68, 1);
+    background: rgba(165, 155, 123, 0.8);
     transform: scale(1.1);
 }
 
@@ -314,6 +327,18 @@
 @media (max-width: 768px) {
     .attack-bar-content {
         font-size: 0.875rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .attack-instruction {
+        text-align: left;
+    }
+
+    .attack-bar-buttons {
+        width: 100%;
+        justify-content: flex-end;
     }
 
     .attack-btn,
