@@ -30,6 +30,10 @@ const AttackBar: React.FC<AttackBarProps> = ({
         useGameContext();
     const currentPlayer = getCurrentPlayer();
 
+    // Estado para controlar as fases de seleção
+    type AttackPhase = 'SELECT_SOURCE' | 'SELECT_TARGET' | 'SELECT_TROOPS';
+    const [attackPhase, setAttackPhase] = useState<AttackPhase>('SELECT_SOURCE');
+
     // Estado para ataque
     const [selectedSource, setSelectedSource] = useState<string>("");
     const [selectedTarget, setSelectedTarget] = useState<string>("");
@@ -58,8 +62,8 @@ const AttackBar: React.FC<AttackBarProps> = ({
                         .replace(/[^a-z0-9]/g, "") === normalizedId
             );
 
-            if (isOwned) {
-                // Seleciona como origem
+            // Fase 1: Selecionando território de origem
+            if (attackPhase === 'SELECT_SOURCE' && isOwned) {
                 const matchingTerritory = currentPlayer.territories.find(
                     (t) =>
                         t
@@ -70,11 +74,19 @@ const AttackBar: React.FC<AttackBarProps> = ({
                             .replace(/[^a-z0-9]/g, "") === normalizedId
                 );
                 if (matchingTerritory) {
+                    const armies = currentPlayer.territoriesArmies?.[matchingTerritory] ?? 0;
+                    if (armies <= 1) {
+                        console.log("Território sem tropas suficientes para atacar");
+                        return;
+                    }
                     setSelectedSource(matchingTerritory);
                     setSelectedTarget("");
                     setAttackQuantity("1");
+                    setAttackPhase('SELECT_TARGET');
                 }
-            } else if (selectedSource) {
+            }
+            // Fase 2: Selecionando território alvo
+            else if (attackPhase === 'SELECT_TARGET' && selectedSource && !isOwned) {
                 // Verificar se é vizinho válido
                 try {
                     const gmAny = gameManager as any;
@@ -110,6 +122,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
                                 player.id !== currentPlayer.id
                             ) {
                                 setSelectedTarget(matchingTerritory);
+                                setAttackPhase('SELECT_TROOPS');
                                 break;
                             }
                         }
@@ -119,7 +132,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
                 }
             }
         },
-        [currentPlayer, gameManager, selectedSource]
+        [currentPlayer, gameManager, selectedSource, attackPhase]
     );
 
     useEffect(() => {
@@ -159,6 +172,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
             setAttackQuantity("1");
             setShowPostConquest(false);
             setPostConquestData(null);
+            setAttackPhase('SELECT_SOURCE');
         }
     }, [isVisible]);
 
@@ -198,19 +212,23 @@ const AttackBar: React.FC<AttackBarProps> = ({
             target: selectedTarget,
             troops: qty,
         });
-        // Não fecha a barra, apenas limpa a seleção para permitir novo ataque
+        // Não fecha a barra, volta para a fase de seleção de origem
+        setSelectedSource("");
         setSelectedTarget("");
         setAttackQuantity("1");
+        setAttackPhase('SELECT_SOURCE');
     };
 
     const handleRemoveSource = () => {
         setSelectedSource("");
         setSelectedTarget("");
         setAttackQuantity("1");
+        setAttackPhase('SELECT_SOURCE');
     };
 
     const handleRemoveTarget = () => {
         setSelectedTarget("");
+        setAttackPhase('SELECT_TARGET');
     };
 
     // Handlers pós-conquista
@@ -319,7 +337,9 @@ const AttackBar: React.FC<AttackBarProps> = ({
         <div className={`attack-bar ${isDimmed ? "dimmed" : ""}`}>
             <div className="attack-bar-content">
                 <span className="attack-instruction">
-                    Selecione um território de origem e um alvo para atacar
+                    {attackPhase === 'SELECT_SOURCE' && "📍 Selecione um território de origem para atacar"}
+                    {attackPhase === 'SELECT_TARGET' && selectedSource && `🎯 Selecione um território inimigo vizinho de ${selectedSource} para atacar`}
+                    {attackPhase === 'SELECT_TROOPS' && selectedSource && selectedTarget && `⚔️ Escolha quantas tropas usar para atacar ${selectedTarget}`}
                 </span>
                 {canAttack && (
                     <button className="attack-btn" onClick={handleAttack}>
@@ -374,7 +394,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
                                 </button>
                             </div>
                         )}
-                        {selectedSource && selectedTarget && (
+                        {selectedSource && selectedTarget && attackPhase === 'SELECT_TROOPS' && (
                             <div className="troop-selection-inline">
                                 <span className="troop-selection-label">
                                     Atacar com:
