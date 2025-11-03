@@ -22,7 +22,6 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
     const [allocations, setAllocations] = useState<Record<string, number>>({});
     const [lastRoundPlayer, setLastRoundPlayer] = useState<string>("");
     const [initialTroops, setInitialTroops] = useState(0);
-    const [countdown, setCountdown] = useState<number | null>(null);
     const lastClickTimestampRef = useRef<number>(0);
     const allocatedCountRef = useRef<number>(0);
 
@@ -100,46 +99,6 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
         );
         return Math.max(0, initialTroops - allocated);
     }, [initialTroops, allocations]);
-
-    // Cancelar countdown quando componente não está visível
-    useEffect(() => {
-        if (!isVisible) {
-            console.log("TroopAllocation: not visible, canceling countdown");
-            setCountdown(null);
-        }
-    }, [isVisible]);
-
-    // Temporizador de 5 segundos quando todas as tropas forem alocadas
-    useEffect(() => {
-        if (!isVisible) return; // Não iniciar countdown se não estiver visível
-
-        if (getRemainingTroops === 0 && initialTroops > 0) {
-            console.log(
-                "TroopAllocation: all troops allocated, starting countdown..."
-            );
-            setCountdown(5);
-        } else {
-            // Se ainda há tropas, cancelar countdown
-            setCountdown(null);
-        }
-    }, [getRemainingTroops, initialTroops, isVisible]);
-
-    // Gerenciar contagem regressiva
-    useEffect(() => {
-        if (countdown === null || !isVisible) return;
-
-        if (countdown === 0) {
-            console.log("TroopAllocation: countdown finished, closing...");
-            onClose();
-            return;
-        }
-
-        const timer = setTimeout(() => {
-            setCountdown(countdown - 1);
-        }, 1000);
-
-        return () => clearTimeout(timer);
-    }, [countdown, onClose, isVisible]);
 
     const normalizeId = useCallback((name: string) => {
         return name
@@ -333,10 +292,16 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
         [currentPlayer, allocations, players]
     );
 
+    const handleConfirm = useCallback(() => {
+        console.log("TroopAllocation: confirming allocation");
+        onClose();
+    }, [onClose]);
+
     if (!isVisible) return null;
     if (!currentPlayer) return null;
 
     const hasAllocations = Object.keys(allocations).length > 0;
+    const allTroopsAllocated = getRemainingTroops === 0 && initialTroops > 0;
 
     return (
         <div className="troop-allocation-bar">
@@ -345,10 +310,13 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                     Tropas para alocar: <b>{initialTroops}</b> | Restantes:{" "}
                     <b>{getRemainingTroops}</b>
                 </span>
-                {countdown !== null && (
-                    <span className="countdown-badge">
-                        Fechando em {countdown}s
-                    </span>
+                {allTroopsAllocated && (
+                    <button
+                        className="confirm-allocation-btn"
+                        onClick={handleConfirm}
+                    >
+                        Confirmar Alocação
+                    </button>
                 )}
             </div>
 
