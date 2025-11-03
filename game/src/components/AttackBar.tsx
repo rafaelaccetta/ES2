@@ -21,6 +21,19 @@ interface PostConquestPayload {
     maxCanMove: number;
 }
 
+interface BattleResult {
+    source: string;
+    target: string;
+    troopsUsed: number;
+    attackerDice: number[];
+    defenderDice: number[];
+    attackerLoss: number;
+    defenderLoss: number;
+    conquered: boolean;
+    attackerColor?: string;
+    defenderColor?: string;
+}
+
 const AttackBar: React.FC<AttackBarProps> = ({
     isVisible,
     onClose,
@@ -39,6 +52,10 @@ const AttackBar: React.FC<AttackBarProps> = ({
     const [selectedSource, setSelectedSource] = useState<string>("");
     const [selectedTarget, setSelectedTarget] = useState<string>("");
     const [attackQuantity, setAttackQuantity] = useState<string>("1");
+
+    // Estado para resultado do ataque
+    const [showAttackResult, setShowAttackResult] = useState(false);
+    const [attackResult, setAttackResult] = useState<BattleResult | null>(null);
 
     // Estado para pós-conquista
     const [showPostConquest, setShowPostConquest] = useState(false);
@@ -157,6 +174,20 @@ const AttackBar: React.FC<AttackBarProps> = ({
         };
     }, [isVisible, handleTerritorySelected]);
 
+    // Listener para resultado do ataque
+    useEffect(() => {
+        const handleAttackResult = (data: any) => {
+            const result = data as BattleResult;
+            setAttackResult(result);
+            setShowAttackResult(true);
+        };
+
+        EventBus.on("attack-result", handleAttackResult);
+        return () => {
+            EventBus.removeListener("attack-result", handleAttackResult);
+        };
+    }, []);
+
     // Listener para pós-conquista
     useEffect(() => {
         const handlePostConquest = (data: any) => {
@@ -165,6 +196,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
             const defaultMove = Math.min(1, Math.max(1, p.maxCanMove));
             setMoveCount(String(defaultMove));
             setShowPostConquest(true);
+            setShowAttackResult(false); // Esconder resultado ao mostrar pós-conquista
         };
 
         EventBus.on("post-conquest", handlePostConquest);
@@ -181,6 +213,8 @@ const AttackBar: React.FC<AttackBarProps> = ({
             setAttackQuantity("1");
             setShowPostConquest(false);
             setPostConquestData(null);
+            setShowAttackResult(false);
+            setAttackResult(null);
             setAttackPhase("SELECT_SOURCE");
         }
     }, [isVisible]);
@@ -240,6 +274,12 @@ const AttackBar: React.FC<AttackBarProps> = ({
         setAttackPhase("SELECT_TARGET");
     };
 
+    // Handler para fechar resultado do ataque
+    const handleCloseAttackResult = () => {
+        setShowAttackResult(false);
+        setAttackResult(null);
+    };
+
     // Handlers pós-conquista
     const handleConfirmMove = () => {
         if (!postConquestData) return;
@@ -276,6 +316,138 @@ const AttackBar: React.FC<AttackBarProps> = ({
 
     if (!isVisible) return null;
     if (!currentPlayer) return null;
+
+    const getPlayerColor = (color: string) => {
+        const colorMap: Record<string, string> = {
+            azul: "#2563eb",
+            vermelho: "#dc2626",
+            verde: "#16a34a",
+            branco: "#b7c0cd",
+        };
+        return colorMap[color] || "#d2d9e3ff";
+    };
+
+    // Modo resultado do ataque
+    if (showAttackResult && attackResult) {
+        return (
+            <div
+                className={`attack-bar attack-result ${
+                    isDimmed ? "dimmed" : ""
+                }`}
+            >
+                <div className="attack-result-content">
+                    <div className="result-header">
+                        <h3
+                            className={
+                                attackResult.conquered ? "victory" : "defeat"
+                            }
+                        >
+                            {attackResult.conquered
+                                ? "TERRITÓRIO CONQUISTADO!"
+                                : "ATAQUE DEFENDIDO!"}
+                        </h3>
+                    </div>
+
+                    <div className="battle-summary">
+                        <div className="battle-info">
+                            <span>
+                                {attackResult.source} ⚔️ {attackResult.target}
+                            </span>
+                            <span className="troops-used">
+                                Tropas usadas: {attackResult.troopsUsed}
+                            </span>
+                        </div>
+
+                        <div className="dice-results">
+                            <div className="dice-group">
+                                <span className="dice-label">Atacante</span>
+                                <div className="dice-container">
+                                    {attackResult.attackerDice.map(
+                                        (value, index) => (
+                                            <div
+                                                key={index}
+                                                className="dice"
+                                                style={{
+                                                    backgroundColor:
+                                                        attackResult.attackerColor
+                                                            ? getPlayerColor(
+                                                                  attackResult.attackerColor
+                                                              )
+                                                            : undefined,
+                                                }}
+                                            >
+                                                {value}
+                                            </div>
+                                        )
+                                    )}
+                                </div>
+                                <span className="loss-text">
+                                    Perdas: {attackResult.attackerLoss}
+                                </span>
+                            </div>
+
+                            <div className="dice-group">
+                                <span className="dice-label">Defensor</span>
+                                <div className="dice-container">
+                                    {attackResult.defenderDice.map(
+                                        (value, index) => (
+                                            <div
+                                                key={index}
+                                                className="dice"
+                                                style={{
+                                                    backgroundColor:
+                                                        attackResult.defenderColor
+                                                            ? getPlayerColor(
+                                                                  attackResult.defenderColor
+                                                              )
+                                                            : undefined,
+                                                }}
+                                            >
+                                                {value}
+                                            </div>
+                                        )
+                                    )}
+                                </div>
+                                <span className="loss-text">
+                                    Perdas: {attackResult.defenderLoss}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div
+                            className={`result-message ${
+                                attackResult.conquered ? "victory" : "defeat"
+                            }`}
+                        >
+                            {attackResult.conquered ? (
+                                <div>
+                                    <h4>VITÓRIA!</h4>
+                                    <p>
+                                        {attackResult.source} conquistou{" "}
+                                        {attackResult.target}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <h4>DERROTA</h4>
+                                    <p>
+                                        {attackResult.target} resistiu ao ataque
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <button
+                        className="continue-btn"
+                        onClick={handleCloseAttackResult}
+                    >
+                        Continuar
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     // Modo pós-conquista
     if (showPostConquest && postConquestData) {

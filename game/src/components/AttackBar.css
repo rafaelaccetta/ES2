@@ -23,6 +23,10 @@
     box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
 }
 
+.attack-bar.attack-result {
+    padding: 16px 24px;
+}
+
 .attack-bar.dimmed {
     opacity: 0.3;
 }
@@ -361,5 +365,163 @@
         height: 32px;
         font-size: 0.875rem;
     }
+}
+
+/* Estilos para resultado do ataque */
+.attack-result-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+}
+
+.result-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #a59b7b;
+    text-align: center;
+    font-weight: 600;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.result-header h3.victory {
+    color: #a59b7b;
+}
+
+.result-header h3.defeat {
+    color: #a59b7b;
+}
+
+.battle-summary {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.battle-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: rgba(62, 94, 95, 0.3);
+    border-radius: 8px;
+    border: 1px solid #a59b7b;
+    color: #f4e4bc;
+}
+
+.battle-info span {
+    font-size: 1.125rem;
+}
+
+.troops-used {
+    font-size: 0.875rem;
+    color: #a59b7b;
+}
+
+.dice-results {
+    display: flex;
+    justify-content: space-around;
+    gap: 20px;
+    padding: 0;
+}
+
+.dice-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+.dice-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #a59b7b;
+    margin: 0;
+}
+
+.dice-container {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.dice {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #a59b7b;
+    border-radius: 8px;
+    color: white;
+    font-size: 1.125rem;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.loss-text {
+    font-size: 0.875rem;
+    color: #dc2626;
+    font-weight: 600;
+    margin: 0;
+}
+
+.continue-btn {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #a59b7b 0%, #8b8263 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    min-width: 120px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.continue-btn:hover {
+    background: linear-gradient(135deg, #8b8263 0%, #757049 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.continue-btn:active {
+    transform: translateY(0);
+}
+
+.result-message {
+    text-align: center;
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid;
+}
+
+.result-message.victory {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    border-color: #166534;
+}
+
+.result-message.defeat {
+    background: linear-gradient(135deg, #f44336, #c62828);
+    border-color: #b71c1c;
+}
+
+.result-message h4 {
+    margin: 0 0 10px 0;
+    font-size: 1.25rem;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.result-message p {
+    margin: 0;
+    font-size: 1rem;
+    color: white;
 }
 

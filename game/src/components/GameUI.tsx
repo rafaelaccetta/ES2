@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useGameContext } from "../context/GameContext";
-import { EventBus } from "../game/EventBus";
 import ObjectiveDisplay from "./ObjectiveDisplay";
 import TurnTransition from "./TurnTransition";
 import TroopAllocation from "./TroopAllocation";
 import AttackBar from "./AttackBar";
-import AttackResult from "./AttackResult";
 import "./GameUI.css";
 
 const GameUI: React.FC = () => {
@@ -67,8 +65,6 @@ const GameUI: React.FC = () => {
     const [showTransition, setShowTransition] = useState(false);
     const [showTroopAllocation, setShowTroopAllocation] = useState(false);
     const [showAttackBar, setShowAttackBar] = useState(false);
-    const [showAttackResult, setShowAttackResult] = useState(false);
-    const [attackResultData, setAttackResultData] = useState<any>(null);
     const lastPlayerRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -156,18 +152,6 @@ const GameUI: React.FC = () => {
         setShowAttackBar(false);
     };
 
-    const handleCloseAttackResult = () => {
-        setShowAttackResult(false);
-        setAttackResultData(null);
-    };
-
-    const handleSendTroops = () => {
-        // Fechar o modal de resultado de ataque
-        setShowAttackResult(false);
-        // O PostConquestMove já deve estar escutando o evento 'post-conquest'
-        // que será emitido automaticamente quando necessário
-    };
-
     const handleCloseTroopAllocation = () => {
         console.log("handleCloseTroopAllocation called");
         setShowTroopAllocation(false);
@@ -198,20 +182,6 @@ const GameUI: React.FC = () => {
             console.log("troopsAllocatedThisPhase resetado para false");
         }, 0);
     }, [currentPlayerIndex, currentRound, currentPhase]);
-
-    // Event listener para resultados de ataque
-    useEffect(() => {
-        const handleAttackResult = (data: any) => {
-            console.log("Resultado do ataque recebido:", data);
-            setAttackResultData(data);
-            setShowAttackResult(true);
-        };
-
-        EventBus.on("attack-result", handleAttackResult);
-        return () => {
-            EventBus.removeListener("attack-result", handleAttackResult);
-        };
-    }, []);
 
     const getPlayerColor = (color: string) => {
         const colorMap: Record<string, string> = {
@@ -405,18 +375,7 @@ const GameUI: React.FC = () => {
             <AttackBar
                 isVisible={showAttackBar}
                 onClose={handleCloseAttackBar}
-                isDimmed={
-                    showObjective ||
-                    showObjectiveConfirmation ||
-                    showAttackResult
-                }
-            />
-
-            <AttackResult
-                isVisible={showAttackResult}
-                result={attackResultData}
-                onClose={handleCloseAttackResult}
-                onSendTroops={handleSendTroops}
+                isDimmed={showObjective || showObjectiveConfirmation}
             />
         </>
     );
