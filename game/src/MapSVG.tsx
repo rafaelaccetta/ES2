@@ -162,6 +162,52 @@ const MapSVG: React.FC<MapSVGProps> = ({
         });
     }, [localOwners, ownerColors]);
 
+    // Adicionar destaque especial para territórios selecionados (desfoque no resto)
+    useEffect(() => {
+        const svg = svgRef.current;
+        if (!svg) return;
+
+        // Sempre remove as classes primeiro
+        svg.querySelectorAll("polygon").forEach((poly) => {
+            poly.classList.remove("territory-highlighted");
+        });
+
+        if (!selectedTerritories || selectedTerritories.length === 0) {
+            return;
+        }
+
+        console.log("MapSVG: Selected territories:", selectedTerritories);
+
+        // Para cada território selecionado, buscar todos os polígonos relacionados
+        const allPolygons = svg.querySelectorAll<SVGPolygonElement>("polygon");
+
+        // Criar um Set dos IDs selecionados para comparação mais eficiente
+        const selectedIds = new Set(selectedTerritories);
+
+        let highlightedCount = 0;
+
+        allPolygons.forEach((poly) => {
+            const polyId = poly.getAttribute("id");
+            if (!polyId) return;
+
+            // Remove sufixos numéricos do ID do polígono (ex: alaska2 -> alaska)
+            const baseId = polyId.replace(/\d+$/, "");
+
+            // Verifica se este polígono pertence a algum território selecionado
+            const isSelected =
+                selectedIds.has(polyId) || selectedIds.has(baseId);
+
+            if (isSelected) {
+                poly.classList.add("territory-highlighted");
+                highlightedCount++;
+            }
+        });
+
+        console.log(
+            `MapSVG: Highlighted ${highlightedCount} polygons out of ${allPolygons.length}`
+        );
+    }, [selectedTerritories]);
+
     useEffect(() => {
         const svg = svgRef.current;
         if (!svg) return;
@@ -627,6 +673,33 @@ const MapSVG: React.FC<MapSVGProps> = ({
                 d="M225 175q0-35 40-35h535q40 0 40 30m-480 20 25-5-5 35m5-35-45 55m120-40 15 15m11 53 34-23-25-10Zl43 4-9-27m-23 55 5 5m-4 68v9m40-7 22-5v20m-110 50h25m175 5v10m-35 90h20l-10-50m165-35h28v48Zv-25m28 25 22 40m-18-220 13 30h-15"
                 filter="url(#filter_texture)"
             ></path>
+            <style>{`
+                polygon {
+                    transition: opacity 0.3s ease, filter 0.3s ease;
+                }
+                
+                /* Quando há territórios selecionados, escurece todos */
+                ${
+                    selectedTerritories && selectedTerritories.length > 0
+                        ? `
+                    polygon {
+                        opacity: 0.4;
+                        filter: brightness(0.5);
+                    }
+                    
+                    /* Mantém os territórios destacados com opacidade normal */
+                    polygon.territory-highlighted {
+                        opacity: 1 !important;
+                        filter: brightness(1) drop-shadow(0 0 10px rgba(251, 191, 36, 0.8)) !important;
+                    }
+                    
+                    .map-blur-overlay {
+                        pointer-events: none;
+                    }
+                `
+                        : ""
+                }
+            `}</style>
         </svg>
     );
 };

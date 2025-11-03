@@ -216,8 +216,123 @@ const AttackBar: React.FC<AttackBarProps> = ({
             setShowAttackResult(false);
             setAttackResult(null);
             setAttackPhase("SELECT_SOURCE");
+            // Limpar destaques quando fechar
+            EventBus.emit("highlight-territories", {
+                territories: [],
+                mode: "none",
+            });
         }
     }, [isVisible]);
+
+    // Controlar destaques de territórios baseado na fase
+    useEffect(() => {
+        if (!isVisible || !currentPlayer || !gameManager) {
+            EventBus.emit("highlight-territories", {
+                territories: [],
+                mode: "none",
+            });
+            return;
+        }
+
+        const normalize = (s: string) =>
+            s
+                .normalize("NFD")
+                .replace(/\p{Diacritic}+/gu, "")
+                .toLowerCase()
+                .replace(/\s+/g, "")
+                .replace(/[^a-z0-9]/g, "");
+
+        // Fase SELECT_SOURCE: destacar todos os territórios do jogador atual
+        if (
+            attackPhase === "SELECT_SOURCE" &&
+            !showAttackResult &&
+            !showPostConquest
+        ) {
+            const playerTerritories = currentPlayer.territories
+                .filter((t) => {
+                    const armies = currentPlayer.territoriesArmies?.[t] ?? 0;
+                    return armies > 1; // Somente territórios com mais de 1 tropa
+                })
+                .map(normalize);
+            console.log(
+                "AttackBar: Highlighting player territories:",
+                playerTerritories
+            );
+            EventBus.emit("highlight-territories", {
+                territories: playerTerritories,
+                mode: "player-territories",
+            });
+        }
+        // Fase SELECT_TARGET: destacar origem + vizinhos inimigos
+        else if (
+            attackPhase === "SELECT_TARGET" &&
+            selectedSource &&
+            !showAttackResult &&
+            !showPostConquest
+        ) {
+            const gmAny = gameManager as any;
+            const neighbors =
+                gmAny.gameMap?.territories?.getNeighbors(selectedSource) || [];
+            const enemyNeighbors = neighbors
+                .filter((n: any) => {
+                    // Verificar se é território inimigo
+                    for (const player of gameManager.players) {
+                        if (player.id === currentPlayer.id) continue;
+                        const hasTerritory = player.territories.some(
+                            (t) => normalize(t) === normalize(n.node)
+                        );
+                        if (hasTerritory) return true;
+                    }
+                    return false;
+                })
+                .map((n: any) => normalize(n.node));
+
+            const highlightList = [
+                normalize(selectedSource),
+                ...enemyNeighbors,
+            ];
+            EventBus.emit("highlight-territories", {
+                territories: highlightList,
+                mode: "attack-selection",
+            });
+        }
+        // Fase SELECT_TROOPS, durante batalha, ou pós-conquista: destacar origem e alvo
+        else if (
+            (attackPhase === "SELECT_TROOPS" &&
+                selectedSource &&
+                selectedTarget &&
+                !showAttackResult &&
+                !showPostConquest) ||
+            showAttackResult ||
+            showPostConquest
+        ) {
+            const highlightList = [];
+            if (selectedSource) highlightList.push(normalize(selectedSource));
+            if (selectedTarget) highlightList.push(normalize(selectedTarget));
+
+            // Se estiver em pós-conquista, usar os dados de postConquestData
+            if (showPostConquest && postConquestData) {
+                highlightList.length = 0;
+                highlightList.push(normalize(postConquestData.source));
+                highlightList.push(normalize(postConquestData.target));
+            }
+
+            EventBus.emit("highlight-territories", {
+                territories: highlightList,
+                mode: "battle",
+            });
+        }
+    }, [
+        isVisible,
+        attackPhase,
+        selectedSource,
+        selectedTarget,
+        showAttackResult,
+        showPostConquest,
+        currentPlayer,
+        gameManager,
+        postConquestData,
+    ]);
 
     const maxAttackable = useMemo(() => {
         if (!selectedSource || !currentPlayer) return 0;

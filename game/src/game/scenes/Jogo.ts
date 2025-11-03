@@ -197,16 +197,26 @@ export class Jogo extends Scene {
                 return ownersMap;
             }, [playersData, normalizeId]);
 
-            // Territórios selecionados baseados no jogador ativo
-            const selectedTerritories = React.useMemo(() => {
-                if (!activePlayer || !playersData.length) return [];
+            // Territórios selecionados - agora controlado por eventos
+            const [selectedTerritories, setSelectedTerritories] =
+                React.useState<string[]>([]);
 
-                const playerIndex =
-                    parseInt(activePlayer.replace("player", "")) - 1;
-                const player = playersData[playerIndex];
+            // Listener para highlight-territories
+            React.useEffect(() => {
+                const handleHighlight = (data: any) => {
+                    const { territories } = data;
+                    setSelectedTerritories(territories || []);
+                };
 
-                return player?.territories || [];
-            }, [activePlayer, playersData]);
+                EventBus.on("highlight-territories", handleHighlight);
+
+                return () => {
+                    EventBus.removeListener(
+                        "highlight-territories",
+                        handleHighlight
+                    );
+                };
+            }, []);
 
             // Removido: mapeamento de territórios por jogador para os badges laterais
 
