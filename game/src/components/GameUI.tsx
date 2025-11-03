@@ -4,8 +4,7 @@ import { EventBus } from "../game/EventBus";
 import ObjectiveDisplay from "./ObjectiveDisplay";
 import TurnTransition from "./TurnTransition";
 import TroopAllocation from "./TroopAllocation";
-import AttackMenu from "./AttackMenu";
-import PostConquestMove from "./PostConquestMove";
+import AttackBar from "./AttackBar";
 import AttackResult from "./AttackResult";
 import "./GameUI.css";
 
@@ -67,7 +66,7 @@ const GameUI: React.FC = () => {
     const [showStartMenu, setShowStartMenu] = useState(!gameStarted);
     const [showTransition, setShowTransition] = useState(false);
     const [showTroopAllocation, setShowTroopAllocation] = useState(false);
-    const [showAttackMenu, setShowAttackMenu] = useState(false);
+    const [showAttackBar, setShowAttackBar] = useState(false);
     const [showAttackResult, setShowAttackResult] = useState(false);
     const [attackResultData, setAttackResultData] = useState<any>(null);
     const lastPlayerRef = useRef<number | null>(null);
@@ -149,12 +148,12 @@ const GameUI: React.FC = () => {
         setShowTroopAllocation(true);
     };
 
-    const handleShowAttackMenu = () => {
-        setShowAttackMenu(true);
+    const handleShowAttackBar = () => {
+        setShowAttackBar(true);
     };
 
-    const handleCloseAttackMenu = () => {
-        setShowAttackMenu(false);
+    const handleCloseAttackBar = () => {
+        setShowAttackBar(false);
     };
 
     const handleCloseAttackResult = () => {
@@ -312,13 +311,13 @@ const GameUI: React.FC = () => {
                         </button>
                     )}
 
-                    {currentPhase === "ATACAR" && (
+                    {currentPhase === "ATACAR" && !showAttackBar && (
                         <button
                             className="attack-toggle-btn"
-                            onClick={handleShowAttackMenu}
-                            title="Abrir menu de ataque"
+                            onClick={handleShowAttackBar}
+                            title="Iniciar fase de ataque"
                         >
-                            Atacar
+                            Iniciar Ataque
                         </button>
                     )}
                     <button
@@ -399,9 +398,14 @@ const GameUI: React.FC = () => {
                 isDimmed={showObjective || showObjectiveConfirmation}
             />
 
-            <AttackMenu
-                isVisible={showAttackMenu}
-                onClose={handleCloseAttackMenu}
+            <AttackBar
+                isVisible={showAttackBar}
+                onClose={handleCloseAttackBar}
+                isDimmed={
+                    showObjective ||
+                    showObjectiveConfirmation ||
+                    showAttackResult
+                }
             />
 
             <AttackResult
@@ -410,8 +414,6 @@ const GameUI: React.FC = () => {
                 onClose={handleCloseAttackResult}
                 onSendTroops={handleSendTroops}
             />
-
-            <PostConquestMove />
         </>
     );
 };
