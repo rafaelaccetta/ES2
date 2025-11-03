@@ -14,6 +14,11 @@
     flex-direction: column;
     align-items: center;
     gap: 6px;
+    transition: opacity 0.3s ease;
+}
+
+.troop-allocation-bar.dimmed {
+    opacity: 0.3;
 }
 
 .troop-allocation-bar-content {

@@ -396,6 +396,7 @@ const GameUI: React.FC = () => {
             <TroopAllocation
                 isVisible={showTroopAllocation}
                 onClose={handleCloseTroopAllocation}
+                isDimmed={showObjective || showObjectiveConfirmation}
             />
 
             <AttackMenu

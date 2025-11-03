@@ -12,11 +12,13 @@ import "./TroopAllocation.css";
 interface TroopAllocationProps {
     isVisible: boolean;
     onClose: () => void;
+    isDimmed?: boolean;
 }
 
 const TroopAllocation: React.FC<TroopAllocationProps> = ({
     isVisible,
     onClose,
+    isDimmed = false,
 }) => {
     const { getCurrentPlayer, currentRound, players } = useGameContext();
     const [allocations, setAllocations] = useState<Record<string, number>>({});
@@ -304,7 +306,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
     const allTroopsAllocated = getRemainingTroops === 0 && initialTroops > 0;
 
     return (
-        <div className="troop-allocation-bar">
+        <div className={`troop-allocation-bar ${isDimmed ? "dimmed" : ""}`}>
             <div className="troop-allocation-bar-content">
                 <span>
                     Tropas para alocar: <b>{initialTroops}</b> | Restantes:{" "}
