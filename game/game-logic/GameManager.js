@@ -88,5 +88,122 @@ export class GameManager {
         loser.removeTerritory(territory);
         winner.addTerritory(territory);
     }
-}
 
+    // =================================================================
+    // MÉTODOS AUXILIARES PARA IA
+    // =================================================================
+
+    /**
+     * Retorna todos os vizinhos de um território (IDs dos territórios vizinhos)
+     * @param {string} territoryId - ID do território
+     * @returns {string[]} Array com IDs dos territórios vizinhos
+     */
+    getNeighbors(territoryId) {
+        const neighbors = this.gameMap.territories.getNeighbors(territoryId) || [];
+        return neighbors.map(n => n.node);
+    }
+
+    /**
+     * Retorna os vizinhos inimigos de um território (que não pertencem ao jogador)
+     * @param {string} territoryId - ID do território
+     * @param {number} playerId - ID do jogador
+     * @returns {Array<{id: string, ownerId: number, troops: number}>} Array com dados dos vizinhos inimigos
+     */
+    getEnemyNeighbors(territoryId, playerId) {
+        const neighbors = this.getNeighbors(territoryId);
+        return neighbors
+            .map(neighborId => {
+                const owner = this.players.find(p => p.territories.includes(neighborId));
+                if (!owner || owner.id === playerId) return null;
+                return {
+                    id: neighborId,
+                    ownerId: owner.id,
+                    troops: owner.territoriesArmies[neighborId] || 0
+                };
+            })
+            .filter(n => n !== null);
+    }
+
+    /**
+     * Retorna os vizinhos que pertencem ao mesmo jogador
+     * @param {string} territoryId - ID do território
+     * @param {number} playerId - ID do jogador
+     * @returns {Array<{id: string, troops: number}>} Array com dados dos vizinhos aliados
+     */
+    getFriendlyNeighbors(territoryId, playerId) {
+        const neighbors = this.getNeighbors(territoryId);
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return [];
+
+        return neighbors
+            .filter(neighborId => player.territories.includes(neighborId))
+            .map(neighborId => ({
+                id: neighborId,
+                troops: player.territoriesArmies[neighborId] || 0
+            }));
+    }
+
+    /**
+     * Retorna todos os ataques possíveis para um jogador
+     * @param {number} playerId - ID do jogador
+     * @returns {Array<{from: {id: string, troops: number}, to: {id: string, troops: number, ownerId: number}}>}
+     */
+    getAllPossibleAttacks(playerId) {
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return [];
+
+        const possibleAttacks = [];
+        player.territories.forEach(source => {
+            const sourceTroops = player.territoriesArmies[source] || 0;
+            if (sourceTroops <= 1) return; // Precisa de pelo menos 2 tropas para atacar
+
+            const enemies = this.getEnemyNeighbors(source, playerId);
+            enemies.forEach(enemy => {
+                possibleAttacks.push({
+                    from: { id: source, troops: sourceTroops },
+                    to: { id: enemy.id, troops: enemy.troops, ownerId: enemy.ownerId }
+                });
+            });
+        });
+
+        return possibleAttacks;
+    }
+
+    /**
+     * Verifica se um território está na fronteira (tem vizinhos inimigos)
+     * @param {string} territoryId - ID do território
+     * @param {number} playerId - ID do jogador
+     * @returns {boolean}
+     */
+    isFrontline(territoryId, playerId) {
+        return this.getEnemyNeighbors(territoryId, playerId).length > 0;
+    }
+
+    /**
+     * Retorna o dono de um território
+     * @param {string} territoryId - ID do território
+     * @returns {Player|null}
+     */
+    getTerritoryOwner(territoryId) {
+        return this.players.find(p => p.territories.includes(territoryId)) || null;
+    }
+
+    /**
+     * Retorna o continente de um território
+     * @param {string} territoryId - ID do território
+     * @returns {object|null} Objeto com {key, name, bonus, territories}
+     */
+    getTerritoryContinent(territoryId) {
+        for (const [contKey, continent] of Object.entries(this.gameMap.continents)) {
+            if (continent.territories && continent.territories.includes(territoryId)) {
+                return {
+                    key: contKey,
+                    name: continent.name,
+                    bonus: continent.bonus,
+                    territories: continent.territories
+                };
+            }
+        }
+        return null;
+    }
+}
