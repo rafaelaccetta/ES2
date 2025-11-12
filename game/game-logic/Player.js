@@ -1,9 +1,10 @@
 import cardsSymbols from "../public/data/territories_cards.json" with {type: "json"};
 export class Player {
-    constructor(id, color, objective = null) {
+    constructor(id, color, objective = null, isAI = false) {
         this.id = id;
         this.color = color;
         this.objective = objective;
+        this.isAI = isAI
         this.territories = [];
         this.cards = [];
         this.armies = 0;
