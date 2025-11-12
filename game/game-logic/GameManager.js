@@ -1,9 +1,11 @@
 import { GameMap } from './GameMap.js'; 
+import { WarAI } from './WarAI.js';
 
 export class GameManager {
     constructor(players) {
         
         this.players = players;
+        this.AIs = [];
         this.turnsPerRound = this.players.length;
         this.round = 0;
         this.turn = 0;
@@ -82,6 +84,8 @@ export class GameManager {
         for (let i = 0; i < this.players.length; i++) {
             this.players[i].objective = objectives[i];
         }
+        //tive que colocar aqui porque as IAs precisam do objetivo para o construtor. Não ficou ideal, mas foi o melhor que consegui pensar.
+        this.AIs = this.players.map(p => p.isAI ? new WarAI(p.id, p.objective) : null);
     }
 
     dominate(winner, loser, territory) {
