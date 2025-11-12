@@ -1,326 +1,358 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useGameContext } from '../context/GameContext';
-import './TroopAllocation.css';
+import React, {
+    useState,
+    useEffect,
+    useMemo,
+    useRef,
+    useCallback,
+} from "react";
+import { useGameContext } from "../context/GameContext";
+import { EventBus } from "../game/EventBus";
+import "./TroopAllocation.css";
 
 interface TroopAllocationProps {
-  isVisible: boolean;
-  onClose: () => void;
-  onConfirm: (allocations: Record<string, number>) => void;
+    isVisible: boolean;
+    onClose: () => void;
+    isDimmed?: boolean;
 }
 
-const TroopAllocation: React.FC<TroopAllocationProps> = ({ isVisible, onClose, onConfirm }) => {
-  const { getCurrentPlayer, setTerritorySelectionCallback, currentRound } = useGameContext();
-  const [availableTroops, setAvailableTroops] = useState(0);
-  const [allocations, setAllocations] = useState<Record<string, number>>({});
-  const [selectedTerritory, setSelectedTerritory] = useState<string>('');
-  const [inputQuantity, setInputQuantity] = useState<string>('');
-  const [lastRoundPlayer, setLastRoundPlayer] = useState<string>('');
-  const [initialTroops, setInitialTroops] = useState(0);
+const TroopAllocation: React.FC<TroopAllocationProps> = ({
+    isVisible,
+    onClose,
+    isDimmed = false,
+}) => {
+    const { getCurrentPlayer, currentRound, players } = useGameContext();
+    const [allocations, setAllocations] = useState<Record<string, number>>({});
+    const [lastRoundPlayer, setLastRoundPlayer] = useState<string>("");
+    const [initialTroops, setInitialTroops] = useState(0);
+    const lastClickTimestampRef = useRef<number>(0);
+    const allocatedCountRef = useRef<number>(0);
 
-  const currentPlayer = getCurrentPlayer();
+    const currentPlayer = getCurrentPlayer();
 
-  const calculatedTroops = useMemo(() => {
-    if (!currentPlayer) return 0;
-    
-    let territoryBonus = Math.max(3, Math.floor(currentPlayer.territories.length / 2));
-    
-    const roundBonus = currentPlayer.id % 3; 
-    
-    let continentBonus = 0;
-    if (currentPlayer.territories.length > 10) {
-      continentBonus = 2; 
-    }
-    
-    let cardBonus = 0;
-    if (currentPlayer.id === 0) { 
-      cardBonus = 4; 
-    }
-    
-    const total = territoryBonus + roundBonus + continentBonus + cardBonus;
-    
-    console.log('Tropas calculadas para jogador', currentPlayer.id, ':', total);
-    
-    // TODO: Integrar com o back-end real
-    return Math.min(total, 20); // Máximo de 20 tropas para teste
-  }, [currentPlayer?.id, currentPlayer?.territories.length]);
+    const calculatedTroops = useMemo(() => {
+        if (!currentPlayer) return 0;
 
-  useEffect(() => {
-    if (isVisible && currentPlayer) {
-      const currentRoundPlayer = `${currentRound}-${currentPlayer.id}`;
-      
-      if (lastRoundPlayer !== currentRoundPlayer) {
-        console.log('🎯 Nova rodada/jogador detectada:', currentRoundPlayer);
-        setInitialTroops(calculatedTroops);
-        setAvailableTroops(calculatedTroops);
-        setAllocations({});
-        setSelectedTerritory('');
-        setInputQuantity('');
-        setLastRoundPlayer(currentRoundPlayer);
-        console.log('Tropas calculadas para jogador', currentPlayer.id, 'rodada', currentRound, ':', calculatedTroops, 'tropas');
-      } else {
-        console.log('🔄 Mesma rodada/jogador, mantendo tropas:', availableTroops);
-      }
-    }
-  }, [isVisible, currentPlayer?.id, currentRound, calculatedTroops, lastRoundPlayer, availableTroops]);
+        let territoryBonus = Math.max(
+            3,
+            Math.floor(currentPlayer.territories.length / 2)
+        );
 
-  useEffect(() => {
-    if (isVisible && currentPlayer) {
-      setTerritorySelectionCallback((territory: string) => {
-        if (currentPlayer.territories.includes(territory)) {
-          setSelectedTerritory(territory);
+        const roundBonus = currentPlayer.id % 3;
+
+        let continentBonus = 0;
+        if (currentPlayer.territories.length > 10) {
+            continentBonus = 2;
         }
-      });
-    } else {
-      setTerritorySelectionCallback(null);
-    }
 
-    return () => {
-      setTerritorySelectionCallback(null);
-    };
-  }, [isVisible, currentPlayer, setTerritorySelectionCallback]);
+        let cardBonus = 0;
+        if (currentPlayer.id === 0) {
+            cardBonus = 4;
+        }
 
-  const getRemainingTroops = useMemo(() => {
-    const allocated = Object.values(allocations).reduce((sum, val) => sum + val, 0);
-    return Math.max(0, initialTroops - allocated);
-  }, [initialTroops, allocations]);
+        const total = territoryBonus + roundBonus + continentBonus + cardBonus;
 
-  const handleTerritorySelect = (territory: string) => {
-    console.log('=== CLICOU EM:', territory, '===');
-    setSelectedTerritory(territory);
-  };
+        console.log(
+            "Tropas calculadas para jogador",
+            currentPlayer.id,
+            ":",
+            total
+        );
 
-  const handleAllocate = (quantity: number) => {
-    console.log('CLICOU ALOCAR:', { quantity, selectedTerritory, remaining: getRemainingTroops });
-    
-    
-    
-    if (quantity <= 0) {
-      console.log('ERRO: Quantidade inválida');
-      return;
-    }
-    
-    if (quantity > getRemainingTroops) {
-      console.log('ERRO: Não há tropas suficientes');
-      return;
-    }
+        // TODO: Integrar com o back-end real
+        return Math.min(total, 20); // Máximo de 20 tropas para teste
+    }, [currentPlayer?.id, currentPlayer?.territories.length]);
 
-    console.log('ALOCANDO TROPAS');
-    setAllocations(prev => {
-      const newAllocations = {
-        ...prev,
-        [selectedTerritory]: (prev[selectedTerritory] || 0) + quantity
-      };
-      console.log('NOVAS ALOCAÇÕES:', newAllocations);
-      return newAllocations;
-    });
-  };
+    useEffect(() => {
+        if (isVisible && currentPlayer) {
+            const currentRoundPlayer = `${currentRound}-${currentPlayer.id}`;
 
-  const handleInputAllocate = () => {
-    const quantity = parseInt(inputQuantity);
-    
-    if (isNaN(quantity) || quantity <= 0) {
-      alert('Por favor, digite um número válido maior que 0');
-      return;
-    }
+            if (lastRoundPlayer !== currentRoundPlayer) {
+                console.log(
+                    "🎯 Nova rodada/jogador detectada:",
+                    currentRoundPlayer
+                );
+                setInitialTroops(calculatedTroops);
+                setAllocations({});
+                allocatedCountRef.current = 0;
+                setLastRoundPlayer(currentRoundPlayer);
+                console.log(
+                    "Tropas calculadas para jogador",
+                    currentPlayer.id,
+                    "rodada",
+                    currentRound,
+                    ":",
+                    calculatedTroops,
+                    "tropas"
+                );
+            }
+        }
+    }, [
+        isVisible,
+        currentPlayer?.id,
+        currentRound,
+        calculatedTroops,
+        lastRoundPlayer,
+    ]);
 
-    if (quantity > getRemainingTroops) {
-      alert(`Você só tem ${getRemainingTroops} tropas disponíveis`);
-      return;
-    }
+    const getRemainingTroops = useMemo(() => {
+        const allocated = Object.values(allocations).reduce(
+            (sum, val) => sum + val,
+            0
+        );
+        return Math.max(0, initialTroops - allocated);
+    }, [initialTroops, allocations]);
 
-    handleAllocate(quantity);
-    setInputQuantity(''); 
-  };
+    const normalizeId = useCallback((name: string) => {
+        return name
+            .normalize("NFD")
+            .replace(/\p{Diacritic}+/gu, "")
+            .toLowerCase()
+            .replace(/\s+/g, "")
+            .replace(/[^a-z0-9]/g, "");
+    }, []);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleInputAllocate();
-    }
-  };
+    // Callback memorizado para alocar 1 tropa ao clicar no território
+    const handleTerritorySelected = useCallback(
+        (territoryId: string) => {
+            const now = Date.now();
+            const lastTime = lastClickTimestampRef.current;
 
-  const handleRemoveAllocation = (territory: string) => {
-    setAllocations(prev => {
-      const newAllocations = { ...prev };
-      delete newAllocations[territory];
-      return newAllocations;
-    });
-  };
+            console.log(
+                "🔥 TroopAllocation: territory-selected event received:",
+                territoryId,
+                "timestamp:",
+                now,
+                "last:",
+                lastTime,
+                "diff:",
+                now - lastTime
+            );
 
-  const getCurrentAllocated = useMemo(() => {
-    return Object.values(allocations).reduce((sum, val) => sum + val, 0);
-  }, [allocations]);
+            // Debounce para ignorar os cliques que acontecem em menos de 200ms
+            if (now - lastTime < 200) {
+                console.log("Clique duplicado ignorado (debounce)");
+                return;
+            }
 
+            // Atualizar o timestamp
+            lastClickTimestampRef.current = now;
 
+            // Garantir que currentPlayer não é nulo e fixar uma referência local não-nula
+            if (!currentPlayer) {
+                console.log("TroopAllocation: no current player");
+                return;
+            }
+            const cp = currentPlayer;
 
-  const canConfirm = useMemo(() => {
-    return getRemainingTroops === 0;
-  }, [getRemainingTroops]);
+            // Encontrar o território correspondente nos territórios do jogador
+            const matchingTerritory = cp.territories.find(
+                (t) => normalizeId(t) === territoryId
+            );
 
-  const handleConfirm = () => {
-    if (canConfirm) {
-      onConfirm(allocations);
-      onClose();
-    }
-  };
+            console.log("TroopAllocation: checking allocation", {
+                territoryId,
+                matchingTerritory,
+                playerTerritories: cp.territories,
+            });
 
-  if (!isVisible) {
-    return null;
-  }
+            if (!matchingTerritory) {
+                console.log("TroopAllocation: territory not owned by player");
+                return;
+            }
 
-  if (!currentPlayer) {
-    return (
-      <div className="troop-allocation-overlay">
-        <div className="troop-allocation-modal">
-          <div className="troop-allocation-header">
-            <h2>Erro</h2>
-          </div>
-          <div className="troop-allocation-content">
-            <p>Jogador atual não encontrado. Tente novamente.</p>
-            <button className="cancel-btn" onClick={onClose}>
-              Fechar
-            </button>
-          </div>
-        </div>
-      </div>
+            // Verificar usando o ref para garantir que temos o valor mais atualizado
+            const remaining = Math.max(
+                0,
+                initialTroops - allocatedCountRef.current
+            );
+
+            console.log(
+                "Verificando alocação:",
+                "initialTroops:",
+                initialTroops,
+                "allocated:",
+                allocatedCountRef.current,
+                "remaining:",
+                remaining
+            );
+
+            if (remaining <= 0) {
+                console.log(
+                    "TroopAllocation: no troops remaining, blocking allocation"
+                );
+                return;
+            }
+
+            console.log(
+                "TroopAllocation: allocating troop to",
+                matchingTerritory
+            );
+
+            // Incrementar o contador ANTES de qualquer outra operação
+            allocatedCountRef.current += 1;
+
+            // Atualizar o jogador imediatamente
+            console.log(
+                "Before addArmies - territoriesArmies:",
+                cp.territoriesArmies[matchingTerritory]
+            );
+            (cp as any).addArmies(matchingTerritory, 1);
+            console.log(
+                "After addArmies - territoriesArmies:",
+                cp.territoriesArmies[matchingTerritory]
+            );
+
+            // Emitir evento para atualizar o mapa inteiro
+            EventBus.emit("players-updated", {
+                playerCount: players.length,
+                players: players.map((player) => ({
+                    id: player.id,
+                    color: player.color,
+                    territories: player.territories,
+                    territoriesArmies: player.territoriesArmies,
+                    armies: player.armies,
+                })),
+            });
+
+            // Por último, atualizar o state local de alocações
+            setAllocations((prev) => ({
+                ...prev,
+                [matchingTerritory]: (prev[matchingTerritory] || 0) + 1,
+            }));
+        },
+        [currentPlayer, initialTroops, players, normalizeId]
     );
-  }
 
-  return (
-    <div className="troop-allocation-overlay">
-      <div className="troop-allocation-modal">
-        <div className="troop-allocation-header">
-          <h2>Alocação de Tropas</h2>
-          <button className="close-btn" onClick={onClose}>&times;</button>
-        </div>
+    // Registrar o listener do EventBus
+    useEffect(() => {
+        if (!isVisible) {
+            return;
+        }
 
-        <div className="troop-allocation-content">
-          <div className="troop-info">
-            <div className="troop-stats">
-              <div className="stat-item">
-                <span className="stat-label">Tropas Iniciais:</span>
-                <span className="stat-value">{initialTroops}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Tropas Alocadas:</span>
-                <span className="stat-value">{getCurrentAllocated}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Tropas Restantes:</span>
-                <span className="stat-value remaining">{getRemainingTroops}</span>
-              </div>
-            </div>
-          </div>
+        EventBus.on("territory-selected", handleTerritorySelected);
 
-          <div className="allocation-interface">
-            <div className="territory-selection">
-              <h3>Seus Territórios ({currentPlayer.territories.length})</h3>
-              <div className="territories-list">
-                {currentPlayer.territories.length === 0 ? (
-                  <div className="no-territories">
-                    Nenhum território encontrado para este jogador.
-                  </div>
-                ) : (
-                  <div>
-                    {currentPlayer.territories.map((territory: string) => (
-                      <button
-                        key={territory}
-                        className={`territory-btn ${selectedTerritory === territory ? 'selected' : ''}`}
-                        onClick={() => {
-                          console.log('CLICOU NO BOTÃO:', territory);
-                          handleTerritorySelect(territory);
-                        }}
-                      >
-                        {territory} ({currentPlayer.territoriesArmies[territory] || 0})
-                        {allocations[territory] && ` +${allocations[territory]}`}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+        return () => {
+            EventBus.removeListener(
+                "territory-selected",
+                handleTerritorySelected
+            );
+        };
+    }, [isVisible, handleTerritorySelected]);
 
-            <div className="allocation-controls">
-              <div className="selected-territory-panel">
-                <h4>
-                  {selectedTerritory ? `Território: ${selectedTerritory}` : 'Selecione um território'}
-                </h4>
-                
-                <div className="debug-info">
-                  <p>Tropas restantes: {getRemainingTroops}</p>
-                  <p>Pode alocar: {selectedTerritory && getRemainingTroops > 0 ? 'SIM' : 'NÃO'}</p>
-                </div>
-                
-                <div className="allocation-input">
-                  <div className="input-group">
-                    <input
-                      type="number"
-                      min="1"
-                      max={getRemainingTroops}
-                      placeholder="Quantidade"
-                      value={inputQuantity}
-                      onChange={(e) => setInputQuantity(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      disabled={!selectedTerritory || getRemainingTroops === 0}
-                      className="quantity-input"
-                    />
+    // Função para remover uma alocação específica
+    const handleRemoveAllocation = useCallback(
+        (territory: string) => {
+            if (!currentPlayer) return;
+
+            const allocated = allocations[territory];
+            if (!allocated || allocated <= 0) return;
+
+            console.log(` Removendo 1 tropa de ${territory}`);
+
+            // Decrementar o contador
+            allocatedCountRef.current = Math.max(
+                0,
+                allocatedCountRef.current - 1
+            );
+            console.log("Contador atualizado:", allocatedCountRef.current);
+
+            // Remover 1 tropa do jogador
+            const currentArmies =
+                currentPlayer.territoriesArmies[territory] || 0;
+            if (currentArmies > 0) {
+                currentPlayer.territoriesArmies[territory] = currentArmies - 1;
+                if (currentPlayer.armies > 0) {
+                    currentPlayer.armies -= 1;
+                }
+            }
+
+            // Emitir evento para atualizar o mapa
+            EventBus.emit("players-updated", {
+                playerCount: players.length,
+                players: players.map((player) => ({
+                    id: player.id,
+                    color: player.color,
+                    territories: player.territories,
+                    territoriesArmies: player.territoriesArmies,
+                    armies: player.armies,
+                })),
+            });
+
+            // Atualizar o state local
+            setAllocations((prev) => {
+                const newValue = prev[territory] - 1;
+                if (newValue <= 0) {
+                    const { [territory]: _, ...rest } = prev;
+                    return rest;
+                }
+                return {
+                    ...prev,
+                    [territory]: newValue,
+                };
+            });
+        },
+        [currentPlayer, allocations, players]
+    );
+
+    const handleConfirm = useCallback(() => {
+        console.log("TroopAllocation: confirming allocation");
+        onClose();
+    }, [onClose]);
+
+    if (!isVisible) return null;
+    if (!currentPlayer) return null;
+
+    const hasAllocations = Object.keys(allocations).length > 0;
+    const allTroopsAllocated = getRemainingTroops === 0 && initialTroops > 0;
+
+    return (
+        <div className={`troop-allocation-bar ${isDimmed ? "dimmed" : ""}`}>
+            <div className="troop-allocation-bar-content">
+                <span>
+                    Tropas para alocar: <b>{initialTroops}</b> | Restantes:{" "}
+                    <b>{getRemainingTroops}</b>
+                </span>
+                {allTroopsAllocated && (
                     <button
-                      className="allocate-btn"
-                      onClick={handleInputAllocate}
-                      disabled={!selectedTerritory || getRemainingTroops === 0 || !inputQuantity}
+                        className="confirm-allocation-btn"
+                        onClick={handleConfirm}
                     >
-                      Alocar
+                        Confirmar Alocação
                     </button>
-                  </div>
-                  <button
-                    className="allocate-all-btn"
-                    onClick={() => {
-                      console.log('BOTÃO TODAS CLICADO');
-                      handleAllocate(getRemainingTroops);
-                    }}
-                    disabled={!selectedTerritory || getRemainingTroops === 0}
-                  >
-                    Todas ({getRemainingTroops})
-                  </button>
-                </div>
-              </div>
-
-              {Object.keys(allocations).length > 0 && (
-                <div className="current-allocations">
-                  <h4>Alocações Atuais</h4>
-                  <div className="allocations-list">
-                    {Object.entries(allocations).map(([territory, quantity]) => (
-                      <div key={territory} className="allocation-item">
-                        <span>{territory}: +{quantity}</span>
-                        <button 
-                          className="remove-allocation"
-                          onClick={() => handleRemoveAllocation(territory)}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                )}
             </div>
-          </div>
 
-          <div className="allocation-actions">
-            <button className="cancel-btn" onClick={onClose}>
-              Cancelar
-            </button>
-            <button 
-              className="confirm-btn"
-              onClick={handleConfirm}
-              disabled={!canConfirm}
-            >
-              Confirmar Alocação
-            </button>
-          </div>
+            {hasAllocations && (
+                <div className="allocations-summary">
+                    <div className="allocations-header">Tropas alocadas:</div>
+                    <div className="allocations-list-inline">
+                        {Object.entries(allocations).map(
+                            ([territory, count]) => (
+                                <div
+                                    key={territory}
+                                    className="allocation-chip"
+                                >
+                                    <span className="allocation-chip-text">
+                                        {territory}: <b>+{count}</b>
+                                    </span>
+                                    <button
+                                        className="allocation-chip-remove"
+                                        onClick={() =>
+                                            handleRemoveAllocation(territory)
+                                        }
+                                        title="Remover 1 tropa"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            )
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default TroopAllocation;
+
