@@ -306,7 +306,13 @@ const GameUI: React.FC = () => {
                                 ? "disabled"
                                 : ""
                         }`}
-                        onClick={nextPhase}
+                        onClick={
+                            (currentPhase === "REFORÇAR" &&
+                                getAvailableTroopsToAllocate() > 0) ||
+                            (currentPhase === "ATACAR" && currentRound > 0 && showAttackBar)
+                                ? undefined
+                                : nextPhase
+                        }
                         disabled={
                             (currentPhase === "REFORÇAR" &&
                                 getAvailableTroopsToAllocate() > 0) ||
