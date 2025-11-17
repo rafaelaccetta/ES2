@@ -65,6 +65,7 @@ const initialState: GameState = {
     showObjectiveConfirmation: false,
     firstRoundObjectiveShown: new Set(),
     territorySelectionCallback: null,
+    
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -141,8 +142,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         gamePlayers.forEach(player => {
             const card1 = cardManager.drawCardForPlayer(player);
             const card2 = cardManager.drawCardForPlayer(player);
+            const card3 = cardManager.drawCardForPlayer(player);
+            const card4 = cardManager.drawCardForPlayer(player);
             if (card1) player.addCard(card1);
             if (card2) player.addCard(card2);
+            if (card3) player.addCard(card3);
+            if (card4) player.addCard(card4);
         });
         console.log("Cartas iniciais distribuídas (exemplo).");
 
