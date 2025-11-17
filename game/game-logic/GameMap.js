@@ -37,14 +37,23 @@ export class GameMap {
         }
     }
 
-    addArmy(territory) {
-        this.armies[territory] = this.armies[territory] + 1;
+    addArmy(territory, amount) {
+        this.armies[territory] = this.armies[territory] + amount;
     }
 
-    removeArmy(territory) {
-        if (this.armies[territory] > 1) {
-            this.armies[territory] = this.armies[territory] - 1;
+    removeArmy(territory, amount) {
+        if (amount <= 0) {
+            throw new Error("Amount to remove must be a positive number.");
         }
+        const currentArmies = this.armies[territory];
+        const resultingArmies = currentArmies - amount;
+        if (resultingArmies < 1) {
+            throw new Error(
+                `Invalid move: Cannot remove ${amount} armies from ${territory}. ` +
+                `This would leave ${resultingArmies} armies, but at least 1 must remain.`
+            );
+        }
+        this.armies[territory] = resultingArmies;
     }
 
     // cria um objeto continents que armazena os territórios de acordo com o continente que pertencem (será usado para verificar se um jogador já conquistou um continente e consequentemente o bônus)
@@ -93,6 +102,11 @@ export class GameMap {
 
     getContinentBonusForPlayer(player) {
         // verificar se um jogador domina algum continente e retornar o bônus
+    }
+
+    areAdjacent(territory1, territory2) {
+        const neighbors = this.territories.getNeighbors(territory1); //
+        return neighbors.some(neighbor => neighbor.node === territory2);
     }
 }
 
