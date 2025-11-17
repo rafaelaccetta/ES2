@@ -20,7 +20,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
     onClose,
     isDimmed = false,
 }) => {
-    const { getCurrentPlayer, currentRound, players } = useGameContext();
+    const { getCurrentPlayer, currentRound, players, calculateReinforcementTroops } = useGameContext();
     const [allocations, setAllocations] = useState<Record<string, number>>({});
     const [lastRoundPlayer, setLastRoundPlayer] = useState<string>("");
     const [initialTroops, setInitialTroops] = useState(0);
@@ -32,35 +32,17 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
     const calculatedTroops = useMemo(() => {
         if (!currentPlayer) return 0;
 
-        let territoryBonus = Math.max(
-            3,
-            Math.floor(currentPlayer.territories.length / 2)
-        );
-
-        const roundBonus = currentPlayer.id % 3;
-
-        let continentBonus = 0;
-        if (currentPlayer.territories.length > 10) {
-            continentBonus = 2;
-        }
-
-        let cardBonus = 0;
-        if (currentPlayer.id === 0) {
-            cardBonus = 4;
-        }
-
-        const total = territoryBonus + roundBonus + continentBonus + cardBonus;
-
+        const troopsData = calculateReinforcementTroops(currentPlayer);
+        
         console.log(
-            "Tropas calculadas para jogador",
+            "Tropas calculadas pelo backend para jogador",
             currentPlayer.id,
             ":",
-            total
+            troopsData
         );
 
-        // TODO: Integrar com o back-end real
-        return Math.min(total, 20); // Máximo de 20 tropas para teste
-    }, [currentPlayer?.id, currentPlayer?.territories.length]);
+        return troopsData.totalTroops || 0;
+    }, [currentPlayer, calculateReinforcementTroops]);
 
     useEffect(() => {
         if (isVisible && currentPlayer) {
@@ -68,7 +50,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
 
             if (lastRoundPlayer !== currentRoundPlayer) {
                 console.log(
-                    "🎯 Nova rodada/jogador detectada:",
+                    "Nova rodada/jogador detectada:",
                     currentRoundPlayer
                 );
                 setInitialTroops(calculatedTroops);

@@ -55,8 +55,8 @@ export class GameMap {
         }
 
         const continents = {};
-        for (const territoryName in this.territories) {
-            const continentName= this.territories[territoryName].continent;
+        for (const territoryName in territoriesJson) {
+            const continentName = territoriesJson[territoryName].continent;
             if (!continents[continentName]) {
                 continents[continentName] = [];
             }
