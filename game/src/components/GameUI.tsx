@@ -5,6 +5,7 @@ import TurnTransition from "./TurnTransition";
 import TroopAllocation from "./TroopAllocation";
 import AttackBar from "./AttackBar";
 import "./GameUI.css";
+import CardExchange from "./CardTrade";
 
 const GameUI: React.FC = () => {
     const {
@@ -65,6 +66,7 @@ const GameUI: React.FC = () => {
     const [showTransition, setShowTransition] = useState(false);
     const [showTroopAllocation, setShowTroopAllocation] = useState(false);
     const [showAttackBar, setShowAttackBar] = useState(false);
+    const [showCardExchange, setShowCardExchange] = useState(false);
     const lastPlayerRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -144,6 +146,8 @@ const GameUI: React.FC = () => {
         setShowTroopAllocation(true);
     };
 
+
+    
     const handleShowAttackBar = () => {
         setShowAttackBar(true);
     };
@@ -159,7 +163,18 @@ const GameUI: React.FC = () => {
         setTroopsAllocatedThisPhase(true);
     };
 
-    // Reset do estado apenas quando muda de jogador ou fase (não abre automaticamente)
+    const mustExchangeCards =
+        currentPhase === "REFORÇAR" &&
+        (getCurrentPlayer()?.cards.length || 0) >= 5;
+
+
+    useEffect(() => {
+        if (mustExchangeCards) {
+            setShowCardExchange(true);
+        }
+    }, [mustExchangeCards]);
+
+    
     useEffect(() => {
         const currentPlayer = getCurrentPlayer();
         console.log(
@@ -259,18 +274,20 @@ const GameUI: React.FC = () => {
                     {currentPhase === "REFORÇAR" && (
                         <button
                             className={`troop-allocation-btn ${
-                                getAvailableTroopsToAllocate() === 0
+                                getAvailableTroopsToAllocate() === 0 || mustExchangeCards
                                     ? "disabled"
                                     : ""
                             }`}
                             onClick={
-                                getAvailableTroopsToAllocate() > 0
+                                getAvailableTroopsToAllocate() > 0 && !mustExchangeCards
                                     ? handleShowTroopAllocation
                                     : undefined
                             }
-                            disabled={getAvailableTroopsToAllocate() === 0}
+                            disabled={getAvailableTroopsToAllocate() === 0 || mustExchangeCards}
                             title={
-                                getAvailableTroopsToAllocate() > 0
+                                mustExchangeCards
+                                    ? "Você deve trocar cartas antes de alocar tropas"
+                                    : getAvailableTroopsToAllocate() > 0
                                     ? "Alocar tropas de reforço nos seus territórios"
                                     : "Tropas já foram alocadas nesta fase"
                             }
@@ -280,6 +297,25 @@ const GameUI: React.FC = () => {
                                 : "Tropas Alocadas"}
                         </button>
                     )}
+
+                    {currentPhase === "REFORÇAR" && (
+                        <button
+                            className={`card-exchange-btn ${
+                                mustExchangeCards ? "must-exchange" : ""
+                            }`}
+                            onClick={() => setShowCardExchange(true)}
+                            disabled={currentPlayer.cards.length < 3}
+                            title={
+                                mustExchangeCards
+                                    ? "Troca obrigatória (5+ cartas)"
+                                    : currentPlayer.cards.length < 3
+                                    ? "Precisa de 3+ cartas"
+                                    : "Trocar cartas por exércitos"
+                            }
+                        >
+                            Trocar Cartas ({currentPlayer.cards.length})
+                        </button>
+                    )}  
 
                     {currentPhase === "ATACAR" && !showAttackBar && (
                         <button
@@ -301,7 +337,7 @@ const GameUI: React.FC = () => {
                     <button
                         className={`next-phase-btn ${
                             (currentPhase === "REFORÇAR" &&
-                                getAvailableTroopsToAllocate() > 0) ||
+                                getAvailableTroopsToAllocate() > 0) || mustExchangeCards ||
                             (currentPhase === "ATACAR" && showAttackBar)
                                 ? "disabled"
                                 : ""
@@ -309,11 +345,13 @@ const GameUI: React.FC = () => {
                         onClick={nextPhase}
                         disabled={
                             (currentPhase === "REFORÇAR" &&
-                                getAvailableTroopsToAllocate() > 0) ||
+                                getAvailableTroopsToAllocate() > 0) || mustExchangeCards ||
                             (currentPhase === "ATACAR" && showAttackBar)
                         }
                         title={
-                            currentPhase === "REFORÇAR" &&
+                            mustExchangeCards
+                            ? "Você deve trocar cartas antes de alocar tropas"
+                            : currentPhase === "REFORÇAR" &&
                             getAvailableTroopsToAllocate() > 0
                                 ? "Você deve alocar todas as tropas antes de avançar"
                                 : currentPhase === "ATACAR" && showAttackBar
@@ -369,13 +407,23 @@ const GameUI: React.FC = () => {
             <TroopAllocation
                 isVisible={showTroopAllocation}
                 onClose={handleCloseTroopAllocation}
-                isDimmed={showObjective || showObjectiveConfirmation}
+                isDimmed={showObjective || showObjectiveConfirmation || showCardExchange}
             />
 
             <AttackBar
                 isVisible={showAttackBar}
                 onClose={handleCloseAttackBar}
-                isDimmed={showObjective || showObjectiveConfirmation}
+                isDimmed={showObjective || showObjectiveConfirmation || showCardExchange}
+            />
+            
+            <CardExchange
+                isVisible={showCardExchange}
+                onClose={() => setShowCardExchange(false)}
+                isDimmed={
+                    showObjective ||
+                    showObjectiveConfirmation ||
+                    showTroopAllocation
+                }
             />
         </>
     );
