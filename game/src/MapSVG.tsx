@@ -392,15 +392,22 @@ const MapSVG: React.FC<MapSVGProps> = ({
     const handleClick = (e: React.MouseEvent) => {
         const target = e.target as Element | null;
         if (!target || target.tagName.toLowerCase() !== "polygon") return;
-        const id = target.getAttribute("id");
-        if (!id) return;
+        const rawId = target.getAttribute("id");
+        if (!rawId) return;
 
-        // Always call onTerritorySelected if provided
+        const territoryMapping: Record<string, string> = {
+            "indonesia2": "indonesia",
+            "indonesia3": "indonesia", 
+            "indonesia4": "indonesia",
+            "inglaterra2": "inglaterra"
+        };
+        
+        const id = territoryMapping[rawId] || rawId;
+
         if (onTerritorySelected) {
             onTerritorySelected(id);
         }
 
-        // Only allow owner editing if enabled
         if (allowEditOwner && highlightOwner) {
             setLocalOwners((prev) => {
                 const current = prev[id];

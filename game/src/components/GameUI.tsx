@@ -281,7 +281,7 @@ const GameUI: React.FC = () => {
                         </button>
                     )}
 
-                    {currentPhase === "ATACAR" && !showAttackBar && (
+                    {currentPhase === "ATACAR" && currentRound > 0 && !showAttackBar && (
                         <button
                             className="attack-toggle-btn"
                             onClick={handleShowAttackBar}
@@ -302,22 +302,30 @@ const GameUI: React.FC = () => {
                         className={`next-phase-btn ${
                             (currentPhase === "REFORÇAR" &&
                                 getAvailableTroopsToAllocate() > 0) ||
-                            (currentPhase === "ATACAR" && showAttackBar)
+                            (currentPhase === "ATACAR" && currentRound > 0 && showAttackBar)
                                 ? "disabled"
                                 : ""
                         }`}
-                        onClick={nextPhase}
+                        onClick={
+                            (currentPhase === "REFORÇAR" &&
+                                getAvailableTroopsToAllocate() > 0) ||
+                            (currentPhase === "ATACAR" && currentRound > 0 && showAttackBar)
+                                ? undefined
+                                : nextPhase
+                        }
                         disabled={
                             (currentPhase === "REFORÇAR" &&
                                 getAvailableTroopsToAllocate() > 0) ||
-                            (currentPhase === "ATACAR" && showAttackBar)
+                            (currentPhase === "ATACAR" && currentRound > 0 && showAttackBar)
                         }
                         title={
                             currentPhase === "REFORÇAR" &&
                             getAvailableTroopsToAllocate() > 0
                                 ? "Você deve alocar todas as tropas antes de avançar"
-                                : currentPhase === "ATACAR" && showAttackBar
+                                : currentPhase === "ATACAR" && currentRound > 0 && showAttackBar
                                 ? "Feche a barra de ataque antes de avançar"
+                                : currentRound === 0 && currentPhase === "REFORÇAR"
+                                ? "Próximo jogador (primeira rodada - só alocação)"
                                 : "Avançar para próxima fase"
                         }
                     >

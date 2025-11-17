@@ -32,6 +32,15 @@ export class GameManager {
     }
 
     passPhase() {
+        // Na primeira rodada (round 0), só permite a fase REFORÇAR
+        if (this.round === 0 && this.getPhaseName() === "REFORÇAR") {
+            console.log(`🎯 Primeira rodada: Jogador ${this.turn} terminou REFORÇAR, pulando para próximo jogador`);
+            // Pula direto para o próximo jogador após reforçar na primeira rodada
+            this.PhaseIdx = 0; // Reset para REFORÇAR
+            this.#passTurn();
+            return;
+        }
+        
         this.PhaseIdx++;
         if (this.getPhaseName() === "REINFORCE"){ // ugly double if for now because its expected this will be a whole block
             if (this.getPlayerPlaying().cards.length >= 5){
@@ -54,6 +63,7 @@ export class GameManager {
 
     #passRound() {
         this.round++;
+        console.log(`🔄 Nova rodada iniciada: Rodada ${this.round}`);
         // likely extra state handling code is going to be here in the future
         // so I put this function here already
     }
