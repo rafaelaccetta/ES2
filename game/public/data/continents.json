@@ -1,8 +1,26 @@
 {
-    "SA" : "América do Sul",
-    "NA" : "América do Norte",
-    "AS" : "Ásia",
-    "AF" : "África",
-    "EU" : "Europa",
-    "OC" : "Oceania"
+    "SA" : {
+        "name": "América do Sul",
+        "bonus": 2
+    },
+    "NA" : {
+        "name": "América do Norte", 
+        "bonus": 5
+    },
+    "AS" : {
+        "name": "Ásia",
+        "bonus": 7
+    },
+    "AF" : {
+        "name": "África",
+        "bonus": 3
+    },
+    "EU" : {
+        "name": "Europa",
+        "bonus": 5
+    },
+    "OC" : {
+        "name": "Oceania",
+        "bonus": 2
+    }
 }

@@ -9,18 +9,20 @@ import "./GameUI.css";
 const GameUI: React.FC = () => {
     const {
         gameStarted,
-        getCurrentPlayer,
         currentPhase,
-        currentRound,
-        currentPlayerIndex,
+        getCurrentPlayer,
         nextPhase,
-        startGame,
-        players,
+        getCurrentObjective,
         shouldShowAutomaticObjective,
         markObjectiveAsShown,
         showObjectiveConfirmation,
         setShowObjectiveConfirmation,
         firstRoundObjectiveShown,
+        calculateReinforcementTroops,
+        currentRound,
+        currentPlayerIndex,
+        startGame,
+        players,
     } = useGameContext();
 
     // Estado para rastrear se tropas já foram alocadas nesta fase
@@ -38,26 +40,8 @@ const GameUI: React.FC = () => {
         );
         if (!currentPlayer || troopsAllocatedThisPhase) return 0;
 
-        // Calcular tropas base (mesmo cálculo do TroopAllocation)
-        let territoryBonus = Math.max(
-            3,
-            Math.floor(currentPlayer.territories.length / 2)
-        );
-        const roundBonus = currentPlayer.id % 3;
-        let continentBonus = 0;
-        if (currentPlayer.territories.length > 10) {
-            continentBonus = 2;
-        }
-        let cardBonus = 0;
-        if (currentPlayer.id === 0) {
-            cardBonus = 4;
-        }
-
-        const totalTroops = Math.min(
-            territoryBonus + roundBonus + continentBonus + cardBonus,
-            20
-        );
-        return totalTroops;
+        const troopsData = calculateReinforcementTroops(currentPlayer);
+        return troopsData.totalTroops || 0;
     };
 
     const [showObjective, setShowObjective] = useState(false);

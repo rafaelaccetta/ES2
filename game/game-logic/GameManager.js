@@ -15,8 +15,7 @@ export class GameManager {
     }
     
     initializeGame(){
-        this.players.sort(() => Math.random() - 0.5); // shuffles player order
-        // future game initialization and turn 0 logic is probably going here
+        this.players.sort(() => Math.random() - 0.5); 
         this.gameMap = new GameMap();
         
         // Distribuir territórios automaticamente
@@ -75,10 +74,13 @@ export class GameManager {
         const continentNames = Object.keys(territoriesByContinent);
 
         for (const continentName of continentNames) {
-            if (player.hasConqueredContinent(continentName, territoriesByContinent)) {
+            const hasConquered = player.hasConqueredContinent(continentName, territoriesByContinent);
+            
+            if (hasConquered) {
                 const continentAbbreviation = Object.keys(this.gameMap.continents).find(key => 
                     this.gameMap.continents[key].name === continentName
                 );
+                
  
                 if (continentAbbreviation) {
                     const bonusValue = this.gameMap.continents[continentAbbreviation].bonus;
@@ -86,8 +88,28 @@ export class GameManager {
                 }
             }
         }
+        
     return continentBonuses;
 }
+
+    calculateReinforcementTroops(player) {
+        let territoryBonus = Math.max(3, Math.floor(player.territories.length / 2));
+        
+        const continentBonuses = this.calculateContinentBonus(player);
+        let continentBonus = Object.values(continentBonuses).reduce((sum, bonus) => sum + bonus, 0);
+        
+        let cardBonus = 0;
+        
+        const totalTroops = territoryBonus + continentBonus + cardBonus;
+        
+        return {
+            territoryBonus,
+            continentBonus,
+            continentBonuses,
+            cardBonus,
+            totalTroops
+        };
+    }
 
     distributeObjectives(objectives) {
         objectives = objectives.sort(() => Math.random() - 0.5);
