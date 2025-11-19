@@ -11,8 +11,11 @@ export class GameManager {
         this.PhaseIdx = 0;
         this.initializeGame()
         this.gameMap = new GameMap();
-
+        
+        // Distribuir territórios automaticamente
+        this.gameMap.distributeTerritories(this.players);
     }
+    
     
     initializeGame(){
         this.players.sort(() => Math.random() - 0.5); 
@@ -41,7 +44,7 @@ export class GameManager {
         }
         
         this.PhaseIdx++;
-        if (this.getPhaseName() === "REINFORCE"){ // ugly double if for now because its expected this will be a whole block
+        if (this.getPhaseName() === "REFORÇAR"){ // ugly double if for now because its expected this will be a whole block
             if (this.getPlayerPlaying().cards.length >= 5){
                 console.warn("Cannot pass REINFORCE phase: player has 5 cards and must trade cards in.")
                 return
@@ -59,7 +62,7 @@ export class GameManager {
             this.#passRound();
         }
     }
-
+    
     #passRound() {
         this.round++;
         console.log(`🔄 Nova rodada iniciada: Rodada ${this.round}`);
@@ -67,6 +70,40 @@ export class GameManager {
         // so I put this function here already
     }
 
+    moveArmies(territoryFromString, territoryToString, amountArmies) {
+        let player = this.getPlayerPlaying();
+        const ownsFrom = player.hasTerritory(territoryFromString);
+        const ownsTo = player.hasTerritory(territoryToString);
+        if (!ownsFrom || !ownsTo) {
+            console.log("Movimento falhou: ao menos um território não pertence ao player.");
+            return false;
+        }
+
+        if (!this.gameMap.areAdjacent(territoryToString, territoryFromString)) {
+            console.log("Movimento falhou: territórios não são adjacentes.")
+            return false;
+        }
+
+        const armiesOnFrom = this.gameMap.armies[territoryFromString];
+        
+        if (armiesOnFrom <= amountArmies) {
+            console.log(`Movimento falhou: tropas insuficientes em ${territoryFromString}. Deve sobrar ao menos 1.`);
+            return false;
+        }
+
+        try {
+            this.gameMap.removeArmy(territoryFromString, amountArmies);
+            this.gameMap.addArmy(territoryToString, amountArmies);
+
+            console.log(`Move successful: ${amountArmies} armies moved from ${territoryFromString} to ${territoryToString}.`);
+            return true;
+
+        } catch (error) {
+            console.error("Move failed with an unexpected error:", error.message);
+            return false;
+        }
+    }
+    
     calculateContinentBonus(player) {
         const territoriesByContinent = this.gameMap.getTerritoriesByContinent();
         const continentBonuses = {};
@@ -90,7 +127,7 @@ export class GameManager {
         }
         
     return continentBonuses;
-}
+    }
 
     calculateReinforcementTroops(player) {
         let territoryBonus = Math.max(3, Math.floor(player.territories.length / 2));

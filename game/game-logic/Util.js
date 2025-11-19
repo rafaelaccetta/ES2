@@ -1,7 +1,6 @@
 export class Graph {
     constructor() {
         this.adjacencyList = new Map();
-        
     }
 
     addVertex(vertex) {
