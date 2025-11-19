@@ -48,6 +48,7 @@ interface GameContextType extends GameState {
     setTerritorySelectionCallback: (callback: ((territory: string) => void) | null) => void;
     onTerritorySelected: (territory: string) => void;
     applyPostConquestMove: (source: string, target: string, moved: number) => void;
+    moveArmies: (source: string, target: string, moved: number) => void;
     calculateReinforcementTroops: (player?: Player) => any;
 }
 
@@ -448,6 +449,39 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         return (gameState.gameManager as any).calculateReinforcementTroops(targetPlayer);
     };
 
+    const moveArmies = (source: string, target: string, moved: number) => {
+        const currentPlayer = getCurrentPlayer();
+        if (!currentPlayer) return;
+
+        if (!currentPlayer.territories.includes(source) || !currentPlayer.territories.includes(target)) {
+            console.warn('moveArmies invalid: player does not own source or target', { source, target });
+            return;
+        }
+
+        const sourceArmies = currentPlayer.territoriesArmies[source] ?? 0;
+        const maxCanMove = Math.max(0, sourceArmies - 1);
+        const toMove = Math.max(0, Math.min(moved, maxCanMove));
+
+        currentPlayer.territoriesArmies[source] = Math.max(1, sourceArmies - toMove);
+        currentPlayer.territoriesArmies[target] = (currentPlayer.territoriesArmies[target] ?? 0) + toMove;
+
+        setGameState((prev) => ({
+            ...prev,
+            players: prev.players.map((p) => (p.id === currentPlayer.id ? currentPlayer : p)),
+        }));
+
+        EventBus.emit('players-updated', {
+            playerCount: gameState.players.length,
+            players: gameState.players.map((player) => ({
+                id: player.id,
+                color: player.color,
+                territories: player.territories,
+                territoriesArmies: player.territoriesArmies,
+                armies: player.armies,
+            })),
+        });
+    };
+
     const contextValue: GameContextType = {
         ...gameState,
         startGame,
@@ -460,6 +494,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         setShowObjectiveConfirmation,
         setTerritorySelectionCallback,
         onTerritorySelected,
+        moveArmies,
         applyPostConquestMove,
         calculateReinforcementTroops,
     };

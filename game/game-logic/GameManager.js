@@ -10,12 +10,8 @@ export class GameManager {
         this.PhaseNames = ["REFORÇAR", "ATACAR", "FORTIFICAR"];
         this.PhaseIdx = 0;
         this.initializeGame()
-        this.gameMap = new GameMap();
-        
-        // Distribuir territórios automaticamente
-        this.gameMap.distributeTerritories(this.players);
+
     }
-    
     
     initializeGame(){
         this.players.sort(() => Math.random() - 0.5); 
