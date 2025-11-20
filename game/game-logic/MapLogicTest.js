@@ -39,5 +39,5 @@ for (const territory in gameMap.armies) {
 
 console.log("Add tropas para um território:");
 console.log(`Antes: ${gameMap.armies["Brazil"]}`);
-gameMap.addArmy("Brazil");
+gameMap.addArmy("Brazil", 1);
 console.log(`Depois: ${gameMap.armies["Brazil"]}`);

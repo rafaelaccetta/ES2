@@ -5,6 +5,7 @@ import TurnTransition from "./TurnTransition";
 import TroopAllocation from "./TroopAllocation";
 import AttackBar from "./AttackBar";
 import "./GameUI.css";
+import FortifyBar from "./FortifyBar";
 
 const GameUI: React.FC = () => {
     const {
@@ -49,6 +50,7 @@ const GameUI: React.FC = () => {
     const [showTransition, setShowTransition] = useState(false);
     const [showTroopAllocation, setShowTroopAllocation] = useState(false);
     const [showAttackBar, setShowAttackBar] = useState(false);
+    const [showFortifyBar, setShowFortifyBar] = useState(false);
     const lastPlayerRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -132,10 +134,17 @@ const GameUI: React.FC = () => {
         setShowAttackBar(true);
     };
 
+    const handleShowFortifyBar = () => {
+       setShowFortifyBar(true);
+    }
+
     const handleCloseAttackBar = () => {
         setShowAttackBar(false);
     };
-
+    
+    const handleCloseFortifyBar = () => {
+        setShowFortifyBar(false);
+    }
     const handleCloseTroopAllocation = () => {
         console.log("handleCloseTroopAllocation called");
         setShowTroopAllocation(false);
@@ -265,6 +274,15 @@ const GameUI: React.FC = () => {
                         </button>
                     )}
 
+                    {currentPhase === "FORTIFICAR" && (
+                        <button
+                            className="fortify-btn"
+                            onClick={handleShowFortifyBar}
+                            title="Movimentar tropas entre territórios"
+                        >
+                            Movimentar Tropas
+                        </button>
+                    )}
                     {currentPhase === "ATACAR" && currentRound > 0 && !showAttackBar && (
                         <button
                             className="attack-toggle-btn"
@@ -281,7 +299,7 @@ const GameUI: React.FC = () => {
                     >
                         Meu Objetivo
                     </button>
-
+                    
                     <button
                         className={`next-phase-btn ${
                             (currentPhase === "REFORÇAR" &&
@@ -369,6 +387,14 @@ const GameUI: React.FC = () => {
                 onClose={handleCloseAttackBar}
                 isDimmed={showObjective || showObjectiveConfirmation}
             />
+
+            <FortifyBar
+                isVisible={showFortifyBar}
+                onClose={handleCloseFortifyBar}
+                isDimmed={showObjective || showObjectiveConfirmation}
+            />
+
+            
         </>
     );
 };
