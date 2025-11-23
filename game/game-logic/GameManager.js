@@ -11,12 +11,32 @@ export class GameManager {
         this.PhaseNames = ["REFORÇAR", "ATACAR", "FORTIFICAR"];
         this.PhaseIdx = 0;
         this.gameMap = new GameMap();
+        this.logs = []; // Armazena o histórico de ações
         this.initializeGame();
     }
     initializeGame(){
         this.players.sort(() => Math.random() - 0.5);
         this.gameMap = new GameMap();
         this.gameMap.distributeTerritories(this.players);
+        this.logAction("Game Initialized. Territories distributed.");
+    }
+
+    logAction(message) {
+        // Timestamp simples para ordem, se necessário
+        const logEntry = {
+            turn: this.turn,
+            round: this.round,
+            phase: this.getPhaseName(),
+            message: message,
+            timestamp: Date.now()
+        };
+        this.logs.push(logEntry);
+        // Console log opcional para debug
+        // console.log(`[GameLog] ${message}`);
+    }
+
+    getLogs() {
+        return this.logs;
     }
 
     getPhaseName() {
@@ -57,6 +77,7 @@ export class GameManager {
         }
 
         const nextPlayer = this.getPlayerPlaying();
+        this.logAction(`Turn started for Player ${nextPlayer.id} (${nextPlayer.color})`);
 
         // Calcular exércitos de reforço no início do turno
         if (nextPlayer.isActive) {
@@ -71,6 +92,7 @@ export class GameManager {
             }
 
             nextPlayer.addArmies(armiesToAdd);
+            this.logAction(`Player ${nextPlayer.id} received ${armiesToAdd} reinforcement armies.`);
         }
 
         if (nextPlayer.isAI && nextPlayer.isActive) {
@@ -80,6 +102,7 @@ export class GameManager {
 
     #passRound() {
         this.round++;
+        this.logAction(`Round ${this.round} started.`);
     }
 
     // =================================================================
@@ -95,12 +118,15 @@ export class GameManager {
         const phase = this.getPhaseName();
 
         if (phase === "REFORÇAR") {
+            this.logAction(`AI ${player.color} starting Reinforcement phase.`);
             this.executeAIPlacement(ai, player);
             this.passPhase(); // Vai para ATACAR
         } else if (phase === "ATACAR") {
+            this.logAction(`AI ${player.color} starting Attack phase.`);
             this.executeAIAttack(ai);
             this.passPhase(); // Vai para FORTIFICAR
         } else if (phase === "FORTIFICAR") {
+            this.logAction(`AI ${player.color} starting Fortification phase.`);
             this.executeAIFortification(ai);
             this.passPhase(); // Passa o turno
         }
@@ -112,14 +138,16 @@ export class GameManager {
             if (territoryId && player.hasTerritory(territoryId)) {
                 player.removeArmies(1);
                 this.gameMap.addArmy(territoryId, 1);
+                this.logAction(`AI placed 1 army in ${territoryId}`);
             } else {
-                // Fallback caso a IA falhe ou decida não colocar (evita loop infinito)
+                // Fallback caso a IA falhe
                 const randomTerritory = player.territories[0];
                 if (randomTerritory) {
                     player.removeArmies(1);
                     this.gameMap.addArmy(randomTerritory, 1);
+                    this.logAction(`AI (fallback) placed 1 army in ${randomTerritory}`);
                 } else {
-                    break; // Jogador sem territórios?
+                    break;
                 }
             }
         }
@@ -128,15 +156,14 @@ export class GameManager {
     executeAIAttack(ai) {
         let keepAttacking = true;
         let attacksPerformed = 0;
-        const MAX_ATTACKS = 10; // Evitar loops infinitos ou turnos muito longos
+        const MAX_ATTACKS = 10;
 
         while (keepAttacking && attacksPerformed < MAX_ATTACKS) {
             const attackOrder = ai.decideAttack(this);
 
             if (attackOrder) {
+                // O log do ataque acontece dentro de resolveAttack
                 const result = this.resolveAttack(attackOrder.from, attackOrder.to);
-                // Se conquistou, a IA poderia decidir avançar mais tropas.
-                // Por padrão, resolveAttack já move 1. 
                 attacksPerformed++;
             } else {
                 keepAttacking = false;
@@ -147,6 +174,7 @@ export class GameManager {
     executeAIFortification(ai) {
         const move = ai.decideFortification(this);
         if (move) {
+            // O log do movimento acontece dentro de moveTroops
             this.moveTroops(move.from, move.to, move.numTroops);
         }
     }
@@ -163,7 +191,6 @@ export class GameManager {
 
         if (attackerTroops <= 1) return { success: false, conquered: false };
 
-        // Definição de dados (3 max ataque, 3 max defesa)
         const attackDiceCount = Math.min(3, attackerTroops - 1);
         const defenseDiceCount = Math.min(3, defenderTroops);
 
@@ -186,10 +213,17 @@ export class GameManager {
         this.gameMap.removeArmy(fromId, attackLosses);
         this.gameMap.removeArmy(toId, defenseLosses);
 
+        // Registro detalhado do ataque
+        this.logAction(`Attack from ${fromId} (${ownerAttacker.color}) to ${toId} (${ownerDefender.color}). 
+            Dice: Attacker[${attackRolls.join(',')}] vs Defender[${defenseRolls.join(',')}]. 
+            Losses: Attacker -${attackLosses}, Defender -${defenseLosses}.`);
+
         let conquered = false;
         if (this.gameMap.getArmies(toId) === 0) {
             conquered = true;
             this.dominate(ownerAttacker, ownerDefender, toId);
+            this.logAction(`Territory ${toId} CONQUERED by ${ownerAttacker.color}!`);
+
             // Move 1 tropa obrigatoriamente
             this.moveTroops(fromId, toId, 1);
         }
@@ -204,9 +238,10 @@ export class GameManager {
 
     moveTroops(fromId, toId, amount) {
         const fromTroops = this.gameMap.getArmies(fromId);
-        if (fromTroops > amount) { // Deve sobrar pelo menos 1
+        if (fromTroops > amount) {
             this.gameMap.removeArmy(fromId, amount);
             this.gameMap.addArmy(toId, amount);
+            this.logAction(`Maneuver: Moved ${amount} troops from ${fromId} to ${toId}.`);
             return true;
         }
         return false;
