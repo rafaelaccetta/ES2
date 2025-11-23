@@ -18,7 +18,7 @@ export class WarAI {
     // =================================================================
     // FASE 1: DISTRIBUIÇÃO (Onde colocar as tropas no início do turno)
     // =================================================================
-    
+
     /**
      * Retorna o ID do território onde quer colocar 1 tropa.
      * O jogo deve chamar isso repetidamente até acabarem as tropas a distribuir.
@@ -36,8 +36,8 @@ export class WarAI {
         myTerritories.forEach(terr => {
             // A pontuação baseia-se na necessidade de defesa e valor estratégico
             let score = this._scoreForDefense(terr, gameManager) +
-                       this._scoreForObjective(terr, gameManager) +
-                       this._scoreForContinentExpansion(terr, gameManager);
+                this._scoreForObjective(terr, gameManager) +
+                this._scoreForContinentExpansion(terr, gameManager);
 
             if (score > highestScore) {
                 highestScore = score;
@@ -62,7 +62,7 @@ export class WarAI {
         let bestAttack = null;
         // Limiar de coragem: só ataca se a pontuação for maior que X.
         // Aumente para uma IA mais defensiva, diminua para uma mais agressiva.
-        let highestScore = 30; 
+        let highestScore = 30;
 
         possibleAttacks.forEach(attack => {
             // 1. Regra básica de sobrevivência:
@@ -76,7 +76,7 @@ export class WarAI {
 
             // Fator 1: Probabilidade de Vitória (simplificada pela razão de tropas)
             const troopRatio = attack.from.troops / attack.to.troops;
-            score += (troopRatio * 20); 
+            score += (troopRatio * 20);
 
             // Fator 2: Valor do alvo
             score += this._scoreForObjective(attack.to, gameManager);
@@ -106,7 +106,7 @@ export class WarAI {
     decideFortification(gameManager) {
         const player = gameManager.players.find(p => p.id === this.myId);
         if (!player) return null;
-        
+
         // 1. Achar quem precisa de ajuda (maior pontuação de defesa)
         let neediestTerritory = null;
         let maxNeedScore = -Infinity;
@@ -126,7 +126,7 @@ export class WarAI {
         let maxSpareTroops = 0;
 
         const friendlyNeighbors = gameManager.getFriendlyNeighbors(neediestTerritory, this.myId);
-        
+
         friendlyNeighbors.forEach(neighbor => {
             if (neighbor.troops > 1) {
                 let spareTroops = neighbor.troops - 1;
@@ -199,7 +199,7 @@ export class WarAI {
     _calculateRearRisk(fromTerritory, gameManager) {
         let risk = 0;
         const enemies = gameManager.getEnemyNeighbors(fromTerritory.id, this.myId);
-        
+
         enemies.forEach(enemy => {
             risk += enemy.troops;
         });
@@ -234,8 +234,9 @@ export class WarAI {
         }
 
         const threatLevel = enemyNeighbors.reduce((sum, enemy) => sum + enemy.troops, 0);
-        const myTroops = player.territoriesArmies[territoryId] || 0;
-        
+        // CHANGE: Use getTerritoryArmies from GameManager (proxies GameMap)
+        const myTroops = gameManager.getTerritoryArmies(territoryId);
+
         return threatLevel - myTroops;
     }
 
@@ -260,10 +261,10 @@ export class WarAI {
 
         // Objetivo de destruir um jogador
         if (this.objective.type === 'DESTROY_PLAYER') {
-            const owner = typeof territory === 'object' && territory.ownerId 
+            const owner = typeof territory === 'object' && territory.ownerId
                 ? gameManager.players.find(p => p.id === territory.ownerId)
                 : gameManager.getTerritoryOwner(territoryId);
-            
+
             if (owner && owner.id === this.objective.targetId) {
                 return 60;
             }
@@ -294,7 +295,7 @@ export class WarAI {
 
         // Se já tenho 60% do continente, vale muito mais
         if (myPercent > 0.6) {
-             return continent.bonus * 20;
+            return continent.bonus * 20;
         }
 
         return continent.bonus * 2;
