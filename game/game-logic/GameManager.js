@@ -138,7 +138,8 @@ export class GameManager {
                 this.logAction(`IA colocou 1 exército em ${territoryId}`);
             } else {
                 // Fallback caso a IA falhe
-                const randomTerritory = player.territories[0];
+                const randomIdx = Math.floor(Math.random() * player.territories.length);
+                const randomTerritory = player.territories[randomIdx];
                 if (randomTerritory) {
                     player.removeArmies(1);
                     this.gameMap.addArmy(randomTerritory, 1);
