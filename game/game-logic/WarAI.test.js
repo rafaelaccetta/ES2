@@ -120,9 +120,9 @@ describe('WarAI Integration System', () => {
         // Executa uma colocação
         gameManager.executeAIPlacement(warAI, playerAI);
 
-        // Verifica se o log foi preenchido
+        // Verifica se o log foi preenchido com a mensagem em Português
         expect(gameManager.logs.length).toBeGreaterThan(0);
         const lastLog = gameManager.logs[gameManager.logs.length - 1];
-        expect(lastLog.message).toContain(`placed 1 army in ${territoryId}`);
+        expect(lastLog.message).toContain(`colocou 1 exército em ${territoryId}`);
     });
 });
