@@ -7,7 +7,7 @@ export class GameMap {
     constructor() {
         this.territories = new Graph();
         this.continents = {};
-        this.armies = {};
+        this.armies = {}; // Centralized army storage: { "Brazil": 3, "Argentina": 1 }
 
         this.loadMapData();
         this.initializeArmies();
@@ -37,17 +37,25 @@ export class GameMap {
         }
     }
 
-    addArmy(territory) {
-        this.armies[territory] = this.armies[territory] + 1;
+    getArmies(territory) {
+        return this.armies[territory] || 0;
     }
 
-    removeArmy(territory) {
-        if (this.armies[territory] > 1) {
-            this.armies[territory] = this.armies[territory] - 1;
+    setArmies(territory, count) {
+        this.armies[territory] = count;
+    }
+
+    addArmy(territory, amount = 1) {
+        this.armies[territory] = (this.armies[territory] || 0) + amount;
+    }
+
+    removeArmy(territory, amount = 1) {
+        if (this.armies[territory] >= amount) {
+            this.armies[territory] = this.armies[territory] - amount;
         }
     }
 
-    // cria um objeto continents que armazena os territórios de acordo com o continente que pertencem (será usado para verificar se um jogador já conquistou um continente e consequentemente o bônus)
+    // cria um objeto continents que armazena os territórios de acordo com o continente que pertencem 
     getTerritoriesByContinent() {
         // se já tiver sido calculado, retorna o valor armazenado
         if (this.territoriesBycontinents) {
@@ -71,23 +79,26 @@ export class GameMap {
         // embaralhar os territórios e distribuir igualmente entre os jogadores.
         var territoriesKeys = Object.keys(territoriesJson);
         territoriesKeys = territoriesKeys.sort(() => Math.random() - 0.5);
-        
+
         var territoriesPerPlayer = Math.floor(territoriesKeys.length / players.length);
         var currentIndex = 0;
-        
-        // distribuir territórios igualmente
+// distribuir territórios igualmente
         for (var i = 0; i < players.length; i++) {
             for (var j = 0; j < territoriesPerPlayer; j++) {
                 players[i].addTerritory(territoriesKeys[currentIndex]);
                 currentIndex++;
             }
         }
-        
-        // distribuir os territórios que sobraram entre todos os jogadores
+// distribuir os territórios que sobraram entre todos os jogadores
         while (currentIndex < territoriesKeys.length) {
             var playerIndex = currentIndex % players.length;
             players[playerIndex].addTerritory(territoriesKeys[currentIndex]);
             currentIndex++;
+        }
+
+        // Garante 1 exército em cada território distribuído (Guardado em gamemap agora, nao player)
+        for (const territory of territoriesKeys) {
+            this.armies[territory] = 1;
         }
     }
 
@@ -95,4 +106,3 @@ export class GameMap {
         // verificar se um jogador domina algum continente e retornar o bônus
     }
 }
-

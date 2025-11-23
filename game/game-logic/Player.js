@@ -1,4 +1,5 @@
 import cardsSymbols from "../public/data/territories_cards.json" with {type: "json"};
+
 export class Player {
     constructor(id, color, objective = null, isAI = false) {
         this.id = id;
@@ -7,77 +8,60 @@ export class Player {
         this.isAI = isAI
         this.territories = [];
         this.cards = [];
-        this.armies = 0;
-        this.armiesExclusiveToTerritory = new Map() // example: {"Brazil": 2} means 2 troops can only be deployed in Brazil
+        this.armies = 0; // Represents the "reserve" pool of armies available to place
         this.isActive = true;
-        this.territoriesArmies = {}; // objeto para armazenar exércitos por território
     }
 
     addTerritory(territory) {
         if (!this.territories.includes(territory)) {
             this.territories.push(territory);
-            this.territoriesArmies[territory] = 0;
         }
     }
 
     removeTerritory(territory) {
         this.territories = this.territories.filter((t) => t !== territory);
-        if (this.territoriesArmies[territory]) {
-            this.armies -= this.territoriesArmies[territory];
-            delete this.territoriesArmies[territory];
-        }
     }
 
     addCard(card) {
         this.cards.push(card);
     }
-    
+
     // chamada na função de calcular o bônus de continente no GameMap
     hasConqueredContinent(continentName, territoriesByContinent) {
         const continentTerritories = territoriesByContinent[continentName];
+        if (!continentTerritories) return false;
         return continentTerritories.every((territory) => this.territories.includes(territory));
     }
 
-    //Adiciona tropas para o saldo do jogador. 
-    // Antes das tropas forem alocadas (pela classe responsável), deve ser verificado se o Player tem o saldo necessário.
+    // Adiciona tropas para o saldo (reserva) do jogador. 
     addArmies(amount) {
         this.armies = this.armies + amount;
     }
 
     removeArmies(amount) {
-        this.armies = this.armies >= amount ? this.armies - amount : 0;    
+        this.armies = this.armies >= amount ? this.armies - amount : 0;
     }
 
     hasArmies(amount) {
         return this.armies >= amount
     }
-    
-    addArmiesExclusive(territoryName, amount){
-        const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
-        this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
-    }
-    
-    removeArmiesExclusive(territoryName, amount){
-        const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
-        if (currentAmount >= amount) {    
-            this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
-        }
-    }
 
-    hasArmiesExclusive(territoryName, amount){
-        return this.armiesExclusiveToTerritory.get(territoryName) >= amount;
-    }
-    
     hasTerritory(territoryName){
         return this.territories.includes(territoryName)
     }
 
     deactivate() {
         // logic to deactivate a player
+        this.isActive = false;
     }
 
     activate() {
         // logic to activate a player
+        this.isActive = true;
+    }
+
+    checkWin(gameState) {
+        if (!this.objective || typeof this.objective.checkWin !== "function") return false;
+        return this.objective.checkWin(this, gameState);   
     }
 }
-
