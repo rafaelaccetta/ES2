@@ -1,78 +1,136 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { WarAI } from './WarAI.js';
 import { GameManager } from './GameManager.js';
 import { Player } from './Player.js';
 
-console.log('=== Teste da WarAI ===\n');
+describe('WarAI Integration System', () => {
+    let gameManager;
+    let playerAI;
+    let enemyPlayer;
+    let warAI;
 
-// Criar jogadores
-const player1 = new Player(0, 'azul');
-const player2 = new Player(1, 'vermelho');
-const player3 = new Player(2, 'verde'); // Este será o bot
+    beforeEach(() => {
+        // Setup básico antes de cada teste
+        playerAI = new Player(1, 'blue', null, true);
+        enemyPlayer = new Player(2, 'red', null, false);
 
-// Criar GameManager
-const gameManager = new GameManager([player1, player2, player3]);
+        // Inicializa jogo
+        gameManager = new GameManager([playerAI, enemyPlayer]);
 
-// Criar IA para o player 3
-const aiObjective = {
-    type: 'CONQUER_CONTINENTS',
-    targets: ['AS', 'AF'] // Ásia e África
-};
+        // Configura IA
+        const aiObjective = { type: 'CONQUER_CONTINENTS', targets: ['SA'] };
+        warAI = new WarAI(playerAI.id, aiObjective);
 
-const warAI = new WarAI(2, aiObjective);
+        // Registra IA no manager manualmente para isolamento
+        gameManager.AIs = [warAI];
+    });
 
-console.log('WarAI criada para jogador', warAI.myId);
-console.log('Objetivo:', warAI.objective);
-console.log('\n--- Territórios distribuídos ---');
-gameManager.players.forEach(p => {
-    console.log(`Jogador ${p.id} (${p.color}): ${p.territories.length} territórios`);
-    console.log(`  Primeiros 3: ${p.territories.slice(0, 3).join(', ')}`);
+    it('should correctly place troops during Reinforcement phase', () => {
+        // Preparação: Dá exércitos para a IA colocar
+        playerAI.armies = 5;
+        const territoryId = playerAI.territories[0];
+        const initialTroops = gameManager.getTerritoryArmies(territoryId);
+
+        // Mock da decisão da IA para garantir consistência
+        vi.spyOn(warAI, 'decidePlacement').mockReturnValue(territoryId);
+
+        // Execução
+        gameManager.executeAIPlacement(warAI, playerAI);
+
+        // Verificação
+        const finalTroops = gameManager.getTerritoryArmies(territoryId);
+        expect(finalTroops).toBe(initialTroops + 5);
+        expect(playerAI.armies).toBe(0);
+    });
+
+    it('should execute an attack sequence and reduce troops', () => {
+        // Setup do cenário de ataque
+        const aiTerritory = playerAI.territories[0];
+
+        // Pega um vizinho inimigo (ou cria conexão se não houver)
+        let enemyNeighbors = gameManager.getEnemyNeighbors(aiTerritory, playerAI.id);
+        if (enemyNeighbors.length === 0) {
+            const enemyTerr = enemyPlayer.territories[0];
+            gameManager.gameMap.territories.addEdge(aiTerritory, enemyTerr);
+            gameManager.gameMap.territories.addEdge(enemyTerr, aiTerritory);
+            enemyNeighbors = gameManager.getEnemyNeighbors(aiTerritory, playerAI.id);
+        }
+
+        const targetTerritoryId = enemyNeighbors[0].id;
+
+        // Configura tropas: IA forte (10), Inimigo fraco (1)
+        gameManager.gameMap.setArmies(aiTerritory, 10);
+        gameManager.gameMap.setArmies(targetTerritoryId, 1);
+
+        // Mock para garantir que a IA decida atacar este alvo específico
+        // O retorno deve ser apenas os IDs, pois o resolveAttack busca o estado real depois
+        vi.spyOn(warAI, 'decideAttack')
+            .mockReturnValueOnce({
+                from: aiTerritory,
+                to: targetTerritoryId
+            })
+            .mockReturnValue(null); // Para o loop depois do primeiro ataque
+
+        // Execução
+        gameManager.executeAIAttack(warAI);
+
+        // Verificação: 
+        // Como é 10 vs 1, sempre haverá redução na origem (perda ou movimento).
+        const currentAttackerTroops = gameManager.getTerritoryArmies(aiTerritory);
+        expect(currentAttackerTroops).toBeLessThan(10);
+    });
+
+    it('should move troops during Fortification phase', () => {
+        // Setup: dois territórios aliados conectados
+        const t1 = playerAI.territories[0];
+        let t2 = playerAI.territories[1];
+
+        // Se o player só tem 1 território (azar no shuffle), adiciona outro forçado
+        if (!t2) {
+            t2 = 'territory_mock_friend';
+            playerAI.addTerritory(t2);
+            gameManager.gameMap.territories.addVertex(t2);
+            gameManager.gameMap.setArmies(t2, 1);
+        }
+
+        // Garante conexão entre eles
+        if (!gameManager.getNeighbors(t1).includes(t2)) {
+            gameManager.gameMap.territories.addEdge(t1, t2);
+            gameManager.gameMap.territories.addEdge(t2, t1);
+        }
+
+        // T1 tem muitas tropas, T2 precisa de ajuda
+        gameManager.gameMap.setArmies(t1, 10);
+        gameManager.gameMap.setArmies(t2, 1);
+
+        // Mock da decisão
+        vi.spyOn(warAI, 'decideFortification').mockReturnValue({
+            from: t1,
+            to: t2,
+            numTroops: 5
+        });
+
+        // Execução
+        gameManager.executeAIFortification(warAI);
+
+        // Verificação
+        expect(gameManager.getTerritoryArmies(t1)).toBe(5);
+        expect(gameManager.getTerritoryArmies(t2)).toBe(6);
+    });
+
+    it('should correctly prioritize objectives in scoring logic', () => {
+        // Teste da lógica interna de pontuação da IA
+        const territory = { id: 'BR', ownerId: 99 };
+
+        // Mock do gameManager para simular continente
+        const mockManager = {
+            getTerritoryContinent: () => ({ key: 'SA', name: 'South America' }),
+            players: [],
+            getTerritoryOwner: () => null
+        };
+
+        const score = warAI._scoreForObjective(territory, mockManager);
+        // Esperado 50 pois 'SA' está nos targets definidos no beforeEach
+        expect(score).toBe(50);
+    });
 });
-
-// Teste 1: Decisão de colocação
-console.log('\n--- Teste 1: Decidir colocação de tropas ---');
-const placementChoice = warAI.decidePlacement(gameManager);
-console.log('IA escolheu colocar tropa em:', placementChoice);
-
-if (placementChoice) {
-    const player = gameManager.players.find(p => p.id === warAI.myId);
-    if (player && player.territories.includes(placementChoice)) {
-        console.log('✓ Escolha válida! O território pertence ao jogador da IA.');
-    } else {
-        console.log('✗ ERRO: Território não pertence ao jogador da IA!');
-    }
-}
-
-// Teste 2: Decisão de ataque
-console.log('\n--- Teste 2: Decidir ataque ---');
-const attackChoice = warAI.decideAttack(gameManager);
-if (attackChoice) {
-    console.log('IA decidiu atacar:');
-    console.log('  De:', attackChoice.from);
-    console.log('  Para:', attackChoice.to);
-    
-    const player = gameManager.players.find(p => p.id === warAI.myId);
-    const hasSource = player?.territories.includes(attackChoice.from);
-    const hasTarget = player?.territories.includes(attackChoice.to);
-    
-    if (hasSource && !hasTarget) {
-        console.log('✓ Ataque válido! Origem é da IA, alvo não é.');
-    } else {
-        console.log('✗ ERRO: Ataque inválido!');
-    }
-} else {
-    console.log('IA decidiu não atacar (provavelmente por falta de tropas ou vantagem)');
-}
-
-// Teste 3: Decisão de fortificação
-console.log('\n--- Teste 3: Decidir fortificação ---');
-const fortificationChoice = warAI.decideFortification(gameManager);
-if (fortificationChoice) {
-    console.log('IA decidiu mover tropas:');
-    console.log('  De:', fortificationChoice.from);
-    console.log('  Para:', fortificationChoice.to);
-    console.log('  Quantidade:', fortificationChoice.numTroops);
-} else {
-    console.log('IA decidiu não fortificar (territórios estão equilibrados)');
-}
-
-console.log('\n=== Teste concluído ===');
