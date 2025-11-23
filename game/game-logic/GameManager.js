@@ -11,7 +11,7 @@ export class GameManager {
         this.PhaseNames = ["REFORÇAR", "ATACAR", "FORTIFICAR"];
         this.PhaseIdx = 0;
         this.gameMap = new GameMap();
-        this.logs = []; // Armazena o histórico de ações
+        this.logs = [];
         this.initializeGame();
     }
     initializeGame(){
@@ -60,7 +60,6 @@ export class GameManager {
             this.PhaseIdx = 0;
             this.#passTurn();
         } else {
-            // Se a fase mudou mas o turno não, verifica se é IA para continuar o turno
             if (currentPlayer.isAI) {
                 this.executeAITurn();
             }
@@ -76,13 +75,11 @@ export class GameManager {
         const nextPlayer = this.getPlayerPlaying();
         this.logAction(`Turno iniciado para o Jogador ${nextPlayer.id} (${nextPlayer.color})`);
 
-        // Calcular exércitos de reforço no início do turno
         if (nextPlayer.isActive) {
             const territoriesCount = nextPlayer.territories.length;
             let armiesToAdd = Math.floor(territoriesCount / 2);
             if (armiesToAdd < 3) armiesToAdd = 3;
 
-            // Adicionar bônus de continentes
             const bonuses = this.calculateContinentBonus(nextPlayer);
             for (const bonus of Object.values(bonuses)) {
                 armiesToAdd += bonus;
@@ -117,15 +114,15 @@ export class GameManager {
         if (phase === "REFORÇAR") {
             this.logAction(`IA ${player.color} iniciando fase de Reforço.`);
             this.executeAIPlacement(ai, player);
-            this.passPhase(); // Vai para ATACAR
+            this.passPhase();
         } else if (phase === "ATACAR") {
             this.logAction(`IA ${player.color} iniciando fase de Ataque.`);
             this.executeAIAttack(ai);
-            this.passPhase(); // Vai para FORTIFICAR
+            this.passPhase();
         } else if (phase === "FORTIFICAR") {
             this.logAction(`IA ${player.color} iniciando fase de Fortificação.`);
             this.executeAIFortification(ai);
-            this.passPhase(); // Passa o turno
+            this.passPhase();
         }
     }
 
@@ -137,9 +134,10 @@ export class GameManager {
                 this.gameMap.addArmy(territoryId, 1);
                 this.logAction(`IA colocou 1 exército em ${territoryId}`);
             } else {
-                // Fallback caso a IA falhe
+                // ALTERAÇÃO 1: Fallback aleatório corrigido
                 const randomIdx = Math.floor(Math.random() * player.territories.length);
                 const randomTerritory = player.territories[randomIdx];
+
                 if (randomTerritory) {
                     player.removeArmies(1);
                     this.gameMap.addArmy(randomTerritory, 1);
@@ -161,7 +159,12 @@ export class GameManager {
 
             if (attackOrder) {
                 const result = this.resolveAttack(attackOrder.from, attackOrder.to);
-                attacksPerformed++;
+                if (result.success) {
+                    attacksPerformed++;
+                } else {
+                    // Se o ataque falhou (inválido), aborta para evitar loop infinito
+                    keepAttacking = false;
+                }
             } else {
                 keepAttacking = false;
             }
@@ -180,6 +183,12 @@ export class GameManager {
     // =================================================================
 
     resolveAttack(fromId, toId) {
+        const neighbors = this.getNeighbors(fromId);
+        if (!neighbors.includes(toId)) {
+            console.error(`Movimento inválido: ${fromId} não é vizinho de ${toId}`);
+            return { success: false, conquered: false };
+        }
+
         const attackerTroops = this.gameMap.getArmies(fromId);
         const defenderTroops = this.gameMap.getArmies(toId);
         const ownerAttacker = this.getTerritoryOwner(fromId);
@@ -209,7 +218,6 @@ export class GameManager {
         this.gameMap.removeArmy(fromId, attackLosses);
         this.gameMap.removeArmy(toId, defenseLosses);
 
-        // Registro detalhado do ataque traduzido
         this.logAction(`Ataque de ${fromId} (${ownerAttacker.color}) para ${toId} (${ownerDefender.color}). 
             Dados: Atacante[${attackRolls.join(',')}] vs Defensor[${defenseRolls.join(',')}]. 
             Baixas: Atacante -${attackLosses}, Defensor -${defenseLosses}.`);
@@ -221,7 +229,8 @@ export class GameManager {
             this.logAction(`Território ${toId} CONQUISTADO por ${ownerAttacker.color}!`);
 
             // Move 1 tropa obrigatoriamente
-            this.moveTroops(fromId, toId, 1);
+            this.gameMap.removeArmy(fromId, 1);
+            this.gameMap.addArmy(toId, 1);
         }
 
         return {
@@ -233,6 +242,12 @@ export class GameManager {
     }
 
     moveTroops(fromId, toId, amount) {
+        const neighbors = this.getNeighbors(fromId);
+        if (!neighbors.includes(toId)) {
+            console.warn(`Manobra inválida: ${fromId} e ${toId} não são vizinhos.`);
+            return false;
+        }
+
         const fromTroops = this.gameMap.getArmies(fromId);
         if (fromTroops > amount) {
             this.gameMap.removeArmy(fromId, amount);
@@ -242,7 +257,7 @@ export class GameManager {
         }
         return false;
     }
-
+    
     calculateContinentBonus(player) {
         const territoriesByContinent = this.gameMap.getTerritoriesByContinent();
         const continentBonuses = {};
@@ -276,10 +291,6 @@ export class GameManager {
         loser.removeTerritory(territoryId);
         winner.addTerritory(territoryId);
     }
-
-    // =================================================================
-    // MÉTODOS AUXILIARES
-    // =================================================================
 
     getTerritoryArmies(territoryId) {
         return this.gameMap.getArmies(territoryId);
