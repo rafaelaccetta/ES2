@@ -28,16 +28,25 @@ export class GameManager {
     }
 
     passPhase() {
+        const currentPlayer = this.getPlayerPlaying();
+
         this.PhaseIdx++;
         if (this.getPhaseName() === "REFORÇAR"){
-            if (this.getPlayerPlaying().cards.length >= 5){
+            if (currentPlayer.cards.length >= 5){
                 console.warn("Cannot pass REINFORCE phase: player has 5 cards and must trade cards in.")
+                this.PhaseIdx--;
                 return
             }
         }
+
         if (this.PhaseIdx > this.PhaseNames.length - 1) {
             this.PhaseIdx = 0;
             this.#passTurn();
+        } else {
+            // Se a fase mudou mas o turno não, verifica se é IA para continuar o turno
+            if (currentPlayer.isAI) {
+                this.executeAITurn();
+            }
         }
     }
 
@@ -46,54 +55,106 @@ export class GameManager {
         if (this.turn === 0) {
             this.#passRound();
         }
+
+        const nextPlayer = this.getPlayerPlaying();
+
+        // Calcular exércitos de reforço no início do turno
+        if (nextPlayer.isActive) {
+            const territoriesCount = nextPlayer.territories.length;
+            let armiesToAdd = Math.floor(territoriesCount / 2);
+            if (armiesToAdd < 3) armiesToAdd = 3;
+
+            // Adicionar bônus de continentes
+            const bonuses = this.calculateContinentBonus(nextPlayer);
+            for (const bonus of Object.values(bonuses)) {
+                armiesToAdd += bonus;
+            }
+
+            nextPlayer.addArmies(armiesToAdd);
+        }
+
+        if (nextPlayer.isAI && nextPlayer.isActive) {
+            this.executeAITurn();
+        }
     }
 
     #passRound() {
         this.round++;
     }
 
-    calculateContinentBonus(player) {
-        const territoriesByContinent = this.gameMap.getTerritoriesByContinent();
-        const continentBonuses = {};
+    // =================================================================
+    // LÓGICA DA IA (EXECUÇÃO)
+    // =================================================================
 
-        const continentNames = Object.keys(territoriesByContinent);
+    executeAITurn() {
+        const player = this.getPlayerPlaying();
+        const ai = this.AIs.find(ai => ai && ai.myId === player.id);
 
-        for (const continentName of continentNames) {
-            if (player.hasConqueredContinent(continentName, territoriesByContinent)) {
-                const continentAbbreviation = Object.keys(this.gameMap.continents).find(key =>
-                    this.gameMap.continents[key].name === continentName
-                );
+        if (!ai) return;
 
-                if (continentAbbreviation) {
-                    const bonusValue = this.gameMap.continents[continentAbbreviation].bonus;
-                    continentBonuses[continentName] = bonusValue;
+        const phase = this.getPhaseName();
+
+        if (phase === "REFORÇAR") {
+            this.executeAIPlacement(ai, player);
+            this.passPhase(); // Vai para ATACAR
+        } else if (phase === "ATACAR") {
+            this.executeAIAttack(ai);
+            this.passPhase(); // Vai para FORTIFICAR
+        } else if (phase === "FORTIFICAR") {
+            this.executeAIFortification(ai);
+            this.passPhase(); // Passa o turno
+        }
+    }
+
+    executeAIPlacement(ai, player) {
+        while (player.armies > 0) {
+            const territoryId = ai.decidePlacement(this);
+            if (territoryId && player.hasTerritory(territoryId)) {
+                player.removeArmies(1);
+                this.gameMap.addArmy(territoryId, 1);
+            } else {
+                // Fallback caso a IA falhe ou decida não colocar (evita loop infinito)
+                const randomTerritory = player.territories[0];
+                if (randomTerritory) {
+                    player.removeArmies(1);
+                    this.gameMap.addArmy(randomTerritory, 1);
+                } else {
+                    break; // Jogador sem territórios?
                 }
             }
         }
-        return continentBonuses;
     }
 
-    // Distributes objective cards to players
-    distributeObjectives(objectives) {
-        objectives = objectives.sort(() => Math.random() - 0.5);
-        for (let i = 0; i < this.players.length; i++) {
-            this.players[i].objective = objectives[i];
+    executeAIAttack(ai) {
+        let keepAttacking = true;
+        let attacksPerformed = 0;
+        const MAX_ATTACKS = 10; // Evitar loops infinitos ou turnos muito longos
+
+        while (keepAttacking && attacksPerformed < MAX_ATTACKS) {
+            const attackOrder = ai.decideAttack(this);
+
+            if (attackOrder) {
+                const result = this.resolveAttack(attackOrder.from, attackOrder.to);
+                // Se conquistou, a IA poderia decidir avançar mais tropas.
+                // Por padrão, resolveAttack já move 1. 
+                attacksPerformed++;
+            } else {
+                keepAttacking = false;
+            }
         }
-        this.AIs = this.players.map(p => p.isAI ? new WarAI(p.id, p.objective) : null);
     }
 
-    dominate(winner, loser, territoryId) {
-        loser.removeTerritory(territoryId);
-        winner.addTerritory(territoryId);
+    executeAIFortification(ai) {
+        const move = ai.decideFortification(this);
+        if (move) {
+            this.moveTroops(move.from, move.to, move.numTroops);
+        }
     }
 
     // =================================================================
     // AÇÕES DE JOGO (RESOLUÇÃO DE REGRAS)
     // =================================================================
 
-    /**
-     * Resolve um ataque entre dois territórios.
-     */
     resolveAttack(fromId, toId) {
         const attackerTroops = this.gameMap.getArmies(fromId);
         const defenderTroops = this.gameMap.getArmies(toId);
@@ -149,6 +210,40 @@ export class GameManager {
             return true;
         }
         return false;
+    }
+
+    calculateContinentBonus(player) {
+        const territoriesByContinent = this.gameMap.getTerritoriesByContinent();
+        const continentBonuses = {};
+
+        const continentNames = Object.keys(territoriesByContinent);
+
+        for (const continentName of continentNames) {
+            if (player.hasConqueredContinent(continentName, territoriesByContinent)) {
+                const continentAbbreviation = Object.keys(this.gameMap.continents).find(key =>
+                    this.gameMap.continents[key].name === continentName
+                );
+
+                if (continentAbbreviation) {
+                    const bonusValue = this.gameMap.continents[continentAbbreviation].bonus;
+                    continentBonuses[continentName] = bonusValue;
+                }
+            }
+        }
+        return continentBonuses;
+    }
+
+    distributeObjectives(objectives) {
+        objectives = objectives.sort(() => Math.random() - 0.5);
+        for (let i = 0; i < this.players.length; i++) {
+            this.players[i].objective = objectives[i];
+        }
+        this.AIs = this.players.map(p => p.isAI ? new WarAI(p.id, p.objective) : null);
+    }
+
+    dominate(winner, loser, territoryId) {
+        loser.removeTerritory(territoryId);
+        winner.addTerritory(territoryId);
     }
 
     // =================================================================
