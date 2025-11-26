@@ -203,6 +203,21 @@
   box-shadow: 0 6px 16px rgba(62, 94, 95, 0.4);
 }
 
+.next-phase-btn.disabled,
+.next-phase-btn:disabled {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.next-phase-btn.disabled:hover,
+.next-phase-btn:disabled:hover {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  transform: none;
+  box-shadow: 0 4px 12px rgba(62, 94, 95, 0.3);
+}
+
 .back-to-menu-btn {
   padding: 12px 16px;
   background: linear-gradient(135deg, #8b8263 0%, #a59b7b 100%);

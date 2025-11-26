@@ -1,0 +1,548 @@
+/* Barra flutuante de ataque */
+.attack-bar {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    z-index: 4000;
+    background: linear-gradient(135deg, #1b3738 0%, #3e5e5f 100%);
+    border: 2px solid #a59b7b;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    padding: 12px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    transition: opacity 0.3s ease;
+}
+
+.attack-bar.post-conquest {
+    background: linear-gradient(135deg, #1b3738 0%, #3e5e5f 100%);
+    border: 2px solid #10b981;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+}
+
+.attack-result-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 4999;
+}
+
+.attack-bar.attack-result {
+    padding: 24px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    max-width: 90vw;
+    max-height: 70vh;
+    overflow-y: auto;
+    bottom: unset;
+    right: unset;
+    z-index: 5000;
+}
+
+.attack-bar.dimmed {
+    opacity: 0.3;
+}
+
+.attack-bar-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    font-size: 1rem;
+    color: #fff;
+    width: 100%;
+}
+
+.attack-instruction {
+    font-weight: 400;
+    animation: fade-in 0.3s ease;
+    flex: 1;
+}
+
+.attack-instruction strong {
+    color: #fbbf24;
+    font-weight: 600;
+}
+
+.attack-bar-buttons {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.conquest-message {
+    font-weight: 500;
+    font-size: 1.05rem;
+}
+
+.attack-btn {
+    padding: 10px 24px;
+    background: linear-gradient(135deg, #a59b7b 0%, #8b8263 100%);
+    color: #1b3738;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    animation: pulse-attack-button 2s ease-in-out infinite;
+}
+
+.attack-btn:hover {
+    background: linear-gradient(135deg, #c5b18a 0%, #a59b7b 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+@keyframes pulse-attack-button {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.close-attack-btn {
+    padding: 8px 20px;
+    background: rgba(165, 155, 123, 0.3);
+    color: white;
+    border: 1px solid #a59b7b;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.close-attack-btn:hover {
+    background: rgba(165, 155, 123, 0.5);
+}
+
+/* Controles de movimento pós-conquista */
+.troop-move-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.confirm-move-btn {
+    padding: 10px 24px;
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    animation: pulse-button 2s ease-in-out infinite;
+}
+
+.confirm-move-btn:hover {
+    background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+@keyframes pulse-button {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.cancel-move-btn {
+    padding: 10px 20px;
+    background: rgba(239, 68, 68, 0.3);
+    color: white;
+    border: 1px solid #ef4444;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cancel-move-btn:hover {
+    background: rgba(239, 68, 68, 0.5);
+}
+
+/* Resumo do ataque */
+.attack-summary {
+    margin-top: 8px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.attack-selections {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+}
+
+.selection-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(165, 155, 123, 0.2);
+    border: 1px solid #a59b7b;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 0.875rem;
+    color: #fff;
+    transition: all 0.2s;
+    animation: slide-in 0.3s ease;
+}
+
+@keyframes slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.selection-chip.target {
+    background: rgba(165, 155, 123, 0.3);
+    border: 1px solid #c5b18a;
+}
+
+.selection-chip:hover {
+    background: rgba(165, 155, 123, 0.3);
+}
+
+.selection-chip.target:hover {
+    background: rgba(165, 155, 123, 0.4);
+}
+
+.selection-chip-label {
+    color: #fbbf24;
+    font-weight: 600;
+}
+
+.selection-chip-text {
+    white-space: nowrap;
+}
+
+.selection-chip-remove {
+    background: rgba(165, 155, 123, 0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.2rem;
+    line-height: 1;
+    padding: 0;
+    transition: all 0.2s;
+}
+
+.selection-chip-remove:hover {
+    background: rgba(165, 155, 123, 0.8);
+    transform: scale(1.1);
+}
+
+/* Seleção de tropas inline */
+.troop-selection-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(165, 155, 123, 0.2);
+    border: 1px solid #a59b7b;
+    border-radius: 20px;
+    padding: 6px 12px;
+}
+
+.troop-selection-label {
+    color: #a59b7b;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.troop-buttons-inline {
+    display: flex;
+    gap: 6px;
+}
+
+.troop-btn-small {
+    min-width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #3e5e5f 0%, #2a4142 100%);
+    border: 2px solid #a59b7b;
+    border-radius: 6px;
+    color: #f4e4bc;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.troop-btn-small:hover:not(:disabled) {
+    background: linear-gradient(135deg, #4a6b6d 0%, #364e50 100%);
+    border-color: #c5b18a;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.troop-btn-small.selected {
+    background: linear-gradient(135deg, #a59b7b 0%, #8b8263 100%);
+    border-color: #f4e4bc;
+    color: #1b3738;
+    box-shadow: 0 2px 8px rgba(165, 155, 123, 0.4);
+}
+
+.troop-btn-small:disabled {
+    background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+    border-color: #555;
+    color: #666;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.troop-btn-small:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .attack-bar-content {
+        font-size: 0.875rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .attack-instruction {
+        text-align: left;
+    }
+
+    .attack-bar-buttons {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .attack-btn,
+    .confirm-move-btn {
+        font-size: 0.875rem;
+        padding: 8px 16px;
+    }
+
+    .attack-selections {
+        width: 100%;
+    }
+
+    .selection-chip {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+
+    .troop-btn-small {
+        min-width: 32px;
+        height: 32px;
+        font-size: 0.875rem;
+    }
+}
+
+/* Estilos para resultado do ataque */
+.attack-result-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+}
+
+.result-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #a59b7b;
+    text-align: center;
+    font-weight: 600;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.result-header h3.victory {
+    color: #a59b7b;
+}
+
+.result-header h3.defeat {
+    color: #a59b7b;
+}
+
+.battle-summary {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.battle-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: rgba(62, 94, 95, 0.3);
+    border-radius: 8px;
+    border: 1px solid #a59b7b;
+    color: #f4e4bc;
+}
+
+.battle-info span {
+    font-size: 1.125rem;
+}
+
+.troops-used {
+    font-size: 0.875rem;
+    color: #a59b7b;
+}
+
+.dice-results {
+    display: flex;
+    justify-content: space-around;
+    gap: 20px;
+    padding: 0;
+}
+
+.dice-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+.dice-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #a59b7b;
+    margin: 0;
+}
+
+.dice-container {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.dice {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #a59b7b;
+    border-radius: 8px;
+    color: white;
+    font-size: 1.125rem;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.loss-text {
+    font-size: 0.875rem;
+    color: #dc2626;
+    font-weight: 600;
+    margin: 0;
+}
+
+.continue-btn {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #a59b7b 0%, #8b8263 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    min-width: 120px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.continue-btn:hover {
+    background: linear-gradient(135deg, #8b8263 0%, #757049 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.continue-btn:active {
+    transform: translateY(0);
+}
+
+.result-message {
+    text-align: center;
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid;
+}
+
+.result-message.victory {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    border-color: #166534;
+}
+
+.result-message.defeat {
+    background: linear-gradient(135deg, #f44336, #c62828);
+    border-color: #b71c1c;
+}
+
+.result-message h4 {
+    margin: 0 0 10px 0;
+    font-size: 1.25rem;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.result-message p {
+    margin: 0;
+    font-size: 1rem;
+    color: white;
+}
+
