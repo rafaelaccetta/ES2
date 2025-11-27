@@ -134,7 +134,6 @@ export class GameManager {
                 this.gameMap.addArmy(territoryId, 1);
                 this.logAction(`IA colocou 1 exército em ${territoryId}`);
             } else {
-                // ALTERAÇÃO 1: Fallback aleatório corrigido
                 const randomIdx = Math.floor(Math.random() * player.territories.length);
                 const randomTerritory = player.territories[randomIdx];
 
@@ -162,7 +161,6 @@ export class GameManager {
                 if (result.success) {
                     attacksPerformed++;
                 } else {
-                    // Se o ataque falhou (inválido), aborta para evitar loop infinito
                     keepAttacking = false;
                 }
             } else {
@@ -215,8 +213,13 @@ export class GameManager {
             }
         }
 
-        this.gameMap.removeArmy(fromId, attackLosses);
-        this.gameMap.removeArmy(toId, defenseLosses);
+        // CORREÇÃO: Só chama removeArmy se houver perdas (> 0)
+        if (attackLosses > 0) {
+            this.gameMap.removeArmy(fromId, attackLosses);
+        }
+        if (defenseLosses > 0) {
+            this.gameMap.removeArmy(toId, defenseLosses);
+        }
 
         this.logAction(`Ataque de ${fromId} (${ownerAttacker.color}) para ${toId} (${ownerDefender.color}). 
             Dados: Atacante[${attackRolls.join(',')}] vs Defensor[${defenseRolls.join(',')}]. 
@@ -257,7 +260,41 @@ export class GameManager {
         }
         return false;
     }
-    
+
+    moveArmies(territoryFromString, territoryToString, amountArmies) {
+        let player = this.getPlayerPlaying();
+        const ownsFrom = player.hasTerritory(territoryFromString);
+        const ownsTo = player.hasTerritory(territoryToString);
+        if (!ownsFrom || !ownsTo) {
+            console.log("Movimento falhou: ao menos um território não pertence ao player.");
+            return false;
+        }
+
+        if (!this.gameMap.areAdjacent(territoryToString, territoryFromString)) {
+            console.log("Movimento falhou: territórios não são adjacentes.")
+            return false;
+        }
+
+        const armiesOnFrom = this.gameMap.armies[territoryFromString];
+
+        if (armiesOnFrom <= amountArmies) {
+            console.log(`Movimento falhou: tropas insuficientes em ${territoryFromString}. Deve sobrar ao menos 1.`);
+            return false;
+        }
+
+        try {
+            this.gameMap.removeArmy(territoryFromString, amountArmies);
+            this.gameMap.addArmy(territoryToString, amountArmies);
+
+            console.log(`Move successful: ${amountArmies} armies moved from ${territoryFromString} to ${territoryToString}.`);
+            return true;
+
+        } catch (error) {
+            console.error("Move failed with an unexpected error:", error.message);
+            return false;
+        }
+    }
+
     calculateContinentBonus(player) {
         const territoriesByContinent = this.gameMap.getTerritoriesByContinent();
         const continentBonuses = {};
