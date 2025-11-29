@@ -300,11 +300,6 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
         (territory: string) => {
             if (!currentPlayer) return;
 
-            if (allocationPhase === 'continent') {
-                console.log("❌ Não é possível remover tropas durante a alocação de continente");
-                return;
-            }
-
             const allocated = allocations[territory];
             if (!allocated || allocated <= 0) return;
 
@@ -323,6 +318,15 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                     currentPlayer.armies -= 1;
                 }
                 (currentPlayer as any).pendingReinforcements = ((currentPlayer as any).pendingReinforcements || 0) + 1;
+            }
+
+            // Se estamos na fase de continente, devolver a tropa ao pool
+            if (allocationPhase === 'continent' && currentContinentFocus) {
+                setContinentTroopsSpent(prev => Math.max(0, prev - 1));
+                setContinentPools((prev) => ({
+                    ...prev,
+                    [currentContinentFocus!]: (prev[currentContinentFocus!] || 0) + 1,
+                }));
             }
 
             EventBus.emit("players-updated", {
@@ -349,7 +353,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 };
             });
         },
-        [currentPlayer, allocations, players]
+        [currentPlayer, allocations, players, allocationPhase, currentContinentFocus]
     );
 
     const handleConfirm = useCallback(() => {
