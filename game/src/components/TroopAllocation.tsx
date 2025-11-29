@@ -31,36 +31,8 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
 
     const calculatedTroops = useMemo(() => {
         if (!currentPlayer) return 0;
-
-        let territoryBonus = Math.max(
-            3,
-            Math.floor(currentPlayer.territories.length / 2)
-        );
-
-        const roundBonus = currentPlayer.id % 3;
-
-        let continentBonus = 0;
-        if (currentPlayer.territories.length > 10) {
-            continentBonus = 2;
-        }
-
-        let cardBonus = 0;
-        if (currentPlayer.id === 0) {
-            cardBonus = 4;
-        }
-
-        const total = territoryBonus + roundBonus + continentBonus + cardBonus;
-
-        console.log(
-            "Tropas calculadas para jogador",
-            currentPlayer.id,
-            ":",
-            total
-        );
-
-        // TODO: Integrar com o back-end real
-        return Math.min(total, 20); // Máximo de 20 tropas para teste
-    }, [currentPlayer?.id, currentPlayer?.territories.length]);
+        return (currentPlayer as any).pendingReinforcements || 0;
+    }, [(currentPlayer as any)?.pendingReinforcements]);
 
     useEffect(() => {
         if (isVisible && currentPlayer) {
@@ -94,13 +66,12 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
         lastRoundPlayer,
     ]);
 
+    // Agora calcula restantes dinamicamente a partir de pendingReinforcements do jogador
     const getRemainingTroops = useMemo(() => {
-        const allocated = Object.values(allocations).reduce(
-            (sum, val) => sum + val,
-            0
-        );
-        return Math.max(0, initialTroops - allocated);
-    }, [initialTroops, allocations]);
+        if (!currentPlayer) return 0;
+        const pending = (currentPlayer as any).pendingReinforcements || 0;
+        return pending; // backend já decrementa ao gastar
+    }, [currentPlayer, (currentPlayer as any)?.pendingReinforcements]);
 
     const normalizeId = useCallback((name: string) => {
         return name
@@ -161,10 +132,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
             }
 
             // Verificar usando o ref para garantir que temos o valor mais atualizado
-            const remaining = Math.max(
-                0,
-                initialTroops - allocatedCountRef.current
-            );
+            const remaining = (cp as any).pendingReinforcements || 0;
 
             console.log(
                 "Verificando alocação:",
@@ -188,7 +156,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 matchingTerritory
             );
 
-            // Incrementar o contador ANTES de qualquer outra operação
+            // Incrementar contador apenas para métricas internas (não mais usado para bloquear)
             allocatedCountRef.current += 1;
 
             // Atualizar o jogador imediatamente
@@ -196,7 +164,12 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 "Before addArmies - territoriesArmies:",
                 cp.territoriesArmies[matchingTerritory]
             );
-            (cp as any).addArmies(matchingTerritory, 1);
+            // Usa gasto de reforço pendente do backend
+            const spent = (cp as any).spendPendingReinforcement?.(matchingTerritory, 1);
+            if (!spent) {
+                // fallback legacy
+                (cp as any).addArmies(matchingTerritory, 1);
+            }
             console.log(
                 "After addArmies - territoriesArmies:",
                 cp.territoriesArmies[matchingTerritory]
@@ -211,6 +184,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                     territories: player.territories,
                     territoriesArmies: player.territoriesArmies,
                     armies: player.armies,
+                    pendingReinforcements: (player as any).pendingReinforcements,
                 })),
             });
 
@@ -257,13 +231,14 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
             console.log("Contador atualizado:", allocatedCountRef.current);
 
             // Remover 1 tropa do jogador
-            const currentArmies =
-                currentPlayer.territoriesArmies[territory] || 0;
+            const currentArmies = currentPlayer.territoriesArmies[territory] || 0;
             if (currentArmies > 0) {
                 currentPlayer.territoriesArmies[territory] = currentArmies - 1;
                 if (currentPlayer.armies > 0) {
                     currentPlayer.armies -= 1;
                 }
+                // devolver reforço ao pool pendente se desejar (simplificação: adiciona 1 de volta)
+                (currentPlayer as any).pendingReinforcements = ((currentPlayer as any).pendingReinforcements || 0) + 1;
             }
 
             // Emitir evento para atualizar o mapa
@@ -275,6 +250,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                     territories: player.territories,
                     territoriesArmies: player.territoriesArmies,
                     armies: player.armies,
+                    pendingReinforcements: (player as any).pendingReinforcements,
                 })),
             });
 

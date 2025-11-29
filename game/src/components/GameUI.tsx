@@ -5,7 +5,9 @@ import TurnTransition from "./TurnTransition";
 import TroopAllocation from "./TroopAllocation";
 import AttackBar from "./AttackBar";
 import "./GameUI.css";
+import "./CardAward.css";
 import CardExchange from "./CardTrade";
+import { EventBus } from "../game/EventBus";
 
 const GameUI: React.FC = () => {
     const {
@@ -28,37 +30,11 @@ const GameUI: React.FC = () => {
     const [troopsAllocatedThisPhase, setTroopsAllocatedThisPhase] =
         useState(false);
 
-    // Função para calcular tropas disponíveis para alocar
+    // Usa diretamente pendingReinforcements do backend
     const getAvailableTroopsToAllocate = () => {
         const currentPlayer = getCurrentPlayer();
-        console.log(
-            "getAvailableTroopsToAllocate - Player:",
-            currentPlayer?.id,
-            "troopsAllocatedThisPhase:",
-            troopsAllocatedThisPhase
-        );
         if (!currentPlayer || troopsAllocatedThisPhase) return 0;
-
-        // Calcular tropas base (mesmo cálculo do TroopAllocation)
-        let territoryBonus = Math.max(
-            3,
-            Math.floor(currentPlayer.territories.length / 2)
-        );
-        const roundBonus = currentPlayer.id % 3;
-        let continentBonus = 0;
-        if (currentPlayer.territories.length > 10) {
-            continentBonus = 2;
-        }
-        let cardBonus = 0;
-        if (currentPlayer.id === 0) {
-            cardBonus = 4;
-        }
-
-        const totalTroops = Math.min(
-            territoryBonus + roundBonus + continentBonus + cardBonus,
-            20
-        );
-        return totalTroops;
+        return (currentPlayer as any).pendingReinforcements || 0;
     };
 
     const [showObjective, setShowObjective] = useState(false);
@@ -67,6 +43,36 @@ const GameUI: React.FC = () => {
     const [showTroopAllocation, setShowTroopAllocation] = useState(false);
     const [showAttackBar, setShowAttackBar] = useState(false);
     const [showCardExchange, setShowCardExchange] = useState(false);
+    const [showCardAward, setShowCardAward] = useState(false);
+    const [awardedCard, setAwardedCard] = useState<{name:string;shape:string;playerColor?:string}|null>(null);
+        // Escuta evento de carta conquistada
+        useEffect(() => {
+            const handler = (data: any) => {
+                const currentPlayer = getCurrentPlayer();
+                const colorMap: Record<string, string> = {
+                    azul: "#2563eb",
+                    vermelho: "#dc2626",
+                    verde: "#16a34a",
+                    branco: "#b7c0cd",
+                };
+                const playerColor = currentPlayer ? (colorMap[currentPlayer.color] || '#fbbf24') : '#fbbf24';
+                setAwardedCard({ 
+                    name: data.name, 
+                    shape: data.shape,
+                    playerColor: playerColor
+                });
+                setShowCardAward(true);
+            };
+            EventBus.on("card-awarded", handler);
+            return () => {
+                EventBus.removeListener("card-awarded", handler);
+            };
+        }, [getCurrentPlayer]);
+
+        const closeCardAward = () => {
+            setShowCardAward(false);
+            setAwardedCard(null);
+        };
     const lastPlayerRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -105,6 +111,8 @@ const GameUI: React.FC = () => {
         gameStarted,
         firstRoundObjectiveShown,
     ]);
+
+    // Removida autoabertura: usuário decide quando abrir
 
     const handleStartGame = (playerCount: number) => {
         startGame(playerCount);
@@ -425,6 +433,30 @@ const GameUI: React.FC = () => {
                     showTroopAllocation
                 }
             />
+
+            {showCardAward && awardedCard && (
+                <div className="card-award-overlay" onClick={closeCardAward}>
+                    <div className="card-award-modal" onClick={e=>e.stopPropagation()}>
+                        <div className="card-award-header">
+                            <h2>Você ganhou uma carta!</h2>
+                        </div>
+                        <div className="card-award-body">
+                            <div className="card-award-card">
+                                <span className="card-shape" style={{color: awardedCard.playerColor || '#fbbf24'}}>
+                                    {awardedCard.shape === 'Square' && '■'}
+                                    {awardedCard.shape === 'Circle' && '●'}
+                                    {awardedCard.shape === 'Triangle' && '▲'}
+                                    {awardedCard.shape === 'Wildcard' && '★'}
+                                    {['Square','Circle','Triangle','Wildcard'].includes(awardedCard.shape) ? '' : '★'}
+                                </span>
+                            </div>
+                            <p className="card-award-name"><strong>{awardedCard.name}</strong></p>
+                            <p className="card-award-hint">Troque 3 cartas válidas para ganhar reforços.</p>
+                            <button className="confirm-btn" onClick={closeCardAward}>Ok</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };

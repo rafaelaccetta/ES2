@@ -64,20 +64,13 @@
 
 .card-btn.selected {
     background: rgba(165, 155, 123, 0.5) !important;
-    border-color: #f4e4bc !important;
     color: #f4e4bc;
     font-weight: 600;
-    box-shadow: 0 0 15px rgba(244, 228, 188, 0.3);
 }
 
 .card-shape {
     font-size: 1.5rem;
     line-height: 1;
-    color: #f4e4bc;
-}
-
-.card-btn.selected .card-shape {
-    color: white;
 }
 
 .card-name {

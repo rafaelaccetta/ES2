@@ -141,7 +141,6 @@
 .card-exchange-btn.must-exchange {
     background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
     color: #1b3738;
-    animation: pulse-button 2s ease-in-out infinite;
 }
 .card-exchange-btn.must-exchange:hover:not(:disabled) {
     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
@@ -247,6 +246,21 @@
   background: linear-gradient(135deg, #1b3738 0%, #3e5e5f 100%);
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(62, 94, 95, 0.4);
+}
+
+.next-phase-btn.disabled,
+.next-phase-btn:disabled {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.next-phase-btn.disabled:hover,
+.next-phase-btn:disabled:hover {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  transform: none;
+  box-shadow: 0 4px 12px rgba(62, 94, 95, 0.3);
 }
 
 .back-to-menu-btn {
@@ -461,7 +475,6 @@
 .card-exchange-btn.must-exchange {
     background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
     color: #1b3738;
-    animation: pulse-button 2s ease-in-out infinite;
 }
 .card-exchange-btn.must-exchange:hover:not(:disabled) {
     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);

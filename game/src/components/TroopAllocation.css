@@ -64,7 +64,6 @@
     cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    animation: pulse-button 2s ease-in-out infinite;
 }
 
 .confirm-allocation-btn:hover {

@@ -16,10 +16,13 @@ const isValidSet = (cards: PlayerCards[]): boolean => {
     const shapes = cards.map((card) => card.geometricShape);
 
     const wildcardCount = shapes.filter((s) => s === "Wildcard").length;
-    if (wildcardCount > 0) return wildcardCount === 1; 
+    if (wildcardCount > 0) return true; // Qualquer conjunto com wildcard é válido
 
     const uniqueShapes = new Set(shapes);
+    
+        // 3 símbolos iguais
     if (uniqueShapes.size === 1) return true;
+    // 3 símbolos diferentes (1 de cada)
 
     if (uniqueShapes.size === 3) return true;
 
@@ -35,6 +38,18 @@ const CardExchange: React.FC<CardExchangeProps> = ({
     const [selectedCards, setSelectedCards] = useState<PlayerCards[]>([]);
     const currentPlayer = getCurrentPlayer();
     const playerCards = (currentPlayer?.cards as PlayerCards[]) || [];
+
+    const getPlayerColor = (color: string) => {
+        const colorMap: Record<string, string> = {
+            azul: "#2563eb",
+            vermelho: "#dc2626",
+            verde: "#16a34a",
+            branco: "#b7c0cd",
+        };
+        return colorMap[color] || "#fbbf24";
+    };
+
+    const playerColor = currentPlayer ? getPlayerColor(currentPlayer.color) : "#fbbf24";
 
     useEffect(() => {
         if (isVisible) {
@@ -143,8 +158,12 @@ const CardExchange: React.FC<CardExchangeProps> = ({
                                             !isSelected &&
                                             selectedCards.length >= 3
                                         }
+                                        style={{
+                                            borderColor: isSelected ? playerColor : '#a59b7b',
+                                            boxShadow: isSelected ? `0 0 15px ${playerColor}80` : undefined
+                                        }}
                                     >
-                                        <span className="card-shape">
+                                        <span className="card-shape" style={{ color: playerColor }}>
                                             {getShapeIcon(card.geometricShape)}
                                         </span>
                                         <span className="card-name">

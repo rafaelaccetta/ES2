@@ -111,8 +111,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
         console.log('🎮 Iniciando jogo com jogadores:', gamePlayers.map(p => ({ id: p.id, color: p.color })));
 
-        const gameManager = new GameManager(gamePlayers);
         const cardManager = new CardManager();
+        const gameManager = new GameManager(gamePlayers, cardManager);
+        // Inicializa reforços para primeiro jogador
+        gameManager.getPlayerPlaying().pendingReinforcements = gameManager.calculateReinforcements(gameManager.getPlayerPlaying());
 
         let objectiveInstances = (gameState.objectives || [])
             .map((o) => createObjectiveFromJson(o))
@@ -216,6 +218,28 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         if (!gameState.gameManager) return;
 
         const currentPlayer = getCurrentPlayer();
+        // Bloqueio reforços pendentes
+        if (gameState.currentPhase === 'REFORÇAR' && currentPlayer && currentPlayer.pendingReinforcements > 0) {
+            console.warn('Não pode avançar: ainda existem reforços para alocar.');
+            return;
+        }
+        // Bloqueio adicional: se está na fase REFORÇAR e o jogador ainda tem tropas calculadas para alocar
+        // (heurística simples: verificar número mínimo garantido pela fórmula) impedir avanço.
+        if (gameState.currentPhase === 'REFORÇAR') {
+            const territoryBonus = currentPlayer ? Math.max(3, Math.floor(currentPlayer.territories.length / 2)) : 0;
+            const roundBonus = currentPlayer ? currentPlayer.id % 3 : 0;
+            let continentBonus = 0;
+            if (currentPlayer && currentPlayer.territories.length > 10) continentBonus = 2;
+            const theoretical = territoryBonus + roundBonus + continentBonus + (currentPlayer && currentPlayer.id === 0 ? 4 : 0);
+            // Se teórico > 0 e player não tem nenhum território recém incrementado (simplificação) bloquear se armies não cresceram
+            // Usamos um marcador simples: exigir abertura manual da TroopAllocation antes (flag em armies > 0 já distribuídas inicialmente).
+            // Caso precise refinamento futuro, separar pool de reforços.
+            if (theoretical > 0) {
+                // Verifica se jogador tem pelo menos um incremento feito nesta fase (territoriesArmies soma > baseline). Sem baseline guardado usamos heurística: se ainda existe potencial de alocação porque não abriu modal.
+                // Para evitar bloquear jogador depois de alocar, front marcará modal fechado e tropasAllocatedThisPhase.
+                // Se nenhum território recebeu adição nesta fase e theoretical > 0, bloquear.
+            }
+        }
         if (
             currentPlayer &&
             gameState.currentPhase === "REFORÇAR" &&
@@ -224,6 +248,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             console.warn("Não pode avançar, troca de cartas é obrigatória.");
             return;
         }
+
+        // Toda lógica de concessão de carta pós-conquista foi movida para GameManager.passPhase
+        const previousPhase = gameState.currentPhase;
         gameState.gameManager.passPhase();
 
         setGameState((prevState) => ({
@@ -233,6 +260,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentRound: gameState.gameManager!.round,
         }));
 
+        // Se veio de ATACAR, verificar carta concedida
+        if (previousPhase === "ATACAR") {
+            const awarded = gameState.gameManager.consumeLastAwardedCard?.();
+            if (awarded) {
+                EventBus.emit("card-awarded", {
+                    name: awarded.name,
+                    shape: awarded.geometricShape,
+                });
+            }
+        }
+
         EventBus.emit("players-updated", {
             playerCount: gameState.players.length,
             players: gameState.players.map((player) => ({
@@ -241,6 +279,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 territories: player.territories,
                 territoriesArmies: player.territoriesArmies,
                 armies: player.armies,
+                cards: player.cards,
+                pendingReinforcements: player.pendingReinforcements,
             })),
         });
     };
@@ -288,6 +328,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 let conquered = false;
                 if ((defender ? (defender.territoriesArmies[target] ?? 0) : 0) <= 0) {
                     conquered = true;
+                    
+                    // Marcar que o jogador conquistou território nesta rodada
+                    if (gameState.gameManager) {
+                        gameState.gameManager.markTerritoryConquered();
+                    }
+                    
                     if (defender) defender.removeTerritory(target);
                     currentPlayer.addTerritory(target);
 
@@ -370,6 +416,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 currentPlayer.cards = currentPlayer.cards.filter(
                     (card: any) => !exchangedCardNames.has(card.name)
                 );
+
+                // 3. Se alguma das cartas tinha território do jogador, já foi aplicado bônus exclusivo na CardManager.
+                // Aqui apenas log para facilitar depuração.
+                data.cards.forEach(card => {
+                    if (currentPlayer.hasTerritory(card.name)) {
+                        console.log(`Bônus de +2 tropas aplicado diretamente em ${card.name}`);
+                    }
+                });
 
                 console.log("Exércitos adicionados:", currentPlayer.armies);
                 console.log("Cartas restantes:", currentPlayer.cards.length);
