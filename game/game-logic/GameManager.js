@@ -213,12 +213,20 @@ export class GameManager {
             }
         }
 
-        // CORREÇÃO: Só chama removeArmy se houver perdas (> 0)
+        // Aplicação das baixas
         if (attackLosses > 0) {
             this.gameMap.removeArmy(fromId, attackLosses);
         }
+
         if (defenseLosses > 0) {
-            this.gameMap.removeArmy(toId, defenseLosses);
+            const currentDefenderArmies = this.gameMap.getArmies(toId);
+
+            // CORREÇÃO: Se as perdas zerarem o exército, usamos setArmies para evitar o erro do removeArmy
+            if (currentDefenderArmies - defenseLosses <= 0) {
+                this.gameMap.setArmies(toId, 0);
+            } else {
+                this.gameMap.removeArmy(toId, defenseLosses);
+            }
         }
 
         this.logAction(`Ataque de ${fromId} (${ownerAttacker.color}) para ${toId} (${ownerDefender.color}). 
@@ -226,12 +234,14 @@ export class GameManager {
             Baixas: Atacante -${attackLosses}, Defensor -${defenseLosses}.`);
 
         let conquered = false;
+
+        // Verifica conquista (agora possível pois permitimos 0 exércitos acima)
         if (this.gameMap.getArmies(toId) === 0) {
             conquered = true;
             this.dominate(ownerAttacker, ownerDefender, toId);
             this.logAction(`Território ${toId} CONQUISTADO por ${ownerAttacker.color}!`);
 
-            // Move 1 tropa obrigatoriamente
+            // Move 1 tropa obrigatoriamente do atacante para o conquistado
             this.gameMap.removeArmy(fromId, 1);
             this.gameMap.addArmy(toId, 1);
         }
