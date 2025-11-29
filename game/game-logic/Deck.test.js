@@ -7,7 +7,9 @@ vi.mock('../public/data/territories_cards.json', () => ({
         Brasil: 'Square',
         Argentina: 'Circle',
         Peru: 'Triangle',
-        Venezuela: 'Square'
+        Venezuela: 'Square',
+        'Coringa 1': 'Wildcard',
+        'Coringa 2': 'Wildcard'
     }
 }));
 
@@ -18,8 +20,22 @@ describe('Deck', () => {
         deck = new Deck();
     });
 
-    it('should load and create 4 cards from the mocked data', () => {
-        expect(deck.drawPileSize).toBe(4);
+    it('should load and create 6 cards from the mocked data', () => {
+        expect(deck.drawPileSize).toBe(6);
+    });
+
+    it('should contain exactly 2 Wildcards in the initialized deck', () => {
+        const deck = new Deck();
+        const allCards = [];
+
+        const initialSize = deck.drawPileSize;
+        for (let i = 0; i < initialSize; i++) {
+            allCards.push(deck.draw());
+        }
+
+        const wildcardCount = allCards.filter(card => card.geometricShape === 'Wildcard').length;
+
+        expect(wildcardCount).toBe(2);
     });
 
     it('should draw a card and reduce the draw pile size', () => {
@@ -35,11 +51,17 @@ describe('Deck', () => {
         deck.discard(cardsToDiscard);
 
         expect(deck.discardPileSize).toBe(2);
-        expect(deck.drawPileSize).toBe(2);
+        expect(deck.drawPileSize).toBe(4);
     });
 
     it('should recycle the discard pile when the draw pile is empty', () => {
-        const drawnCards = [deck.draw(), deck.draw(), deck.draw(), deck.draw()];
+        const drawnCards = [];
+        const initialSize = deck.drawPileSize;
+
+        for (let i = 0; i < initialSize; i++) {
+            drawnCards.push(deck.draw());
+        }
+
         deck.discard([drawnCards[0], drawnCards[1]]);
 
         expect(deck.drawPileSize).toBe(0);
