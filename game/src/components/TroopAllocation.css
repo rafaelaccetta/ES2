@@ -72,16 +72,6 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
-@keyframes pulse-button {
-    0%,
-    100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
-}
-
 /* Lista de alocações */
 .allocations-summary {
     margin-top: 8px;
