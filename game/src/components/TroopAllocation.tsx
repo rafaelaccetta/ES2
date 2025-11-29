@@ -20,10 +20,15 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
     onClose,
     isDimmed = false,
 }) => {
-    const { getCurrentPlayer, currentRound, players, calculateReinforcementTroops } = useGameContext();
+    const { getCurrentPlayer, currentRound, players, calculateReinforcementTroops, gameManager } = useGameContext() as any;
     const [allocations, setAllocations] = useState<Record<string, number>>({});
     const [lastRoundPlayer, setLastRoundPlayer] = useState<string>("");
     const [initialTroops, setInitialTroops] = useState(0);
+    const [continentPools, setContinentPools] = useState<Record<string, number>>({});
+    const [allocationPhase, setAllocationPhase] = useState<'continent' | 'free'>('continent');
+    const [currentContinentFocus, setCurrentContinentFocus] = useState<string | null>(null);
+    const [initialContinentBonus, setInitialContinentBonus] = useState(0); 
+    const [continentTroopsSpent, setContinentTroopsSpent] = useState(0); 
     const lastClickTimestampRef = useRef<number>(0);
     const allocatedCountRef = useRef<number>(0);
 
@@ -33,6 +38,38 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
         if (!currentPlayer) return 0;
         return (currentPlayer as any).pendingReinforcements || 0;
     }, [(currentPlayer as any)?.pendingReinforcements]);
+
+    const reinforcementBreakdown = useMemo(() => {
+        if (!currentPlayer) return null as any;
+        const calc = calculateReinforcementTroops(currentPlayer) as any;
+        
+        const territoryBonus = calc?.territoryBonus || 0;
+        const continentBonus = calc?.continentBonus || 0;
+        const base = territoryBonus + continentBonus;
+        
+        let cardBonus = 0;
+        if (allocationPhase === 'free') {
+            cardBonus = Math.max(0, initialTroops - base);
+        } else {
+            const pending = (currentPlayer as any).pendingReinforcements || 0;
+            cardBonus = Math.max(0, pending - base);
+        }
+        
+        const continents = Object.keys(calc?.continentBonuses || {});
+        return { base, cardBonus, territoryBonus, continentBonus, continents };
+    }, [currentPlayer, (currentPlayer as any)?.pendingReinforcements, allocationPhase, initialTroops]);
+
+    const getRemainingTroops = useMemo(() => {
+        if (!currentPlayer) return 0;
+        
+        if (allocationPhase === 'continent' && currentContinentFocus) {
+            return continentPools[currentContinentFocus] || 0;
+        } else {
+            const pending = (currentPlayer as any).pendingReinforcements || 0;
+            const remaining = pending - (initialContinentBonus - continentTroopsSpent);
+            return Math.max(0, remaining);
+        }
+    }, [currentPlayer, allocationPhase, currentContinentFocus, continentPools, (currentPlayer as any)?.pendingReinforcements, initialContinentBonus, continentTroopsSpent]);
 
     useEffect(() => {
         if (isVisible && currentPlayer) {
@@ -47,6 +84,29 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 setAllocations({});
                 allocatedCountRef.current = 0;
                 setLastRoundPlayer(currentRoundPlayer);
+                setContinentTroopsSpent(0);
+                
+                // Inicializa pools por continente a partir do cálculo do reforço
+                const calc = calculateReinforcementTroops(currentPlayer) as any;
+                const pools: Record<string, number> = {};
+                Object.entries(calc?.continentBonuses || {}).forEach(([continentName, bonus]) => {
+                    pools[continentName] = Number(bonus) || 0;
+                });
+                setContinentPools(pools);
+                
+                // Determinar fase inicial: se há bônus de continente, começar em 'continent'
+                const totalContinentBonus = Object.values(pools).reduce((s: number, v: number) => s + v, 0);
+                setInitialContinentBonus(totalContinentBonus);
+                
+                if (totalContinentBonus > 0) {
+                    setAllocationPhase('continent');
+                    // Pegar o primeiro continente com saldo
+                    const firstContinent = Object.keys(pools).find(c => pools[c] > 0);
+                    setCurrentContinentFocus(firstContinent || null);
+                } else {
+                    setAllocationPhase('free');
+                    setCurrentContinentFocus(null);
+                }
                 console.log(
                     "Tropas calculadas para jogador",
                     currentPlayer.id,
@@ -65,13 +125,6 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
         calculatedTroops,
         lastRoundPlayer,
     ]);
-
-    // Agora calcula restantes dinamicamente a partir de pendingReinforcements do jogador
-    const getRemainingTroops = useMemo(() => {
-        if (!currentPlayer) return 0;
-        const pending = (currentPlayer as any).pendingReinforcements || 0;
-        return pending; // backend já decrementa ao gastar
-    }, [currentPlayer, (currentPlayer as any)?.pendingReinforcements]);
 
     const normalizeId = useCallback((name: string) => {
         return name
@@ -117,7 +170,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
 
             // Encontrar o território correspondente nos territórios do jogador
             const matchingTerritory = cp.territories.find(
-                (t) => normalizeId(t) === territoryId
+                (t: string) => normalizeId(t) === territoryId
             );
 
             console.log("TroopAllocation: checking allocation", {
@@ -133,23 +186,49 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
 
             // Verificar usando o ref para garantir que temos o valor mais atualizado
             const remaining = (cp as any).pendingReinforcements || 0;
+            // Obter o continente do território selecionado
+            let territoryContinent: string | null = null;
+            try {
+                const tbc = (gameManager?.gameMap?.getTerritoriesByContinent?.() || {}) as Record<string, string[]>;
+                for (const [continentName, list] of Object.entries(tbc)) {
+                    if (list.includes(matchingTerritory)) {
+                        territoryContinent = continentName;
+                        break;
+                    }
+                }
+            } catch {}
+
+            // Lógica de bloqueio por fase:
+            // Fase 'continent': só permite alocar no continente em foco
+            if (allocationPhase === 'continent') {
+                if (!currentContinentFocus || territoryContinent !== currentContinentFocus) {
+                    console.log("Alocação bloqueada: deve alocar no continente", currentContinentFocus);
+                    return;
+                }
+                // Verificar se ainda há tropas desse continente para alocar
+                const continentRemaining = continentPools[currentContinentFocus] || 0;
+                if (continentRemaining <= 0) {
+                    console.log("Alocação bloqueada: sem tropas restantes do continente", currentContinentFocus);
+                    return;
+                }
+            } else {
+                // Fase 'free': verificar se há tropas livres
+                const pending = (cp as any).pendingReinforcements || 0;
+                const freeRemaining = pending - (initialContinentBonus - continentTroopsSpent);
+                if (freeRemaining <= 0) {
+                    console.log("Alocação bloqueada: sem tropas livres restantes");
+                    return;
+                }
+            }
 
             console.log(
                 "Verificando alocação:",
+                "phase:", allocationPhase,
                 "initialTroops:",
                 initialTroops,
-                "allocated:",
-                allocatedCountRef.current,
                 "remaining:",
                 remaining
             );
-
-            if (remaining <= 0) {
-                console.log(
-                    "TroopAllocation: no troops remaining, blocking allocation"
-                );
-                return;
-            }
 
             console.log(
                 "TroopAllocation: allocating troop to",
@@ -170,15 +249,27 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 // fallback legacy
                 (cp as any).addArmies(matchingTerritory, 1);
             }
+
+            // Decrementar pool do continente em foco (se estamos em fase continent)
+            if (allocationPhase === 'continent' && currentContinentFocus) {
+                setContinentTroopsSpent(prev => prev + 1);
+                
+                setContinentPools((prev) => {
+                    const updated = {
+                        ...prev,
+                        [currentContinentFocus!]: Math.max(0, (prev[currentContinentFocus!] || 0) - 1),
+                    };
+                    return updated;
+                });
+            }
             console.log(
                 "After addArmies - territoriesArmies:",
                 cp.territoriesArmies[matchingTerritory]
             );
 
-            // Emitir evento para atualizar o mapa inteiro
             EventBus.emit("players-updated", {
                 playerCount: players.length,
-                players: players.map((player) => ({
+                players: players.map((player: any) => ({
                     id: player.id,
                     color: player.color,
                     territories: player.territories,
@@ -188,16 +279,14 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 })),
             });
 
-            // Por último, atualizar o state local de alocações
             setAllocations((prev) => ({
                 ...prev,
                 [matchingTerritory]: (prev[matchingTerritory] || 0) + 1,
             }));
         },
-        [currentPlayer, initialTroops, players, normalizeId]
+        [currentPlayer, initialTroops, players, normalizeId, continentPools, gameManager, allocationPhase, currentContinentFocus, initialContinentBonus, continentTroopsSpent]
     );
 
-    // Registrar o listener do EventBus
     useEffect(() => {
         if (!isVisible) {
             return;
@@ -223,28 +312,33 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
 
             console.log(` Removendo 1 tropa de ${territory}`);
 
-            // Decrementar o contador
             allocatedCountRef.current = Math.max(
                 0,
                 allocatedCountRef.current - 1
             );
             console.log("Contador atualizado:", allocatedCountRef.current);
 
-            // Remover 1 tropa do jogador
             const currentArmies = currentPlayer.territoriesArmies[territory] || 0;
             if (currentArmies > 0) {
                 currentPlayer.territoriesArmies[territory] = currentArmies - 1;
                 if (currentPlayer.armies > 0) {
                     currentPlayer.armies -= 1;
                 }
-                // devolver reforço ao pool pendente se desejar (simplificação: adiciona 1 de volta)
                 (currentPlayer as any).pendingReinforcements = ((currentPlayer as any).pendingReinforcements || 0) + 1;
             }
 
-            // Emitir evento para atualizar o mapa
+            // Se estamos na fase de continente, devolver a tropa ao pool
+            if (allocationPhase === 'continent' && currentContinentFocus) {
+                setContinentTroopsSpent(prev => Math.max(0, prev - 1));
+                setContinentPools((prev) => ({
+                    ...prev,
+                    [currentContinentFocus!]: (prev[currentContinentFocus!] || 0) + 1,
+                }));
+            }
+
             EventBus.emit("players-updated", {
                 playerCount: players.length,
-                players: players.map((player) => ({
+                players: players.map((player: any) => ({
                     id: player.id,
                     color: player.color,
                     territories: player.territories,
@@ -254,7 +348,6 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 })),
             });
 
-            // Atualizar o state local
             setAllocations((prev) => {
                 const newValue = prev[territory] - 1;
                 if (newValue <= 0) {
@@ -267,34 +360,96 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 };
             });
         },
-        [currentPlayer, allocations, players]
+        [currentPlayer, allocations, players, allocationPhase, currentContinentFocus]
     );
 
     const handleConfirm = useCallback(() => {
-        console.log("TroopAllocation: confirming allocation");
-        onClose();
-    }, [onClose]);
+        console.log("TroopAllocation: confirming allocation for phase", allocationPhase);
+        if (allocationPhase === 'continent') {
+            const remaining = continentPools[currentContinentFocus || ''] || 0;
+            if (remaining > 0) {
+                console.warn("Ainda há tropas do continente", currentContinentFocus, "para alocar:", remaining);
+                return;
+            }
+            // ✅ EFETIVA as alocações do continente no backend emitindo evento
+            console.log("✅ Tropas de continente confirmadas. Efetivando no backend.");
+            EventBus.emit("players-updated", {
+                playerCount: players.length,
+                players: players.map((player: any) => ({
+                    id: player.id,
+                    color: player.color,
+                    territories: player.territories,
+                    territoriesArmies: player.territoriesArmies,
+                    armies: player.armies,
+                    pendingReinforcements: (player as any).pendingReinforcements,
+                })),
+            });
+
+            // Limpa visualização das tropas já confirmadas
+            setAllocations({}); 
+            
+            // Buscar próximo continente com tropas
+            const nextContinent = Object.keys(continentPools).find(c => (continentPools[c] || 0) > 0);
+            if (nextContinent) {
+                console.log("➡️ Próximo continente:", nextContinent);
+                setCurrentContinentFocus(nextContinent);
+            } else {
+                console.log("✅ Todos continentes confirmados. Liberando fase livre.");
+                setAllocationPhase('free');
+                setCurrentContinentFocus(null);
+            }
+        } else {
+            if (getRemainingTroops === 0) {
+                onClose();
+            }
+        }
+    }, [allocationPhase, continentPools, currentContinentFocus, getRemainingTroops, onClose, players]);
 
     if (!isVisible) return null;
     if (!currentPlayer) return null;
 
     const hasAllocations = Object.keys(allocations).length > 0;
-    const allTroopsAllocated = getRemainingTroops === 0 && initialTroops > 0;
 
     return (
         <div className={`troop-allocation-bar ${isDimmed ? "dimmed" : ""}`}>
             <div className="troop-allocation-bar-content">
-                <span>
-                    Tropas para alocar: <b>{initialTroops}</b> | Restantes:{" "}
-                    <b>{getRemainingTroops}</b>
-                </span>
-                {allTroopsAllocated && (
-                    <button
-                        className="confirm-allocation-btn"
-                        onClick={handleConfirm}
-                    >
-                        Confirmar Alocação
-                    </button>
+                {allocationPhase === 'continent' && currentContinentFocus ? (
+                    <>
+                        <span style={{ fontSize: 14, fontWeight: 'bold' }}>
+                            Distribua <b>{continentPools[currentContinentFocus] || 0}</b> tropas {currentContinentFocus.startsWith('A') || currentContinentFocus.startsWith('E') || currentContinentFocus.startsWith('O') ? 'na' : 'no'} <b>{currentContinentFocus}</b>
+                        </span>
+                        {(continentPools[currentContinentFocus] || 0) === 0 && (
+                            <button
+                                className="confirm-allocation-btn"
+                                onClick={handleConfirm}
+                                style={{ marginLeft: 12 }}
+                            >
+                                Confirmar e Continuar
+                            </button>
+                        )}
+                    </>
+                ) : (
+                    <>
+                        <span>
+                            Tropas restantes: <b>{getRemainingTroops}</b>
+                        </span>
+                        {reinforcementBreakdown && (
+                            <div className="allocation-breakdown" style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>
+                                {reinforcementBreakdown.territoryBonus} pelos territórios
+                                {reinforcementBreakdown.cardBonus > 0 && (
+                                    <> + {reinforcementBreakdown.cardBonus} pela troca de cartas</>
+                                )}
+                            </div>
+                        )}
+                        {getRemainingTroops === 0 && (
+                            <button
+                                className="confirm-allocation-btn"
+                                onClick={handleConfirm}
+                            >
+                                Concluir
+                            </button>
+                        )}
+                    </>
                 )}
             </div>
 

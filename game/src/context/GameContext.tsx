@@ -114,8 +114,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
         const cardManager = new CardManager();
         const gameManager = new GameManager(gamePlayers, cardManager);
-        // Inicializa reforços para primeiro jogador
-        gameManager.getPlayerPlaying().pendingReinforcements = gameManager.calculateReinforcements(gameManager.getPlayerPlaying());
 
         let objectiveInstances = (gameState.objectives || [])
             .map((o) => createObjectiveFromJson(o))
@@ -142,17 +140,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
         gameManager.distributeObjectives(objectiveInstances);
 
-        gamePlayers.forEach(player => {
-            const card1 = cardManager.drawCardForPlayer(player);
-            const card2 = cardManager.drawCardForPlayer(player);
-            const card3 = cardManager.drawCardForPlayer(player);
-            const card4 = cardManager.drawCardForPlayer(player);
-            if (card1) player.addCard(card1);
-            if (card2) player.addCard(card2);
-            if (card3) player.addCard(card3);
-            if (card4) player.addCard(card4);
-        });
-        console.log("Cartas iniciais distribuídas (exemplo).");
+        // Jogadores começam com 0 cartas
+        console.log("Jogadores inicializados sem cartas.");
 
         setGameState((prevState) => ({
             ...prevState,
@@ -219,39 +208,19 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         if (!gameState.gameManager) return;
 
         const currentPlayer = getCurrentPlayer();
-        // Bloqueio reforços pendentes
+        
         if (gameState.currentPhase === 'REFORÇAR' && currentPlayer && currentPlayer.pendingReinforcements > 0) {
             console.warn('Não pode avançar: ainda existem reforços para alocar.');
             return;
         }
-        // Bloqueio adicional: se está na fase REFORÇAR e o jogador ainda tem tropas calculadas para alocar
-        // (heurística simples: verificar número mínimo garantido pela fórmula) impedir avanço.
-        if (gameState.currentPhase === 'REFORÇAR') {
-            const territoryBonus = currentPlayer ? Math.max(3, Math.floor(currentPlayer.territories.length / 2)) : 0;
-            const roundBonus = currentPlayer ? currentPlayer.id % 3 : 0;
-            let continentBonus = 0;
-            if (currentPlayer && currentPlayer.territories.length > 10) continentBonus = 2;
-            const theoretical = territoryBonus + roundBonus + continentBonus + (currentPlayer && currentPlayer.id === 0 ? 4 : 0);
-            // Se teórico > 0 e player não tem nenhum território recém incrementado (simplificação) bloquear se armies não cresceram
-            // Usamos um marcador simples: exigir abertura manual da TroopAllocation antes (flag em armies > 0 já distribuídas inicialmente).
-            // Caso precise refinamento futuro, separar pool de reforços.
-            if (theoretical > 0) {
-                // Verifica se jogador tem pelo menos um incremento feito nesta fase (territoriesArmies soma > baseline). Sem baseline guardado usamos heurística: se ainda existe potencial de alocação porque não abriu modal.
-                // Para evitar bloquear jogador depois de alocar, front marcará modal fechado e tropasAllocatedThisPhase.
-                // Se nenhum território recebeu adição nesta fase e theoretical > 0, bloquear.
-            }
-        }
-        if (
-            currentPlayer &&
-            gameState.currentPhase === "REFORÇAR" &&
-            currentPlayer.cards.length >= 5
-        ) {
+        
+        if (currentPlayer && gameState.currentPhase === "REFORÇAR" && currentPlayer.cards.length >= 5) {
             console.warn("Não pode avançar, troca de cartas é obrigatória.");
             return;
         }
 
-        // Toda lógica de concessão de carta pós-conquista foi movida para GameManager.passPhase
         const previousPhase = gameState.currentPhase;
+        const previousPlayer = getCurrentPlayer();
         gameState.gameManager.passPhase();
 
         setGameState((prevState) => ({
@@ -261,13 +230,22 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentRound: gameState.gameManager!.round,
         }));
 
-        // Se veio de ATACAR, verificar carta concedida
-        if (previousPhase === "ATACAR") {
+        // Se saiu de FORTIFICAR (movimentação), emitir carta conquistada (se houver)
+        if (previousPhase === "FORTIFICAR") {
             const awarded = gameState.gameManager.consumeLastAwardedCard?.();
             if (awarded) {
+                // Emitir com a cor do jogador que acabou de jogar (não o próximo)
+                const colorMap: Record<string, string> = {
+                    azul: "#2563eb",
+                    vermelho: "#dc2626",
+                    verde: "#16a34a",
+                    branco: "#b7c0cd",
+                };
+                const playerColorHex = previousPlayer ? (colorMap[previousPlayer.color] || '#fbbf24') : '#fbbf24';
                 EventBus.emit("card-awarded", {
                     name: awarded.name,
                     shape: awarded.geometricShape,
+                    playerColor: playerColorHex,
                 });
             }
         }
@@ -442,6 +420,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                         territories: p.territories,
                         territoriesArmies: p.territoriesArmies,
                         armies: p.armies,
+                        pendingReinforcements: (p as any).pendingReinforcements,
                     })),
                 });
             } catch (err) {

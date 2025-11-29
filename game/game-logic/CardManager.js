@@ -12,6 +12,11 @@ export class CardManager {
         this.#_exchangeBonuses = [4, 6, 8, 10, 12, 15];
     }
     
+    // Retorna o próximo bônus de troca sem alterar o estado
+    getNextExchangeBonus() {
+        return this.#_getCurrentBonus();
+    }
+    
     drawCardForPlayer(player) {
         // Regra: jogador recebe exatamente 1 carta se conquistou território na fase de ataque
         // Não há bloqueio por ter 5+ cartas; a troca obrigatória ocorre no início da fase de reforço.
@@ -35,9 +40,8 @@ export class CardManager {
 
         const bonus = this.#_getCurrentBonus();
 
-
-        // Adiciona ao pool geral de reforços
-        player.addArmiesToPool(bonus);
+        // Direciona o bônus para reforços pendentes (alocação na fase REFORÇAR)
+        player.pendingReinforcements = (player.pendingReinforcements || 0) + bonus;
 
         for (const card of cards) {
             if (player.hasTerritory(card.name)) {
