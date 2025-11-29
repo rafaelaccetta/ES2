@@ -28,15 +28,12 @@ const GameUI: React.FC = () => {
         players,
     } = useGameContext();
 
-    // FUNÇÃO SIMPLES: retorna tropas pendentes
     const getAvailableTroopsToAllocate = () => {
         const currentPlayer = getCurrentPlayer();
         if (!currentPlayer) return 0;
         
         const pending = (currentPlayer as any).pendingReinforcements;
         
-        // Se pending é undefined (não foi inicializado), inicializar
-        // Se pending é 0, significa que já alocou tudo ou não tem reforços
         if (pending === undefined && currentPlayer.territories.length > 0 && currentPhase === "REFORÇAR") {
             const reinforcements = calculateReinforcementTroops(currentPlayer);
             if (reinforcements && reinforcements.totalTroops > 0) {
@@ -60,7 +57,6 @@ const GameUI: React.FC = () => {
     const [awardedCard, setAwardedCard] = useState<{name:string;shape:string;playerColor?:string}|null>(null);
         useEffect(() => {
             const handler = (data: any) => {
-                // Usar a cor enviada no evento (jogador que conquistou)
                 setAwardedCard({ 
                     name: data.name, 
                     shape: data.shape,
@@ -291,12 +287,10 @@ const GameUI: React.FC = () => {
                                 mustExchangeCards ? "must-exchange" : ""
                             }`}
                             onClick={() => setShowCardExchange(true)}
-                            disabled={currentPlayer.cards.length < 3}
+                            disabled={false}
                             title={
                                 mustExchangeCards
                                     ? "Troca obrigatória (5+ cartas)"
-                                    : currentPlayer.cards.length < 3
-                                    ? "Precisa de 3+ cartas"
                                     : "Trocar cartas por exércitos"
                             }
                         >
