@@ -19,7 +19,6 @@ export class GameOver extends Scene
         this.camera = this.cameras.main;
         const { width, height } = this.cameras.main;
 
-        // Try to use the menu background image if available, otherwise fall back to a textured tone
         try {
             if (this.textures.exists('background')) {
                 const bg = this.add.image(width / 2, height / 2, 'background').setDepth(7);
@@ -39,11 +38,37 @@ export class GameOver extends Scene
         const panelX = width / 2;
         const panelY = height / 2;
 
-        // panel with subtle shadow (drawn twice for depth)
-        this.add.rectangle(panelX + 8, panelY + 8, panelW, panelH, 0x000000, 0.28).setDepth(10);
-        // slightly translucent panel so background image shows through
-        const panel = this.add.rectangle(panelX, panelY, panelW, panelH, 0xf8fafc, 0.86).setDepth(11);
-        panel.setStrokeStyle(2, 0x111827, 0.15);
+        const panelKey = 'gameover-panel';
+        const panelPad = 24;
+        const panelRadius = 18;
+        const texW = Math.round(panelW + panelPad);
+        const texH = Math.round(panelH + panelPad);
+        if (!this.textures.exists(panelKey)) {
+            const gg = this.add.graphics();
+            gg.fillStyle(0x000000, 0.22);
+            try {
+                (gg as any).fillRoundedRect(8, 8, panelW, panelH, panelRadius);
+            } catch (e) {
+                gg.fillRect(8, 8, panelW, panelH);
+            }
+
+            gg.fillStyle(0xf8fafc, 0.92);
+            try {
+                (gg as any).fillRoundedRect(0, 0, panelW, panelH, panelRadius);
+                gg.lineStyle(2, 0x111827, 0.12);
+                try { (gg as any).strokeRoundedRect(0, 0, panelW, panelH, panelRadius); } catch (e) { gg.strokeRect(0, 0, panelW, panelH); }
+            } catch (e) {
+                gg.fillRect(0, 0, panelW, panelH);
+                gg.lineStyle(2, 0x111827, 0.12);
+                gg.strokeRect(0, 0, panelW, panelH);
+            }
+
+            gg.generateTexture(panelKey, texW, texH);
+            gg.destroy();
+        }
+
+        const panel = this.add.image(panelX, panelY, panelKey).setDepth(11);
+        panel.setDisplaySize(texW, texH);
 
         const data: any = (this.scene.settings && (this.scene.settings as any).data) || {};
         const winnerColor = data.winnerColor || 'unknown';
@@ -60,7 +85,6 @@ export class GameOver extends Scene
             .setDepth(12);
         title.setShadow(2, 6, '#000000', 10);
 
-        // small subtitle
         this.add
             .text(panelX, panelY - panelH / 2 + 110, 'Victory achieved — well played!', {
                 fontFamily: 'Arial',
@@ -117,14 +141,12 @@ export class GameOver extends Scene
 
         const btnY = panelY + panelH / 2 - 50;
 
-        // rounded button generator (cache textures by color)
         const makeButton = (x: number, label: string, fillHex: string) => {
             const key = 'btn-' + fillHex.replace('#', '');
             if (!this.textures.exists(key)) {
                 const g = this.add.graphics();
                 const w = 220, h = 56, r = 12;
                 g.fillStyle(parseInt(fillHex.replace('#', ''), 16), 1);
-                // draw rounded rect if available
                 try {
                     (g as any).fillRoundedRect(0, 0, w, h, r);
                     g.lineStyle(2, 0x000000, 0.15);
@@ -155,20 +177,17 @@ export class GameOver extends Scene
             return { rect: img, txt } as any;
         };
 
-        // Single action: Back to Menu
         const back = makeButton(panelX, 'Back to Menu', '#4b5563');
         back.rect.on('pointerdown', () => {
             EventBus.emit('back-to-menu');
             try { this.scene.start('MainMenu'); } catch (e) {}
         });
 
-        // winner badge glow (soft rings)
         try {
             this.add.circle(panelX - 180, panelY - 10, 72, badgeColorNum, 0.08).setDepth(11);
             this.add.circle(panelX - 180, panelY - 10, 96, badgeColorNum, 0.04).setDepth(10);
         } catch (e) { /* ignore */ }
 
-        // subtle entrance animation
         this.cameras.main.fadeIn(450, 10, 15, 24);
         const targets: any[] = [panel, title];
         if (subtitleForTween) targets.push(subtitleForTween);

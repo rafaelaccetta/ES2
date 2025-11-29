@@ -229,11 +229,15 @@ export class Jogo extends Scene {
                 };
             }, []);
 
-            // Listen for hide-ui event to unmount/hide the React overlay
             React.useEffect(() => {
                 const onHide = () => setHidden(true);
+                const onShow = () => setHidden(false);
                 EventBus.on('hide-ui', onHide);
-                return () => { EventBus.removeListener('hide-ui', onHide); };
+                EventBus.on('show-ui', onShow);
+                return () => {
+                    EventBus.removeListener('hide-ui', onHide);
+                    EventBus.removeListener('show-ui', onShow);
+                };
             }, []);
 
             // Removido: mapeamento de territórios por jogador para os badges laterais
@@ -285,10 +289,6 @@ export class Jogo extends Scene {
         this.events.once("shutdown", () => {
             root.unmount();
             mapContainer!.remove();
-        });
-
-        this.input.once("pointerdown", () => {
-            this.scene.start("Menu");
         });
     }
 }
