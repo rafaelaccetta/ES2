@@ -12,14 +12,19 @@ export class CardManager {
         this.#_exchangeBonuses = [4, 6, 8, 10, 12, 15];
     }
     
-    #playerCanReceiveCard(playerCards){
-        return playerCards.length < 5
-    }
-    
     drawCardForPlayer(player) {
-        if (this.#playerCanReceiveCard(player.cards)){
-            return this.#_deck.draw();   
+        // Regra: jogador recebe exatamente 1 carta se conquistou território na fase de ataque
+        // Não há bloqueio por ter 5+ cartas; a troca obrigatória ocorre no início da fase de reforço.
+        return this.#_deck.draw();
+    }
+
+    awardConquestCard(player) {
+        const card = this.drawCardForPlayer(player);
+        if (card) {
+            player.addCard(card);
+            return card;
         }
+        return null;
     }
     
     executeCardExchange(cards, player) {
@@ -31,10 +36,12 @@ export class CardManager {
         const bonus = this.#_getCurrentBonus();
 
 
-        player.addArmies(bonus);
+        // Adiciona ao pool geral de reforços
+        player.addArmiesToPool(bonus);
 
         for (const card of cards) {
             if (player.hasTerritory(card.name)) {
+                // Aplica duas tropas diretamente no território (reforço imediato conforme regra)
                 player.addArmiesExclusive(card.name, 2);
             }
         }

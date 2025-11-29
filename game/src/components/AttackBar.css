@@ -107,7 +107,6 @@
     cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    animation: pulse-attack-button 2s ease-in-out infinite;
 }
 
 .attack-btn:hover {
@@ -161,7 +160,6 @@
     cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    animation: pulse-button 2s ease-in-out infinite;
 }
 
 .confirm-move-btn:hover {

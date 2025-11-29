@@ -3,6 +3,7 @@ export class Player {
     color: string;
     objective: any;
     territories: string[];
+    cards: PlayerCards[];
     territoriesArmies: Record<string, number>;
     armies: number;
     constructor(id: number, color: string, objective?: any);

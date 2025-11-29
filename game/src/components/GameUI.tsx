@@ -5,6 +5,9 @@ import TurnTransition from "./TurnTransition";
 import TroopAllocation from "./TroopAllocation";
 import AttackBar from "./AttackBar";
 import "./GameUI.css";
+import "./CardAward.css";
+import CardExchange from "./CardTrade";
+import { EventBus } from "../game/EventBus";
 
 const GameUI: React.FC = () => {
     const {
@@ -29,19 +32,11 @@ const GameUI: React.FC = () => {
     const [troopsAllocatedThisPhase, setTroopsAllocatedThisPhase] =
         useState(false);
 
-    // Função para calcular tropas disponíveis para alocar
+    // Usa diretamente pendingReinforcements do backend
     const getAvailableTroopsToAllocate = () => {
         const currentPlayer = getCurrentPlayer();
-        console.log(
-            "getAvailableTroopsToAllocate - Player:",
-            currentPlayer?.id,
-            "troopsAllocatedThisPhase:",
-            troopsAllocatedThisPhase
-        );
         if (!currentPlayer || troopsAllocatedThisPhase) return 0;
-
-        const troopsData = calculateReinforcementTroops(currentPlayer);
-        return troopsData.totalTroops || 0;
+        return (currentPlayer as any).pendingReinforcements || 0;
     };
 
     const [showObjective, setShowObjective] = useState(false);
@@ -49,6 +44,37 @@ const GameUI: React.FC = () => {
     const [showTransition, setShowTransition] = useState(false);
     const [showTroopAllocation, setShowTroopAllocation] = useState(false);
     const [showAttackBar, setShowAttackBar] = useState(false);
+    const [showCardExchange, setShowCardExchange] = useState(false);
+    const [showCardAward, setShowCardAward] = useState(false);
+    const [awardedCard, setAwardedCard] = useState<{name:string;shape:string;playerColor?:string}|null>(null);
+        // Escuta evento de carta conquistada
+        useEffect(() => {
+            const handler = (data: any) => {
+                const currentPlayer = getCurrentPlayer();
+                const colorMap: Record<string, string> = {
+                    azul: "#2563eb",
+                    vermelho: "#dc2626",
+                    verde: "#16a34a",
+                    branco: "#b7c0cd",
+                };
+                const playerColor = currentPlayer ? (colorMap[currentPlayer.color] || '#fbbf24') : '#fbbf24';
+                setAwardedCard({ 
+                    name: data.name, 
+                    shape: data.shape,
+                    playerColor: playerColor
+                });
+                setShowCardAward(true);
+            };
+            EventBus.on("card-awarded", handler);
+            return () => {
+                EventBus.removeListener("card-awarded", handler);
+            };
+        }, [getCurrentPlayer]);
+
+        const closeCardAward = () => {
+            setShowCardAward(false);
+            setAwardedCard(null);
+        };
     const lastPlayerRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -87,6 +113,8 @@ const GameUI: React.FC = () => {
         gameStarted,
         firstRoundObjectiveShown,
     ]);
+
+    // Removida autoabertura: usuário decide quando abrir
 
     const handleStartGame = (playerCount: number) => {
         startGame(playerCount);
@@ -128,6 +156,8 @@ const GameUI: React.FC = () => {
         setShowTroopAllocation(true);
     };
 
+
+    
     const handleShowAttackBar = () => {
         setShowAttackBar(true);
     };
@@ -143,7 +173,18 @@ const GameUI: React.FC = () => {
         setTroopsAllocatedThisPhase(true);
     };
 
-    // Reset do estado apenas quando muda de jogador ou fase (não abre automaticamente)
+    const mustExchangeCards =
+        currentPhase === "REFORÇAR" &&
+        (getCurrentPlayer()?.cards.length || 0) >= 5;
+
+
+    useEffect(() => {
+        if (mustExchangeCards) {
+            setShowCardExchange(true);
+        }
+    }, [mustExchangeCards]);
+
+    
     useEffect(() => {
         const currentPlayer = getCurrentPlayer();
         console.log(
@@ -243,18 +284,20 @@ const GameUI: React.FC = () => {
                     {currentPhase === "REFORÇAR" && (
                         <button
                             className={`troop-allocation-btn ${
-                                getAvailableTroopsToAllocate() === 0
+                                getAvailableTroopsToAllocate() === 0 || mustExchangeCards
                                     ? "disabled"
                                     : ""
                             }`}
                             onClick={
-                                getAvailableTroopsToAllocate() > 0
+                                getAvailableTroopsToAllocate() > 0 && !mustExchangeCards
                                     ? handleShowTroopAllocation
                                     : undefined
                             }
-                            disabled={getAvailableTroopsToAllocate() === 0}
+                            disabled={getAvailableTroopsToAllocate() === 0 || mustExchangeCards}
                             title={
-                                getAvailableTroopsToAllocate() > 0
+                                mustExchangeCards
+                                    ? "Você deve trocar cartas antes de alocar tropas"
+                                    : getAvailableTroopsToAllocate() > 0
                                     ? "Alocar tropas de reforço nos seus territórios"
                                     : "Tropas já foram alocadas nesta fase"
                             }
@@ -266,6 +309,26 @@ const GameUI: React.FC = () => {
                     )}
 
                     {currentPhase === "ATACAR" && currentRound > 0 && !showAttackBar && (
+                    {currentPhase === "REFORÇAR" && (
+                        <button
+                            className={`card-exchange-btn ${
+                                mustExchangeCards ? "must-exchange" : ""
+                            }`}
+                            onClick={() => setShowCardExchange(true)}
+                            disabled={currentPlayer.cards.length < 3}
+                            title={
+                                mustExchangeCards
+                                    ? "Troca obrigatória (5+ cartas)"
+                                    : currentPlayer.cards.length < 3
+                                    ? "Precisa de 3+ cartas"
+                                    : "Trocar cartas por exércitos"
+                            }
+                        >
+                            Trocar Cartas ({currentPlayer.cards.length})
+                        </button>
+                    )}  
+
+                    {currentPhase === "ATACAR" && !showAttackBar && (
                         <button
                             className="attack-toggle-btn"
                             onClick={handleShowAttackBar}
@@ -285,8 +348,8 @@ const GameUI: React.FC = () => {
                     <button
                         className={`next-phase-btn ${
                             (currentPhase === "REFORÇAR" &&
-                                getAvailableTroopsToAllocate() > 0) ||
-                            (currentPhase === "ATACAR" && currentRound > 0 && showAttackBar)
+                                getAvailableTroopsToAllocate() > 0) || mustExchangeCards ||
+                            (currentPhase === "ATACAR" && showAttackBar)
                                 ? "disabled"
                                 : ""
                         }`}
@@ -299,11 +362,13 @@ const GameUI: React.FC = () => {
                         }
                         disabled={
                             (currentPhase === "REFORÇAR" &&
-                                getAvailableTroopsToAllocate() > 0) ||
-                            (currentPhase === "ATACAR" && currentRound > 0 && showAttackBar)
+                                getAvailableTroopsToAllocate() > 0) || mustExchangeCards ||
+                            (currentPhase === "ATACAR" && showAttackBar)
                         }
                         title={
-                            currentPhase === "REFORÇAR" &&
+                            mustExchangeCards
+                            ? "Você deve trocar cartas antes de alocar tropas"
+                            : currentPhase === "REFORÇAR" &&
                             getAvailableTroopsToAllocate() > 0
                                 ? "Você deve alocar todas as tropas antes de avançar"
                                 : currentPhase === "ATACAR" && currentRound > 0 && showAttackBar
@@ -361,14 +426,48 @@ const GameUI: React.FC = () => {
             <TroopAllocation
                 isVisible={showTroopAllocation}
                 onClose={handleCloseTroopAllocation}
-                isDimmed={showObjective || showObjectiveConfirmation}
+                isDimmed={showObjective || showObjectiveConfirmation || showCardExchange}
             />
 
             <AttackBar
                 isVisible={showAttackBar}
                 onClose={handleCloseAttackBar}
-                isDimmed={showObjective || showObjectiveConfirmation}
+                isDimmed={showObjective || showObjectiveConfirmation || showCardExchange}
             />
+            
+            <CardExchange
+                isVisible={showCardExchange}
+                onClose={() => setShowCardExchange(false)}
+                isDimmed={
+                    showObjective ||
+                    showObjectiveConfirmation ||
+                    showTroopAllocation
+                }
+            />
+
+            {showCardAward && awardedCard && (
+                <div className="card-award-overlay" onClick={closeCardAward}>
+                    <div className="card-award-modal" onClick={e=>e.stopPropagation()}>
+                        <div className="card-award-header">
+                            <h2>Você ganhou uma carta!</h2>
+                        </div>
+                        <div className="card-award-body">
+                            <div className="card-award-card">
+                                <span className="card-shape" style={{color: awardedCard.playerColor || '#fbbf24'}}>
+                                    {awardedCard.shape === 'Square' && '■'}
+                                    {awardedCard.shape === 'Circle' && '●'}
+                                    {awardedCard.shape === 'Triangle' && '▲'}
+                                    {awardedCard.shape === 'Wildcard' && '★'}
+                                    {['Square','Circle','Triangle','Wildcard'].includes(awardedCard.shape) ? '' : '★'}
+                                </span>
+                            </div>
+                            <p className="card-award-name"><strong>{awardedCard.name}</strong></p>
+                            <p className="card-award-hint">Troque 3 cartas válidas para ganhar reforços.</p>
+                            <button className="confirm-btn" onClick={closeCardAward}>Ok</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
