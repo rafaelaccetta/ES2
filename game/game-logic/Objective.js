@@ -55,7 +55,6 @@ export class DominateContinentObjective extends Objective {
             if (typeof c === 'string') return c;
             if (typeof c === 'object') {
                 if (c.name) return c.name;
-                // fallback to string coercion
                 return String(c);
             }
             return String(c);
