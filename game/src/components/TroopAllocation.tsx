@@ -27,8 +27,8 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
     const [continentPools, setContinentPools] = useState<Record<string, number>>({});
     const [allocationPhase, setAllocationPhase] = useState<'continent' | 'free'>('continent');
     const [currentContinentFocus, setCurrentContinentFocus] = useState<string | null>(null);
-    const [initialContinentBonus, setInitialContinentBonus] = useState(0); // Total de tropas de bônus de continente
-    const [continentTroopsSpent, setContinentTroopsSpent] = useState(0); // Quantas tropas de continente já foram gastas
+    const [initialContinentBonus, setInitialContinentBonus] = useState(0); 
+    const [continentTroopsSpent, setContinentTroopsSpent] = useState(0); 
     const lastClickTimestampRef = useRef<number>(0);
     const allocatedCountRef = useRef<number>(0);
 
@@ -42,22 +42,29 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
     const reinforcementBreakdown = useMemo(() => {
         if (!currentPlayer) return null as any;
         const calc = calculateReinforcementTroops(currentPlayer) as any;
-        const base = (calc?.territoryBonus || 0) + (calc?.continentBonus || 0);
-        const pending = (currentPlayer as any).pendingReinforcements || 0;
-        const cardBonus = Math.max(0, pending - base);
+        
+        const territoryBonus = calc?.territoryBonus || 0;
+        const continentBonus = calc?.continentBonus || 0;
+        const base = territoryBonus + continentBonus;
+        
+        let cardBonus = 0;
+        if (allocationPhase === 'free') {
+            cardBonus = Math.max(0, initialTroops - base);
+        } else {
+            const pending = (currentPlayer as any).pendingReinforcements || 0;
+            cardBonus = Math.max(0, pending - base);
+        }
+        
         const continents = Object.keys(calc?.continentBonuses || {});
-        return { base, cardBonus, territoryBonus: calc?.territoryBonus || 0, continentBonus: calc?.continentBonus || 0, continents };
-    }, [currentPlayer, (currentPlayer as any)?.pendingReinforcements]);
+        return { base, cardBonus, territoryBonus, continentBonus, continents };
+    }, [currentPlayer, (currentPlayer as any)?.pendingReinforcements, allocationPhase, initialTroops]);
 
-    // Calcula tropas restantes baseado na fase
     const getRemainingTroops = useMemo(() => {
         if (!currentPlayer) return 0;
         
         if (allocationPhase === 'continent' && currentContinentFocus) {
-            // Durante fase de continente, mostrar apenas as tropas daquele continente
             return continentPools[currentContinentFocus] || 0;
         } else {
-            // Durante fase livre, mostrar tropas livres (total - bônus de continente)
             const pending = (currentPlayer as any).pendingReinforcements || 0;
             const remaining = pending - (initialContinentBonus - continentTroopsSpent);
             return Math.max(0, remaining);

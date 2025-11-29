@@ -140,7 +140,7 @@ const CardExchange: React.FC<CardExchangeProps> = ({
                         ) : (
                             <p className="exchange-hint">
                                 Selecione 3 cartas com formas iguais ou 3 cartas com formas
-                                diferentes.
+                                diferentes. Coringa (★) vale como qualquer forma.
                             </p>
                         )}
                         {canExchange && nextExchangeBonus !== undefined && (
