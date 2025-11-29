@@ -34,7 +34,7 @@ const CardExchange: React.FC<CardExchangeProps> = ({
     onClose,
     isDimmed = false,
 }) => {
-    const { getCurrentPlayer } = useGameContext();
+    const { getCurrentPlayer, cardManager } = useGameContext() as any;
     const [selectedCards, setSelectedCards] = useState<PlayerCards[]>([]);
     const currentPlayer = getCurrentPlayer();
     const playerCards = (currentPlayer?.cards as PlayerCards[]) || [];
@@ -72,6 +72,13 @@ const CardExchange: React.FC<CardExchangeProps> = ({
     };
 
     const canExchange = useMemo(() => isValidSet(selectedCards), [selectedCards]);
+    const nextExchangeBonus = useMemo(() => {
+        try {
+            return cardManager?.getNextExchangeBonus?.() ?? undefined;
+        } catch {
+            return undefined;
+        }
+    }, [cardManager, selectedCards.length]);
     const mustExchange = playerCards.length >= 5;
 
     const handleConfirmExchange = () => {
@@ -134,6 +141,11 @@ const CardExchange: React.FC<CardExchangeProps> = ({
                             <p className="exchange-hint">
                                 Selecione 3 cartas com formas iguais, 3
                                 diferentes, ou 1 coringa + 2 outras.
+                            </p>
+                        )}
+                        {canExchange && nextExchangeBonus !== undefined && (
+                            <p className="exchange-hint" style={{marginTop: 4}}>
+                                Você irá ganhar <b>+{nextExchangeBonus}</b> tropas na alocação
                             </p>
                         )}
                         <p className="exchange-hint">

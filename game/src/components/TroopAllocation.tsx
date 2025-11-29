@@ -34,6 +34,16 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
         return (currentPlayer as any).pendingReinforcements || 0;
     }, [(currentPlayer as any)?.pendingReinforcements]);
 
+    const reinforcementBreakdown = useMemo(() => {
+        if (!currentPlayer) return null as any;
+        const calc = calculateReinforcementTroops(currentPlayer) as any;
+        const base = (calc?.territoryBonus || 0) + (calc?.continentBonus || 0);
+        const pending = (currentPlayer as any).pendingReinforcements || 0;
+        const cardBonus = Math.max(0, pending - base);
+        const continents = Object.keys(calc?.continentBonuses || {});
+        return { base, cardBonus, territoryBonus: calc?.territoryBonus || 0, continentBonus: calc?.continentBonus || 0, continents };
+    }, [currentPlayer, (currentPlayer as any)?.pendingReinforcements]);
+
     useEffect(() => {
         if (isVisible && currentPlayer) {
             const currentRoundPlayer = `${currentRound}-${currentPlayer.id}`;
@@ -285,9 +295,25 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
         <div className={`troop-allocation-bar ${isDimmed ? "dimmed" : ""}`}>
             <div className="troop-allocation-bar-content">
                 <span>
-                    Tropas para alocar: <b>{initialTroops}</b> | Restantes:{" "}
+                    Tropas para alocar: <b>{initialTroops}</b> | Restantes: {" "}
                     <b>{getRemainingTroops}</b>
                 </span>
+                {reinforcementBreakdown && (
+                    <div className="allocation-breakdown" style={{ fontSize: 12, opacity: 0.9, marginTop: 4 }}>
+                        {reinforcementBreakdown.territoryBonus} pelos territórios
+                        {reinforcementBreakdown.cardBonus > 0 && (
+                            <> + {reinforcementBreakdown.cardBonus} pela troca de cartas</>
+                        )}
+                        {reinforcementBreakdown.continentBonus > 0 && (
+                            <>
+                                {" "}+ {reinforcementBreakdown.continentBonus} por conquistar continente
+                                {reinforcementBreakdown.continents.length > 0 && (
+                                    <> ({reinforcementBreakdown.continents.join(", ")})</>
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
                 {allTroopsAllocated && (
                     <button
                         className="confirm-allocation-btn"

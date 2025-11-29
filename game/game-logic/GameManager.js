@@ -24,6 +24,9 @@ export class GameManager {
         
         // Distribuir territórios automaticamente
         this.gameMap.distributeTerritories(this.players);
+        
+        // Preparar reforços do primeiro jogador (rodada 0)
+        this.#prepareReinforcements();
     }
     
     getPhaseName() {
@@ -35,17 +38,8 @@ export class GameManager {
     }
 
     passPhase() {
-        // Na primeira rodada (round 0), só permite a fase REFORÇAR
-        if (this.round === 0 && this.getPhaseName() === "REFORÇAR") {
-            console.log(`🎯 Primeira rodada: Jogador ${this.turn} terminou REFORÇAR, pulando para próximo jogador`);
-            // Pula direto para o próximo jogador após reforçar na primeira rodada
-            this.PhaseIdx = 0; // Reset para REFORÇAR
-            this.#passTurn();
-            return;
-        }
-        
-        // Se está saindo da fase de ATAQUE e houve conquista, dar 1 carta
-        if (this.getPhaseName() === "ATACAR") {
+        // Se está saindo da fase de FORTIFICAR (movimentação) e houve conquista na rodada, dar 1 carta
+        if (this.getPhaseName() === "FORTIFICAR") {
             if (this.conqueredThisRound && this.cardManager) {
                 const player = this.getPlayerPlaying();
                 const card = this.cardManager.awardConquestCard(player);
@@ -53,30 +47,29 @@ export class GameManager {
                     this.lastAwardedCard = card;
                 }
             }
-            // Resetar flag após avaliar
             this.conqueredThisRound = false;
         }
 
-        // Restrição do round 0: apenas fase de reforço (cada jogador aloca e passa turno)
+        // RODADA 0 (primeira rodada): só permite REFORÇAR, depois vai pro próximo jogador
         if (this.round === 0 && this.getPhaseName() === "REFORÇAR") {
-            // Ao tentar passar da fase de reforço no round 0, pula direto turno sem avançar fases
             this.#passTurn();
-            // Preparar reforços para novo jogador
             this.#prepareReinforcements();
             return;
         }
 
-        this.PhaseIdx++;
-        if (this.getPhaseName() === "REFORÇAR"){ // ugly double if for now because its expected this will be a whole block
-            if (this.getPlayerPlaying().cards.length >= 5){
-                console.warn("Cannot pass REINFORCE phase: player has 5 cards and must trade cards in.")
-                return
-            }
+        // Verificar se pode sair de REFORÇAR (bloqueio de 5+ cartas)
+        if (this.getPhaseName() === "REFORÇAR" && this.getPlayerPlaying().cards.length >= 5) {
+            console.warn("Cannot pass REINFORCE phase: player has 5 cards and must trade cards in.")
+            return;
         }
+
+        // Avança para próxima fase
+        this.PhaseIdx++;
+        
+        // Se completou todas as fases, volta para REFORÇAR do próximo jogador
         if (this.PhaseIdx > this.PhaseNames.length - 1) {
             this.PhaseIdx = 0;
             this.#passTurn();
-            // Ao entrar novamente em REFORÇAR para próximo jogador
             this.#prepareReinforcements();
         }
     }

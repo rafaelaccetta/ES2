@@ -28,17 +28,28 @@ const GameUI: React.FC = () => {
         players,
     } = useGameContext();
 
-    // Estado para rastrear se tropas já foram alocadas nesta fase
-    const [troopsAllocatedThisPhase, setTroopsAllocatedThisPhase] =
-        useState(false);
-
-    // Usa diretamente pendingReinforcements do backend
+    // FUNÇÃO SIMPLES: retorna tropas pendentes
     const getAvailableTroopsToAllocate = () => {
         const currentPlayer = getCurrentPlayer();
-        if (!currentPlayer || troopsAllocatedThisPhase) return 0;
-        return (currentPlayer as any).pendingReinforcements || 0;
+        if (!currentPlayer) return 0;
+        
+        const pending = (currentPlayer as any).pendingReinforcements;
+        
+        // Se pending é undefined (não foi inicializado), inicializar
+        // Se pending é 0, significa que já alocou tudo ou não tem reforços
+        if (pending === undefined && currentPlayer.territories.length > 0 && currentPhase === "REFORÇAR") {
+            const reinforcements = calculateReinforcementTroops(currentPlayer);
+            if (reinforcements && reinforcements.totalTroops > 0) {
+                (currentPlayer as any).pendingReinforcements = reinforcements.totalTroops;
+                console.log(`✅ Inicializou reforços: ${reinforcements.totalTroops}`);
+                return reinforcements.totalTroops;
+            }
+        }
+        
+        return pending || 0;
     };
 
+    // ESTADOS DA UI
     const [showObjective, setShowObjective] = useState(false);
     const [showStartMenu, setShowStartMenu] = useState(!gameStarted);
     const [showTransition, setShowTransition] = useState(false);
@@ -47,21 +58,13 @@ const GameUI: React.FC = () => {
     const [showCardExchange, setShowCardExchange] = useState(false);
     const [showCardAward, setShowCardAward] = useState(false);
     const [awardedCard, setAwardedCard] = useState<{name:string;shape:string;playerColor?:string}|null>(null);
-        // Escuta evento de carta conquistada
         useEffect(() => {
             const handler = (data: any) => {
-                const currentPlayer = getCurrentPlayer();
-                const colorMap: Record<string, string> = {
-                    azul: "#2563eb",
-                    vermelho: "#dc2626",
-                    verde: "#16a34a",
-                    branco: "#b7c0cd",
-                };
-                const playerColor = currentPlayer ? (colorMap[currentPlayer.color] || '#fbbf24') : '#fbbf24';
+                // Usar a cor enviada no evento (jogador que conquistou)
                 setAwardedCard({ 
                     name: data.name, 
                     shape: data.shape,
-                    playerColor: playerColor
+                    playerColor: data.playerColor || '#fbbf24'
                 });
                 setShowCardAward(true);
             };
@@ -69,7 +72,7 @@ const GameUI: React.FC = () => {
             return () => {
                 EventBus.removeListener("card-awarded", handler);
             };
-        }, [getCurrentPlayer]);
+        }, []);
 
         const closeCardAward = () => {
             setShowCardAward(false);
@@ -114,7 +117,6 @@ const GameUI: React.FC = () => {
         firstRoundObjectiveShown,
     ]);
 
-    // Removida autoabertura: usuário decide quando abrir
 
     const handleStartGame = (playerCount: number) => {
         startGame(playerCount);
@@ -123,12 +125,10 @@ const GameUI: React.FC = () => {
     };
 
     const handleShowObjective = () => {
-        // Se estamos na primeira rodada e o jogador ainda não viu o objetivo, mostra direto
         if (shouldShowAutomaticObjective()) {
             setShowObjective(true);
             markObjectiveAsShown();
         } else {
-            // Caso contrário, mostra o modal de confirmação
             setShowObjectiveConfirmation(true);
         }
     };
@@ -169,14 +169,11 @@ const GameUI: React.FC = () => {
     const handleCloseTroopAllocation = () => {
         console.log("handleCloseTroopAllocation called");
         setShowTroopAllocation(false);
-        // Marcar como alocado quando fecha
-        setTroopsAllocatedThisPhase(true);
     };
 
     const mustExchangeCards =
         currentPhase === "REFORÇAR" &&
         (getCurrentPlayer()?.cards.length || 0) >= 5;
-
 
     useEffect(() => {
         if (mustExchangeCards) {
@@ -184,28 +181,8 @@ const GameUI: React.FC = () => {
         }
     }, [mustExchangeCards]);
 
-    
     useEffect(() => {
-        const currentPlayer = getCurrentPlayer();
-        console.log(
-            "Reset troopsAllocatedThisPhase - Jogador:",
-            currentPlayer?.id,
-            "PlayerIndex:",
-            currentPlayerIndex,
-            "Fase:",
-            currentPhase,
-            "Rodada:",
-            currentRound
-        );
-
-        // Fechar a barra primeiro (sem marcar como alocado)
         setShowTroopAllocation(false);
-
-        // Depois resetar o estado - isso garante que o reset acontece por último
-        setTimeout(() => {
-            setTroopsAllocatedThisPhase(false);
-            console.log("troopsAllocatedThisPhase resetado para false");
-        }, 0);
     }, [currentPlayerIndex, currentRound, currentPhase]);
 
     const getPlayerColor = (color: string) => {
@@ -308,8 +285,7 @@ const GameUI: React.FC = () => {
                         </button>
                     )}
 
-                    {currentPhase === "ATACAR" && currentRound > 0 && !showAttackBar && (
-                    {currentPhase === "REFORÇAR" && (
+                    {currentPhase === "REFORÇAR" && currentRound > 0 && (
                         <button
                             className={`card-exchange-btn ${
                                 mustExchangeCards ? "must-exchange" : ""
@@ -326,9 +302,9 @@ const GameUI: React.FC = () => {
                         >
                             Trocar Cartas ({currentPlayer.cards.length})
                         </button>
-                    )}  
+                    )}
 
-                    {currentPhase === "ATACAR" && !showAttackBar && (
+                    {currentPhase === "ATACAR" && currentRound > 0 && !showAttackBar && (
                         <button
                             className="attack-toggle-btn"
                             onClick={handleShowAttackBar}
@@ -452,7 +428,10 @@ const GameUI: React.FC = () => {
                             <h2>Você ganhou uma carta!</h2>
                         </div>
                         <div className="card-award-body">
-                            <div className="card-award-card">
+                            <div
+                                className="card-award-card"
+                                style={{ borderColor: awardedCard.playerColor || '#fbbf24' }}
+                            >
                                 <span className="card-shape" style={{color: awardedCard.playerColor || '#fbbf24'}}>
                                     {awardedCard.shape === 'Square' && '■'}
                                     {awardedCard.shape === 'Circle' && '●'}
