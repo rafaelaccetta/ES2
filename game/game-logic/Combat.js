@@ -23,7 +23,7 @@ function rollND6(n) {
 
 export function resolveAttack(troopsCommitted, defenderArmies) {
     const attackerDice = Math.min(3, Math.max(0, troopsCommitted));
-    const defenderDice = Math.min(2, Math.max(0, defenderArmies));
+    const defenderDice = Math.min(3, Math.max(0, defenderArmies));
 
     const aDice = attackerDice > 0 ? rollND6(attackerDice) : [];
     const dDice = defenderDice > 0 ? rollND6(defenderDice) : [];

@@ -283,6 +283,47 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                         sourceAfterLosses,
                         maxCanMove,
                     });
+
+                    try {
+                        const defenderEliminated = defender && (defender.getTerritoriesCount && defender.getTerritoriesCount() === 0);
+                        if (defenderEliminated) {
+                            for (const p of gameState.players) {
+                                if (!p || p === defender) continue;
+                                const obj = (p as any).objective;
+                                if (obj && typeof obj.activateFallback === 'function') {
+                                    if (obj.targetIdentifier === defender.id || obj.targetIdentifier === defender.color) {
+                                        try { obj.activateFallback(); } catch (e) {}
+                                    }
+                                }
+                            }
+                        }
+
+                        const objectiveGameState: any = {
+                            players: gameState.players,
+                            getTerritoriesByContinent: () => (gameState.gameManager as any)?.gameMap?.getTerritoriesByContinent?.(),
+                        };
+
+                        for (const p of gameState.players) {
+                            try {
+                                const obj = (p as any).objective;
+                                if (obj && typeof obj.checkWin === 'function') {
+                                    const won = obj.checkWin(p, objectiveGameState);
+                                    if (won) {
+                                        EventBus.emit('game-won', {
+                                            winnerId: p.id,
+                                            winnerColor: p.color,
+                                            winnerObjective: (obj && (obj.title || obj.description)) || null,
+                                        });
+                                        break;
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('Error checking win for player', p && p.id, e);
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error while processing post-conquest objective checks', e);
+                    }
                 }
 
                 EventBus.emit('players-updated', {

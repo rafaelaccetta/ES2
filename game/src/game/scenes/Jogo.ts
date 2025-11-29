@@ -39,6 +39,15 @@ export class Jogo extends Scene {
             })
             .setDepth(1);
 
+        EventBus.on('game-won', (payload: any) => {
+            try {
+                EventBus.emit('hide-ui');
+                this.scene.start('GameOver', payload);
+            } catch (e) {
+                console.error('Error handling game-won in Jogo scene', e);
+            }
+        });
+
         const root = ReactDOM.createRoot(mapContainer);
 
         const AppOverlay: React.FC = () => {
@@ -200,6 +209,8 @@ export class Jogo extends Scene {
             // Territórios selecionados - agora controlado por eventos
             const [selectedTerritories, setSelectedTerritories] =
                 React.useState<string[]>([]);
+            // Hide the overlay (used when GameOver is shown)
+            const [hidden, setHidden] = React.useState<boolean>(false);
 
             // Listener para highlight-territories
             React.useEffect(() => {
@@ -215,6 +226,17 @@ export class Jogo extends Scene {
                         "highlight-territories",
                         handleHighlight
                     );
+                };
+            }, []);
+
+            React.useEffect(() => {
+                const onHide = () => setHidden(true);
+                const onShow = () => setHidden(false);
+                EventBus.on('hide-ui', onHide);
+                EventBus.on('show-ui', onShow);
+                return () => {
+                    EventBus.removeListener('hide-ui', onHide);
+                    EventBus.removeListener('show-ui', onShow);
                 };
             }, []);
 
@@ -245,6 +267,8 @@ export class Jogo extends Scene {
                 []
             );
 
+            if (hidden) return React.createElement(React.Fragment, null);
+
             return React.createElement(
                 React.Fragment,
                 null,
@@ -265,10 +289,6 @@ export class Jogo extends Scene {
         this.events.once("shutdown", () => {
             root.unmount();
             mapContainer!.remove();
-        });
-
-        this.input.once("pointerdown", () => {
-            this.scene.start("Menu");
         });
     }
 }
