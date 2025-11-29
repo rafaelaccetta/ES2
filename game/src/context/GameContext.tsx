@@ -10,6 +10,8 @@ import { Player } from "../../game-logic/Player.js";
 import { createObjectiveFromJson } from "../../game-logic/Objective.js";
 import resolveAttack from "../../game-logic/Combat.js";
 import { EventBus } from "../game/EventBus";
+import { CardManager } from "../../game-logic/CardManager.js"; 
+import { PlayerCards } from "../../game-logic/PlayerCards.js"; 
 
 export interface Objective {
     id: number;
@@ -25,6 +27,7 @@ export interface Objective {
 
 export interface GameState {
     gameManager: GameManager | null;
+    cardManager: CardManager | null;
     players: Player[];
     currentPlayerIndex: number;
     currentPhase: string;
@@ -54,6 +57,7 @@ interface GameContextType extends GameState {
 
 const initialState: GameState = {
     gameManager: null,
+    cardManager: null,
     players: [],
     currentPlayerIndex: 0,
     currentPhase: "REFORÇAR",
@@ -63,6 +67,7 @@ const initialState: GameState = {
     showObjectiveConfirmation: false,
     firstRoundObjectiveShown: new Set(),
     territorySelectionCallback: null,
+    
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -108,7 +113,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
         console.log('🎮 Iniciando jogo com jogadores:', gamePlayers.map(p => ({ id: p.id, color: p.color })));
 
-        const gameManager = new GameManager(gamePlayers);
+        const cardManager = new CardManager();
+        const gameManager = new GameManager(gamePlayers, cardManager);
 
         let objectiveInstances = (gameState.objectives || [])
             .map((o) => createObjectiveFromJson(o))
@@ -135,9 +141,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
         gameManager.distributeObjectives(objectiveInstances);
 
+        // Jogadores começam com 0 cartas
+        console.log("Jogadores inicializados sem cartas.");
+
         setGameState((prevState) => ({
             ...prevState,
             gameManager,
+            cardManager,
             players: gamePlayers,
             currentPlayerIndex: 0,
             currentPhase: gameManager.getPhaseName(),
@@ -198,6 +208,20 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const nextPhase = () => {
         if (!gameState.gameManager) return;
 
+        const currentPlayer = getCurrentPlayer();
+        
+        if (gameState.currentPhase === 'REFORÇAR' && currentPlayer && currentPlayer.pendingReinforcements > 0) {
+            console.warn('Não pode avançar: ainda existem reforços para alocar.');
+            return;
+        }
+        
+        if (currentPlayer && gameState.currentPhase === "REFORÇAR" && currentPlayer.cards.length >= 5) {
+            console.warn("Não pode avançar, troca de cartas é obrigatória.");
+            return;
+        }
+
+        const previousPhase = gameState.currentPhase;
+        const previousPlayer = getCurrentPlayer();
         gameState.gameManager.passPhase();
 
         setGameState((prevState) => ({
@@ -207,6 +231,26 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentRound: gameState.gameManager!.round,
         }));
 
+        // Se saiu de FORTIFICAR (movimentação), emitir carta conquistada (se houver)
+        if (previousPhase === "FORTIFICAR") {
+            const awarded = gameState.gameManager.consumeLastAwardedCard?.();
+            if (awarded) {
+                // Emitir com a cor do jogador que acabou de jogar (não o próximo)
+                const colorMap: Record<string, string> = {
+                    azul: "#2563eb",
+                    vermelho: "#dc2626",
+                    verde: "#16a34a",
+                    branco: "#b7c0cd",
+                };
+                const playerColorHex = previousPlayer ? (colorMap[previousPlayer.color] || '#fbbf24') : '#fbbf24';
+                EventBus.emit("card-awarded", {
+                    name: awarded.name,
+                    shape: awarded.geometricShape,
+                    playerColor: playerColorHex,
+                });
+            }
+        }
+
         EventBus.emit("players-updated", {
             playerCount: gameState.players.length,
             players: gameState.players.map((player) => ({
@@ -215,6 +259,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 territories: player.territories,
                 territoriesArmies: player.territoriesArmies,
                 armies: player.armies,
+                cards: player.cards,
+                pendingReinforcements: player.pendingReinforcements,
             })),
         });
     };
@@ -262,6 +308,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 let conquered = false;
                 if ((defender ? (defender.territoriesArmies[target] ?? 0) : 0) <= 0) {
                     conquered = true;
+                    
+                    // Marcar que o jogador conquistou território nesta rodada
+                    if (gameState.gameManager) {
+                        gameState.gameManager.markTerritoryConquered();
+                    }
+                    
                     if (defender) defender.removeTerritory(target);
                     currentPlayer.addTerritory(target);
 
@@ -323,9 +375,68 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
         EventBus.on('move-confirm', handleMoveConfirm as any);
 
+        const handleCardExchange = (data: { cards: PlayerCards[] }) => {
+            try {
+                const { cardManager } = gameState;
+                const currentPlayer = getCurrentPlayer();
+                if (!cardManager || !currentPlayer || !data.cards) {
+                    console.warn("Troca de cartas falhou: contexto inválido.");
+                    return;
+                }
+
+                console.log(
+                    `GameContext: Processando troca para ${currentPlayer.id} com`,
+                    data.cards
+                );
+
+                cardManager.executeCardExchange(data.cards, currentPlayer);
+
+                // 2. Remove as cartas da mão do jogador (mutação da instância)
+                const exchangedCardNames = new Set(data.cards.map((c) => c.name));
+                currentPlayer.cards = currentPlayer.cards.filter(
+                    (card: any) => !exchangedCardNames.has(card.name)
+                );
+
+                // 3. Se alguma das cartas tinha território do jogador, já foi aplicado bônus exclusivo na CardManager.
+                // Aqui apenas log para facilitar depuração.
+                data.cards.forEach(card => {
+                    if (currentPlayer.hasTerritory(card.name)) {
+                        console.log(`Bônus de +2 tropas aplicado diretamente em ${card.name}`);
+                    }
+                });
+
+                console.log("Exércitos adicionados:", currentPlayer.armies);
+                console.log("Cartas restantes:", currentPlayer.cards.length);
+
+                setGameState((prev) => ({
+                    ...prev,
+                    players: [...prev.players], 
+                }));
+
+                EventBus.emit("players-updated", {
+                    playerCount: gameState.players.length,
+                    players: gameState.players.map((p) => ({
+                        id: p.id,
+                        color: p.color,
+                        territories: p.territories,
+                        territoriesArmies: p.territoriesArmies,
+                        armies: p.armies,
+                        pendingReinforcements: (p as any).pendingReinforcements,
+                    })),
+                });
+            } catch (err) {
+                console.error("Erro ao processar card-exchange-request", err);
+            }
+        };
+
+        EventBus.on("card-exchange-request", handleCardExchange as any);
+        
+
         return () => {
             EventBus.removeListener('attack-request');
-                EventBus.removeListener('move-confirm');
+            EventBus.removeListener('move-confirm');
+            EventBus.removeListener("card-exchange-request", handleCardExchange);
+
         };
     }, [gameState.gameManager, gameState.players, getCurrentPlayer]);
 
