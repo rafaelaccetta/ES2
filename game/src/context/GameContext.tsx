@@ -51,6 +51,7 @@ interface GameContextType extends GameState {
     setTerritorySelectionCallback: (callback: ((territory: string) => void) | null) => void;
     onTerritorySelected: (territory: string) => void;
     applyPostConquestMove: (source: string, target: string, moved: number) => void;
+    calculateReinforcementTroops: (player?: Player) => any;
 }
 
 const initialState: GameState = {
@@ -570,6 +571,15 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         }
     };
 
+    const calculateReinforcementTroops = (player?: Player) => {
+        const targetPlayer = player || getCurrentPlayer();
+        if (!targetPlayer || !gameState.gameManager) {
+            return { totalTroops: 0, territoryBonus: 0, continentBonus: 0, cardBonus: 0, continentBonuses: {} };
+        }
+
+        return (gameState.gameManager as any).calculateReinforcementTroops(targetPlayer);
+    };
+
     const contextValue: GameContextType = {
         ...gameState,
         startGame,
@@ -583,6 +593,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         setTerritorySelectionCallback,
         onTerritorySelected,
         applyPostConquestMove,
+        calculateReinforcementTroops,
     };
 
     return (

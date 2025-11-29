@@ -20,7 +20,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
     onClose,
     isDimmed = false,
 }) => {
-    const { getCurrentPlayer, currentRound, players } = useGameContext();
+    const { getCurrentPlayer, currentRound, players, calculateReinforcementTroops } = useGameContext();
     const [allocations, setAllocations] = useState<Record<string, number>>({});
     const [lastRoundPlayer, setLastRoundPlayer] = useState<string>("");
     const [initialTroops, setInitialTroops] = useState(0);
@@ -40,7 +40,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
 
             if (lastRoundPlayer !== currentRoundPlayer) {
                 console.log(
-                    "🎯 Nova rodada/jogador detectada:",
+                    "Nova rodada/jogador detectada:",
                     currentRoundPlayer
                 );
                 setInitialTroops(calculatedTroops);

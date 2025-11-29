@@ -23,8 +23,29 @@
     box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
 }
 
+.attack-result-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 4999;
+}
+
 .attack-bar.attack-result {
-    padding: 16px 24px;
+    padding: 24px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px;
+    max-width: 90vw;
+    max-height: 70vh;
+    overflow-y: auto;
+    bottom: unset;
+    right: unset;
+    z-index: 5000;
 }
 
 .attack-bar.dimmed {

@@ -12,18 +12,20 @@ import { EventBus } from "../game/EventBus";
 const GameUI: React.FC = () => {
     const {
         gameStarted,
-        getCurrentPlayer,
         currentPhase,
-        currentRound,
-        currentPlayerIndex,
+        getCurrentPlayer,
         nextPhase,
-        startGame,
-        players,
+        getCurrentObjective,
         shouldShowAutomaticObjective,
         markObjectiveAsShown,
         showObjectiveConfirmation,
         setShowObjectiveConfirmation,
         firstRoundObjectiveShown,
+        calculateReinforcementTroops,
+        currentRound,
+        currentPlayerIndex,
+        startGame,
+        players,
     } = useGameContext();
 
     // Estado para rastrear se tropas já foram alocadas nesta fase
@@ -306,6 +308,7 @@ const GameUI: React.FC = () => {
                         </button>
                     )}
 
+                    {currentPhase === "ATACAR" && currentRound > 0 && !showAttackBar && (
                     {currentPhase === "REFORÇAR" && (
                         <button
                             className={`card-exchange-btn ${
@@ -350,7 +353,13 @@ const GameUI: React.FC = () => {
                                 ? "disabled"
                                 : ""
                         }`}
-                        onClick={nextPhase}
+                        onClick={
+                            (currentPhase === "REFORÇAR" &&
+                                getAvailableTroopsToAllocate() > 0) ||
+                            (currentPhase === "ATACAR" && currentRound > 0 && showAttackBar)
+                                ? undefined
+                                : nextPhase
+                        }
                         disabled={
                             (currentPhase === "REFORÇAR" &&
                                 getAvailableTroopsToAllocate() > 0) || mustExchangeCards ||
@@ -362,8 +371,10 @@ const GameUI: React.FC = () => {
                             : currentPhase === "REFORÇAR" &&
                             getAvailableTroopsToAllocate() > 0
                                 ? "Você deve alocar todas as tropas antes de avançar"
-                                : currentPhase === "ATACAR" && showAttackBar
+                                : currentPhase === "ATACAR" && currentRound > 0 && showAttackBar
                                 ? "Feche a barra de ataque antes de avançar"
+                                : currentRound === 0 && currentPhase === "REFORÇAR"
+                                ? "Próximo jogador (primeira rodada - só alocação)"
                                 : "Avançar para próxima fase"
                         }
                     >

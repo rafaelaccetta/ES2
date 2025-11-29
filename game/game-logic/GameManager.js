@@ -19,8 +19,7 @@ export class GameManager {
     }
     
     initializeGame(){
-        this.players.sort(() => Math.random() - 0.5); // shuffles player order
-        // future game initialization and turn 0 logic is probably going here
+        this.players.sort(() => Math.random() - 0.5); 
         this.gameMap = new GameMap();
         
         // Distribuir territórios automaticamente
@@ -36,6 +35,15 @@ export class GameManager {
     }
 
     passPhase() {
+        // Na primeira rodada (round 0), só permite a fase REFORÇAR
+        if (this.round === 0 && this.getPhaseName() === "REFORÇAR") {
+            console.log(`🎯 Primeira rodada: Jogador ${this.turn} terminou REFORÇAR, pulando para próximo jogador`);
+            // Pula direto para o próximo jogador após reforçar na primeira rodada
+            this.PhaseIdx = 0; // Reset para REFORÇAR
+            this.#passTurn();
+            return;
+        }
+        
         // Se está saindo da fase de ATAQUE e houve conquista, dar 1 carta
         if (this.getPhaseName() === "ATACAR") {
             if (this.conqueredThisRound && this.cardManager) {
@@ -113,6 +121,7 @@ export class GameManager {
 
     #passRound() {
         this.round++;
+        console.log(`🔄 Nova rodada iniciada: Rodada ${this.round}`);
         // likely extra state handling code is going to be here in the future
         // so I put this function here already
     }
@@ -124,10 +133,13 @@ export class GameManager {
         const continentNames = Object.keys(territoriesByContinent);
 
         for (const continentName of continentNames) {
-            if (player.hasConqueredContinent(continentName, territoriesByContinent)) {
+            const hasConquered = player.hasConqueredContinent(continentName, territoriesByContinent);
+            
+            if (hasConquered) {
                 const continentAbbreviation = Object.keys(this.gameMap.continents).find(key => 
                     this.gameMap.continents[key].name === continentName
                 );
+                
  
                 if (continentAbbreviation) {
                     const bonusValue = this.gameMap.continents[continentAbbreviation].bonus;
@@ -135,8 +147,28 @@ export class GameManager {
                 }
             }
         }
+        
     return continentBonuses;
 }
+
+    calculateReinforcementTroops(player) {
+        let territoryBonus = Math.max(3, Math.floor(player.territories.length / 2));
+        
+        const continentBonuses = this.calculateContinentBonus(player);
+        let continentBonus = Object.values(continentBonuses).reduce((sum, bonus) => sum + bonus, 0);
+        
+        let cardBonus = 0;
+        
+        const totalTroops = territoryBonus + continentBonus + cardBonus;
+        
+        return {
+            territoryBonus,
+            continentBonus,
+            continentBonuses,
+            cardBonus,
+            totalTroops
+        };
+    }
 
     distributeObjectives(objectives) {
         objectives = objectives.sort(() => Math.random() - 0.5);

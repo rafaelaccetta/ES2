@@ -450,11 +450,13 @@ const AttackBar: React.FC<AttackBarProps> = ({
     // Modo resultado do ataque
     if (showAttackResult && attackResult) {
         return (
-            <div
-                className={`attack-bar attack-result ${
-                    isDimmed ? "dimmed" : ""
-                }`}
-            >
+            <>
+                <div className="attack-result-overlay" />
+                <div
+                    className={`attack-bar attack-result ${
+                        isDimmed ? "dimmed" : ""
+                    }`}
+                >
                 <div className="attack-result-content">
                     <div className="result-header">
                         <h3
@@ -566,6 +568,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
                     </button>
                 </div>
             </div>
+            </>
         );
     }
 
