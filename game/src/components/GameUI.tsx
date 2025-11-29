@@ -5,6 +5,7 @@ import TurnTransition from "./TurnTransition";
 import TroopAllocation from "./TroopAllocation";
 import AttackBar from "./AttackBar";
 import "./GameUI.css";
+import FortifyBar from "./FortifyBar";
 import "./CardAward.css";
 import CardExchange from "./CardTrade";
 import { EventBus } from "../game/EventBus";
@@ -52,6 +53,7 @@ const GameUI: React.FC = () => {
     const [showTransition, setShowTransition] = useState(false);
     const [showTroopAllocation, setShowTroopAllocation] = useState(false);
     const [showAttackBar, setShowAttackBar] = useState(false);
+    const [showFortifyBar, setShowFortifyBar] = useState(false);
     const [showCardExchange, setShowCardExchange] = useState(false);
     const [showCardAward, setShowCardAward] = useState(false);
     const [awardedCard, setAwardedCard] = useState<{name:string;shape:string;playerColor?:string}|null>(null);
@@ -158,10 +160,17 @@ const GameUI: React.FC = () => {
         setShowAttackBar(true);
     };
 
+    const handleShowFortifyBar = () => {
+       setShowFortifyBar(true);
+    }
+
     const handleCloseAttackBar = () => {
         setShowAttackBar(false);
     };
-
+    
+    const handleCloseFortifyBar = () => {
+        setShowFortifyBar(false);
+    }
     const handleCloseTroopAllocation = () => {
         console.log("handleCloseTroopAllocation called");
         setShowTroopAllocation(false);
@@ -254,103 +263,119 @@ const GameUI: React.FC = () => {
                 </div>
 
                 <div className="game-controls">
-                    {currentPhase === "REFORÇAR" && (
-                        <button
-                            className={`troop-allocation-btn ${
-                                getAvailableTroopsToAllocate() === 0 || mustExchangeCards
-                                    ? "disabled"
-                                    : ""
-                            }`}
-                            onClick={
-                                getAvailableTroopsToAllocate() > 0 && !mustExchangeCards
-                                    ? handleShowTroopAllocation
-                                    : undefined
-                            }
-                            disabled={getAvailableTroopsToAllocate() === 0 || mustExchangeCards}
-                            title={
-                                mustExchangeCards
-                                    ? "Você deve trocar cartas antes de alocar tropas"
-                                    : getAvailableTroopsToAllocate() > 0
-                                    ? "Alocar tropas de reforço nos seus territórios"
-                                    : "Tropas já foram alocadas nesta fase"
-                            }
-                        >
-                            {getAvailableTroopsToAllocate() > 0
-                                ? "Alocar Tropas"
-                                : "Tropas Alocadas"}
-                        </button>
-                    )}
+    {/* FASE REFORÇAR: Alocar Tropas, Trocar Cartas, Meu Objetivo, Próxima Fase */}
+    {currentPhase === "REFORÇAR" && (
+        <button
+            className={`troop-allocation-btn ${
+                getAvailableTroopsToAllocate() === 0 || mustExchangeCards
+                    ? "disabled"
+                    : ""
+            }`}
+            onClick={
+                getAvailableTroopsToAllocate() > 0 && !mustExchangeCards
+                    ? handleShowTroopAllocation
+                    : undefined
+            }
+            disabled={getAvailableTroopsToAllocate() === 0 || mustExchangeCards}
+            title={
+                mustExchangeCards
+                    ? "Você deve trocar cartas antes de alocar tropas"
+                    : getAvailableTroopsToAllocate() > 0
+                    ? "Alocar tropas de reforço nos seus territórios"
+                    : "Tropas já foram alocadas nesta fase"
+            }
+        >
+            {getAvailableTroopsToAllocate() > 0
+                ? "Alocar Tropas"
+                : "Tropas Alocadas"}
+        </button>
+    )}
 
-                    {currentPhase === "REFORÇAR" && currentRound > 0 && (
-                        <button
-                            className={`card-exchange-btn ${
-                                mustExchangeCards ? "must-exchange" : ""
-                            }`}
-                            onClick={() => setShowCardExchange(true)}
-                            disabled={false}
-                            title={
-                                mustExchangeCards
-                                    ? "Troca obrigatória (5+ cartas)"
-                                    : "Trocar cartas por exércitos"
-                            }
-                        >
-                            Trocar Cartas ({currentPlayer.cards.length})
-                        </button>
-                    )}
+    {currentPhase === "REFORÇAR" && currentRound > 0 && (
+        <button
+            className={`card-exchange-btn ${
+                mustExchangeCards ? "must-exchange" : ""
+            }`}
+            onClick={() => setShowCardExchange(true)}
+            disabled={false}
+            title={
+                mustExchangeCards
+                    ? "Troca obrigatória (5+ cartas)"
+                    : "Trocar cartas por exércitos"
+            }
+        >
+            Trocar Cartas ({currentPlayer.cards.length})
+        </button>
+    )}
 
-                    {currentPhase === "ATACAR" && currentRound > 0 && !showAttackBar && (
-                        <button
-                            className="attack-toggle-btn"
-                            onClick={handleShowAttackBar}
-                            title="Iniciar fase de ataque"
-                        >
-                            Iniciar Ataque
-                        </button>
-                    )}
-                    <button
-                        className="objective-btn"
-                        onClick={handleShowObjective}
-                        title="Ver meu objetivo (confidencial)"
-                    >
-                        Meu Objetivo
-                    </button>
+    {/* FASE ATACAR: Iniciar Ataque, Meu Objetivo, Próxima Fase */}
+    {currentPhase === "ATACAR" && currentRound > 0 && !showAttackBar && (
+        <button
+            className="attack-toggle-btn"
+            onClick={handleShowAttackBar}
+            title="Iniciar fase de ataque"
+        >
+            Iniciar Ataque
+        </button>
+    )}
 
-                    <button
-                        className={`next-phase-btn ${
-                            (currentPhase === "REFORÇAR" &&
-                                getAvailableTroopsToAllocate() > 0) || mustExchangeCards ||
-                            (currentPhase === "ATACAR" && showAttackBar)
-                                ? "disabled"
-                                : ""
-                        }`}
-                        onClick={
-                            (currentPhase === "REFORÇAR" &&
-                                getAvailableTroopsToAllocate() > 0) ||
-                            (currentPhase === "ATACAR" && currentRound > 0 && showAttackBar)
-                                ? undefined
-                                : nextPhase
-                        }
-                        disabled={
-                            (currentPhase === "REFORÇAR" &&
-                                getAvailableTroopsToAllocate() > 0) || mustExchangeCards ||
-                            (currentPhase === "ATACAR" && showAttackBar)
-                        }
-                        title={
-                            mustExchangeCards
-                            ? "Você deve trocar cartas antes de alocar tropas"
-                            : currentPhase === "REFORÇAR" &&
-                            getAvailableTroopsToAllocate() > 0
-                                ? "Você deve alocar todas as tropas antes de avançar"
-                                : currentPhase === "ATACAR" && currentRound > 0 && showAttackBar
-                                ? "Feche a barra de ataque antes de avançar"
-                                : currentRound === 0 && currentPhase === "REFORÇAR"
-                                ? "Próximo jogador (primeira rodada - só alocação)"
-                                : "Avançar para próxima fase"
-                        }
-                    >
-                        Próxima Fase
-                    </button>
-                </div>
+    {/* FASE FORTIFICAR: Movimentar Tropas, Meu Objetivo, Próxima Fase */}
+    {currentPhase === "FORTIFICAR" && (
+        <button
+            className="fortify-btn"
+            onClick={handleShowFortifyBar}
+            title="Movimentar tropas entre territórios"
+        >
+            Movimentar Tropas
+        </button>
+    )}
+
+    {/* Meu Objetivo - sempre visível em todas as fases */}
+    <button
+        className="objective-btn"
+        onClick={handleShowObjective}
+        title="Ver meu objetivo (confidencial)"
+    >
+        Meu Objetivo
+    </button>
+    
+    {/* Próxima Fase - sempre visível em todas as fases */}
+    <button
+        className={`next-phase-btn ${
+            (currentPhase === "REFORÇAR" &&
+                (getAvailableTroopsToAllocate() > 0 || mustExchangeCards)) ||
+            (currentPhase === "ATACAR" && showAttackBar)
+                ? "disabled"
+                : ""
+        }`}
+        onClick={
+            (currentPhase === "REFORÇAR" &&
+                (getAvailableTroopsToAllocate() > 0 || mustExchangeCards)) ||
+            (currentPhase === "ATACAR" && showAttackBar)
+                ? undefined
+                : nextPhase
+        }
+        disabled={
+            (currentPhase === "REFORÇAR" &&
+                (getAvailableTroopsToAllocate() > 0 || mustExchangeCards)) ||
+            (currentPhase === "ATACAR" && showAttackBar)
+        }
+        title={
+            mustExchangeCards
+                ? "Você deve trocar cartas antes de avançar"
+                : currentPhase === "REFORÇAR" &&
+                  getAvailableTroopsToAllocate() > 0
+                ? "Você deve alocar todas as tropas antes de avançar"
+                : currentPhase === "ATACAR" && showAttackBar
+                ? "Feche a barra de ataque antes de avançar"
+                : currentRound === 0 && currentPhase === "REFORÇAR"
+                ? "Próximo jogador (primeira rodada - só alocação)"
+                : "Avançar para próxima fase"
+        }
+    >
+        Próxima Fase
+    </button>
+</div>
 
                 <div className="players-info">
                     <h4>Jogadores:</h4>
@@ -404,6 +429,14 @@ const GameUI: React.FC = () => {
                 onClose={handleCloseAttackBar}
                 isDimmed={showObjective || showObjectiveConfirmation || showCardExchange}
             />
+
+            <FortifyBar
+                isVisible={showFortifyBar}
+                onClose={handleCloseFortifyBar}
+                isDimmed={showObjective || showObjectiveConfirmation}
+            />
+
+            
             
             <CardExchange
                 isVisible={showCardExchange}

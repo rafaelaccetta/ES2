@@ -14,7 +14,6 @@ export class GameManager {
         this.cardManager = cardManager instanceof CardManager ? cardManager : null;
         this.lastAwardedCard = null; // Guarda carta concedida ao final da fase de ataque
         this.initializeGame()
-        this.gameMap = new GameMap();
 
     }
     
@@ -111,7 +110,7 @@ export class GameManager {
             this.#passRound();
         }
     }
-
+    
     #passRound() {
         this.round++;
         console.log(`🔄 Nova rodada iniciada: Rodada ${this.round}`);
@@ -119,6 +118,40 @@ export class GameManager {
         // so I put this function here already
     }
 
+    moveArmies(territoryFromString, territoryToString, amountArmies) {
+        let player = this.getPlayerPlaying();
+        const ownsFrom = player.hasTerritory(territoryFromString);
+        const ownsTo = player.hasTerritory(territoryToString);
+        if (!ownsFrom || !ownsTo) {
+            console.log("Movimento falhou: ao menos um território não pertence ao player.");
+            return false;
+        }
+
+        if (!this.gameMap.areAdjacent(territoryToString, territoryFromString)) {
+            console.log("Movimento falhou: territórios não são adjacentes.")
+            return false;
+        }
+
+        const armiesOnFrom = this.gameMap.armies[territoryFromString];
+        
+        if (armiesOnFrom <= amountArmies) {
+            console.log(`Movimento falhou: tropas insuficientes em ${territoryFromString}. Deve sobrar ao menos 1.`);
+            return false;
+        }
+
+        try {
+            this.gameMap.removeArmy(territoryFromString, amountArmies);
+            this.gameMap.addArmy(territoryToString, amountArmies);
+
+            console.log(`Move successful: ${amountArmies} armies moved from ${territoryFromString} to ${territoryToString}.`);
+            return true;
+
+        } catch (error) {
+            console.error("Move failed with an unexpected error:", error.message);
+            return false;
+        }
+    }
+    
     calculateContinentBonus(player) {
         const territoriesByContinent = this.gameMap.getTerritoriesByContinent();
         const continentBonuses = {};
@@ -142,7 +175,7 @@ export class GameManager {
         }
         
     return continentBonuses;
-}
+    }
 
     calculateReinforcementTroops(player) {
         let territoryBonus = Math.max(3, Math.floor(player.territories.length / 2));
