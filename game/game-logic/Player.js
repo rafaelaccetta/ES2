@@ -7,6 +7,7 @@ export class Player {
         this.territories = [];
         this.cards = [];
         this.armies = 0;
+        this.pendingReinforcements = 0; // tropas calculadas para alocar na fase REFORÇAR
         this.armiesExclusiveToTerritory = new Map() // example: {"Brazil": 2} means 2 troops can only be deployed in Brazil
         this.isActive = true;
         this.territoriesArmies = {}; // objeto para armazenar exércitos por território
@@ -43,9 +44,8 @@ export class Player {
         return continentTerritories.every((territory) => this.territories.includes(territory));
     }
 
-    //Adiciona tropas para o saldo do jogador. 
-    // Antes das tropas forem alocadas (pela classe responsável), deve ser verificado se o Player tem o saldo necessário.
-    addArmies(amount) {
+    // Adiciona tropas para o saldo (pool) do jogador que ainda serão alocadas.
+    addArmiesToPool(amount) {
         this.armies = this.armies + amount;
     }
 
@@ -58,8 +58,12 @@ export class Player {
     }
     
     addArmiesExclusive(territoryName, amount){
-        const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
-        this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
+        // Aplica diretamente no território e marca como exclusivo
+        if (this.hasTerritory(territoryName)) {
+            this.addArmiesToTerritory(territoryName, amount);
+            const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
+            this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
+        }
     }
     
     removeArmiesExclusive(territoryName, amount){
@@ -77,7 +81,7 @@ export class Player {
         return this.territories.includes(territoryName)
     }
 
-    addArmies(territory, quantity) {
+    addArmiesToTerritory(territory, quantity) {
         //logic to add armies to a territory
         // at the begining of the turn or because of card exchange or because of a continent control
         if (this.territories.includes(territory)) {
@@ -87,6 +91,25 @@ export class Player {
             this.territoriesArmies[territory] += quantity;
             this.armies += quantity;
         }
+    }
+
+    // Compatibilidade legacy: muitas partes do código ainda chamam player.addArmies(territory, qty)
+    // Mantém assinatura antiga direcionando para addArmiesToTerritory.
+    addArmies(territory, quantity) {
+        this.addArmiesToTerritory(territory, quantity);
+    }
+
+    spendPendingReinforcement(territory, amount = 1){
+        if (this.pendingReinforcements <= 0) return false;
+        if (!this.hasTerritory(territory)) return false;
+        const toSpend = Math.min(amount, this.pendingReinforcements);
+        this.pendingReinforcements -= toSpend;
+        this.addArmiesToTerritory(territory, toSpend);
+        return true;
+    }
+
+    hasPendingReinforcements(){
+        return this.pendingReinforcements > 0;
     }
 
     removeArmies() {

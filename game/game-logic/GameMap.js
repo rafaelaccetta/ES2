@@ -89,7 +89,7 @@ export class GameMap {
         
         for (var i = 0; i < players.length; i++) {
             for (var j = 0; j < players[i].territories.length; j++) {
-                players[i].addArmies(players[i].territories[j], 1);
+                players[i].addArmiesToTerritory(players[i].territories[j], 1);
             }
         }
     }
