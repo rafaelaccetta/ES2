@@ -85,11 +85,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     loadObjectives();
   }, []);
 
-  const startGame = (playerCount: number) => {
-    const playerColors = ['azul', 'vermelho', 'verde', 'branco'];
-    const gamePlayers = Array.from({ length: playerCount }, (_, index) => 
-      new Player(index, playerColors[index])
-    );
+    const startGame = (playerCount: number) => {
+        const playerColors = ["azul", "vermelho", "verde", "branco"];
+        const gamePlayers = Array.from(
+            { length: 4 },
+            (_, index) => new Player(index, playerColors[index], null, (index >= playerCount))
+        );
+
+        console.log('🎮 Iniciando jogo com jogadores:', gamePlayers.map(p => ({ id: p.id, color: p.color, isAI: p.isAI })));
 
     const gameManager = new GameManager(gamePlayers);
     gameManager.distributeObjectives(gameState.objectives);
