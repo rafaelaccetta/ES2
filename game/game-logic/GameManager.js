@@ -20,7 +20,7 @@ export class GameManager {
     }
 
     initializeGame() {
-        this.players.sort(() => Math.random() - 0.5);
+        //this.players.sort(() => Math.random() - 0.5);
         this.gameMap = new GameMap();
         // Distribuir territórios automaticamente
         this.gameMap.distributeTerritories(this.players);
@@ -81,6 +81,7 @@ export class GameManager {
                 return
             }
         }
+        
         if (this.PhaseIdx > this.PhaseNames.length - 1) {
             this.PhaseIdx = 0;
             this.#passTurn();
@@ -142,7 +143,7 @@ export class GameManager {
                 armiesToAdd += bonus;
             }
 
-            nextPlayer.addArmies(armiesToAdd);
+            nextPlayer.addArmiesToPool(armiesToAdd);
             this.logAction(`Jogador ${nextPlayer.id} recebeu ${armiesToAdd} exércitos de reforço.`);
         }
 
@@ -187,19 +188,20 @@ export class GameManager {
     }
 
     executeAIPlacement(ai, player) {
-        while (player.armies > 0) {
+        player.pendingReinforcements = this.calculateReinforcements(player);
+        while (player.pendingReinforcements > 0) {
             const territoryId = ai.decidePlacement(this);
             if (territoryId && player.hasTerritory(territoryId)) {
-                player.removeArmies(1);
-                this.gameMap.addArmy(territoryId, 1);
+                player.pendingReinforcements -= 1;
+                player.addArmiesToTerritory(territoryId, 1);
                 this.logAction(`IA colocou 1 exército em ${territoryId}`);
             } else {
                 const randomIdx = Math.floor(Math.random() * player.territories.length);
                 const randomTerritory = player.territories[randomIdx];
 
                 if (randomTerritory) {
-                    player.removeArmies(1);
-                    this.gameMap.addArmy(randomTerritory, 1);
+                    player.pendingReinforcements -= 1;
+                    player.addArmiesToTerritory(randomTerritory, 1);
                     this.logAction(`IA (fallback) colocou 1 exército em ${randomTerritory}`);
                 } else {
                     break;
@@ -215,6 +217,9 @@ export class GameManager {
 
         while (keepAttacking && attacksPerformed < MAX_ATTACKS) {
             const attackOrder = ai.decideAttack(this);
+
+            // Log do ataque decidido
+            console.log(`IA Player ${ai.myId} decidiu atacar:`, attackOrder);
 
             if (attackOrder) {
                 const result = this.resolveAttack(attackOrder.from, attackOrder.to);
@@ -241,16 +246,26 @@ export class GameManager {
     // =================================================================
 
     resolveAttack(fromId, toId) {
+
+        // Console log do ataque sendo resolvido
+        console.log(`Resolvendo ataque de ${fromId} para ${toId}`);
+        // Neighbors
+        console.log(`Vizinhos de ${fromId}:`, this.getNeighbors(fromId));
+
         const neighbors = this.getNeighbors(fromId);
         if (!neighbors.includes(toId)) {
             console.error(`Movimento inválido: ${fromId} não é vizinho de ${toId}`);
             return {success: false, conquered: false};
         }
 
-        const attackerTroops = this.gameMap.getArmies(fromId);
-        const defenderTroops = this.gameMap.getArmies(toId);
+        //We need to get troops from player's territory armies
         const ownerAttacker = this.getTerritoryOwner(fromId);
         const ownerDefender = this.getTerritoryOwner(toId);
+        const attackerTroops = ownerAttacker.territoriesArmies[fromId] || 0;
+        const defenderTroops = ownerDefender.territoriesArmies[toId] || 0;
+
+        console.log(`Tropas do atacante em ${fromId}: ${attackerTroops}`);
+        console.log(`Tropas do defensor em ${toId}: ${defenderTroops}`);
 
         if (attackerTroops <= 1) return {success: false, conquered: false};
 
@@ -273,19 +288,23 @@ export class GameManager {
             }
         }
 
+        //Console log dos resultados dos dados
+        console.log(`Resultados dos dados - Atacante: [${attackRolls.join(', ')}], Defensor: [${defenseRolls.join(', ')}]`);
+        console.log(`Perdas - Atacante: ${attackLosses}, Defensor: ${defenseLosses}`);
+
         // Aplicação das baixas
         if (attackLosses > 0) {
-            this.gameMap.removeArmy(fromId, attackLosses);
+            ownerAttacker.territoriesArmies[fromId] -= attackLosses;
         }
 
         if (defenseLosses > 0) {
-            const currentDefenderArmies = this.gameMap.getArmies(toId);
+            const currentDefenderArmies = ownerDefender.territoriesArmies[toId];
 
             // CORREÇÃO: Se as perdas zerarem o exército, usamos setArmies para evitar o erro do removeArmy
             if (currentDefenderArmies - defenseLosses <= 0) {
-                this.gameMap.setArmies(toId, 0);
+                 ownerDefender.territoriesArmies[toId] = 0;
             } else {
-                this.gameMap.removeArmy(toId, defenseLosses);
+                 ownerDefender.territoriesArmies[toId] -= defenseLosses;
             }
         }
 
@@ -296,14 +315,14 @@ export class GameManager {
         let conquered = false;
 
         // Verifica conquista (agora possível pois permitimos 0 exércitos acima)
-        if (this.gameMap.getArmies(toId) === 0) {
+        if (ownerDefender.territoriesArmies[toId] === 0) {
             conquered = true;
             this.dominate(ownerAttacker, ownerDefender, toId);
             this.logAction(`Território ${toId} CONQUISTADO por ${ownerAttacker.color}!`);
 
             // Move 1 tropa obrigatoriamente do atacante para o conquistado
-            this.gameMap.removeArmy(fromId, 1);
-            this.gameMap.addArmy(toId, 1);
+            ownerAttacker.territoriesArmies[fromId] -= 1;
+            ownerAttacker.territoriesArmies[toId] += 1;
         }
 
         return {
@@ -315,17 +334,31 @@ export class GameManager {
     }
 
     moveTroops(fromId, toId, amount) {
+
+        console.log(`Tentando mover ${amount} tropas de ${fromId} para ${toId}`);
+
         const neighbors = this.getNeighbors(fromId);
+        console.log(`Vizinhos de ${fromId}:`, neighbors);
+
         if (!neighbors.includes(toId)) {
             console.warn(`Manobra inválida: ${fromId} e ${toId} não são vizinhos.`);
             return false;
         }
 
-        const fromTroops = this.gameMap.getArmies(fromId);
+        const owner = this.getTerritoryOwner(fromId);
+        const fromTroops = owner.territoriesArmies[fromId]; 
+
+        console.log(`Tropas disponíveis em ${fromId}: ${fromTroops}`);
+
+        //Amount and fromTroops comparation
+        console.log(`Comparando tropas para movimentação: solicitadas ${amount}, disponíveis ${fromTroops} (deve sobrar ao menos 1).`);
+
         if (fromTroops > amount) {
-            this.gameMap.removeArmy(fromId, amount);
-            this.gameMap.addArmy(toId, amount);
+            owner.territoriesArmies[fromId] -= amount;
+            owner.territoriesArmies[toId] += amount;
             this.logAction(`Manobra: Moveu ${amount} tropas de ${fromId} para ${toId}.`);
+            console.log(`Manobra bem-sucedida: ${amount} tropas movidas de ${fromId} para ${toId}.`);
+            console.log(`*Tropas em ${fromId}: ${owner.territoriesArmies[fromId]}, Tropas em ${toId}: ${owner.territoriesArmies[toId]}`);
             return true;
         }
         return false;
@@ -421,7 +454,8 @@ export class GameManager {
     }
 
     getTerritoryArmies(territoryId) {
-        return this.gameMap.getArmies(territoryId);
+        const owner = this.getTerritoryOwner(territoryId);
+        return owner.territoriesArmies[territoryId] || 0;
     }
 
     getNeighbors(territoryId) {
@@ -453,7 +487,7 @@ export class GameManager {
             .filter(neighborId => player.territories.includes(neighborId))
             .map(neighborId => ({
                 id: neighborId,
-                troops: this.gameMap.getArmies(neighborId)
+                troops: player.territoriesArmies[neighborId] || 0
             }));
     }
 
@@ -461,18 +495,34 @@ export class GameManager {
         const player = this.players.find(p => p.id === playerId);
         if (!player) return [];
 
+        //Log 
+        console.log(`Calculando ataques possíveis para o jogador ${playerId} (${player.color})`);
+
         const possibleAttacks = [];
         player.territories.forEach(source => {
-            const sourceTroops = this.gameMap.getArmies(source);
-            if (sourceTroops <= 1) return;
 
-            const enemies = this.getEnemyNeighbors(source, playerId);
-            enemies.forEach(enemy => {
-                possibleAttacks.push({
-                    from: {id: source, troops: sourceTroops},
-                    to: {id: enemy.id, troops: enemy.troops, ownerId: enemy.ownerId}
+            // Log do território de origem sendo avaliado       
+            console.log(`  Avaliando território ${source} com ${this.gameMap.getArmies(source)} tropas.`);
+
+            const sourceTroops = player.territoriesArmies[source] || 0;
+
+            // Log do estado atual de tropas por território do jogador
+            console.log(`    Estado atual de tropas em territórios do jogador: ${player.territoriesArmies}`);
+
+            console.log(`    Tropas disponíveis em ${source}: ${sourceTroops}`);
+            if (sourceTroops >= 2){
+                const enemies = this.getEnemyNeighbors(source, playerId);
+
+                // Log dos inimigos encontrados
+                console.log(`    Inimigos encontrados: ${enemies.map(e => `${e.id} (${e.troops} tropas)`).join(", ")}`);
+
+                enemies.forEach(enemy => {
+                    possibleAttacks.push({
+                        from: {id: source, troops: sourceTroops},
+                        to: {id: enemy.id, troops: enemy.troops, ownerId: enemy.ownerId}
+                    });
                 });
-            });
+            }
         });
 
         return possibleAttacks;

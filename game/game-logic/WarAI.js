@@ -62,7 +62,10 @@ export class WarAI {
         let bestAttack = null;
         // Limiar de coragem: só ataca se a pontuação for maior que X.
         // Aumente para uma IA mais defensiva, diminua para uma mais agressiva.
-        let highestScore = 30;
+        let highestScore = 10;
+
+        //Log de todos os possíveis ataques e suas pontuações
+        console.log(`AI Player ${this.myId} avaliando ${possibleAttacks.length} ataques possíveis:`);
 
         possibleAttacks.forEach(attack => {
             // 1. Regra básica de sobrevivência:
@@ -85,12 +88,19 @@ export class WarAI {
             // Fator 3: Risco da retaguarda
             score -= this._calculateRearRisk(attack.from, gameManager);
 
+            // Log do score deste ataque
+            console.log(`  Ataque de ${attack.from.id} (${attack.from.troops}) para ${attack.to.id} (${attack.to.troops}) => Score: ${score.toFixed(2)}`);
+
             if (score > highestScore) {
                 highestScore = score;
                 bestAttack = { from: attack.from.id, to: attack.to.id };
             }
         });
 
+        // Console log do ataque escolhido
+        if (bestAttack) {
+            console.log(`AI Player ${this.myId} escolheu atacar de ${bestAttack.from} para ${bestAttack.to} com score ${highestScore.toFixed(2)}`);
+        }
         return bestAttack;
     }
 
@@ -119,6 +129,8 @@ export class WarAI {
             }
         });
 
+        console.log(`AI Player ${this.myId} território mais necessitado: ${neediestTerritory} com score ${maxNeedScore}`);
+
         if (!neediestTerritory || maxNeedScore <= 0) return null;
 
         // 2. Achar quem pode doar (vizinhos aliados que tenham tropas > 1)
@@ -127,22 +139,28 @@ export class WarAI {
 
         const friendlyNeighbors = gameManager.getFriendlyNeighbors(neediestTerritory, this.myId);
 
+        console.log(`AI Player ${this.myId} avaliando doações para ${neediestTerritory}:`);
+
         friendlyNeighbors.forEach(neighbor => {
             if (neighbor.troops > 1) {
                 let spareTroops = neighbor.troops - 1;
-                // Se o vizinho também está na fronteira, só doa metade
-                if (gameManager.isFrontline(neighbor.id, this.myId)) {
-                    spareTroops = Math.floor(spareTroops / 2);
-                }
+
+                // Log do cálculo de tropas disponíveis e maxSpareTroops
+                console.log(`  Vizinho ${neighbor.id} pode doar ${spareTroops} tropas após considerar fronteira, Max atual: ${maxSpareTroops}`);
 
                 if (spareTroops > maxSpareTroops) {
                     maxSpareTroops = spareTroops;
                     bestDonor = neighbor.id;
                 }
             }
+
+            console.log(`  Vizinho ${neighbor.id} com ${neighbor.troops} tropas pode doar ${neighbor.troops > 1 ? neighbor.troops - 1 : 0}`);
         });
 
+        console.log(`AI Player ${this.myId} melhor doador é ${bestDonor} com ${maxSpareTroops} tropas disponíveis.`);
+
         if (bestDonor && maxSpareTroops > 0) {
+            console.log(`AI Player ${this.myId} moverá ${maxSpareTroops} tropas de ${bestDonor} para ${neediestTerritory}`);
             return {
                 from: bestDonor,
                 to: neediestTerritory,
