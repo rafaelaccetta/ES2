@@ -274,7 +274,8 @@ export class GameManager {
         }
     }
 
-    resolveAttack(fromId, toId) {
+    // FIX: Added 'troopsCommitted' parameter to respect user selection
+    resolveAttack(fromId, toId, troopsCommitted = null) {
         let isAdjacent = false;
         if (typeof this.gameMap.areAdjacent === 'function') {
             isAdjacent = this.gameMap.areAdjacent(fromId, toId);
@@ -295,7 +296,13 @@ export class GameManager {
 
         if (attackerTroops <= 1) return {success: false, conquered: false};
 
-        const attackDiceCount = Math.min(3, attackerTroops - 1);
+        // Determine max dice based on troops present AND user commitment
+        let maxDice = attackerTroops - 1;
+        if (troopsCommitted !== null && troopsCommitted !== undefined) {
+            maxDice = Math.min(maxDice, troopsCommitted);
+        }
+
+        const attackDiceCount = Math.min(3, maxDice);
         const defenseDiceCount = Math.min(3, defenderTroops);
 
         const attackRolls = Array.from({length: attackDiceCount}, () => Math.floor(Math.random() * 6) + 1).sort((a, b) => b - a);
@@ -336,10 +343,7 @@ export class GameManager {
         if (this.gameMap.getArmies(toId) === 0) {
             conquered = true;
             this.dominate(ownerAttacker, ownerDefender, toId);
-
-            // FIX: Ensure this flag is set so the card is awarded at end of phase
             this.markTerritoryConquered();
-
             this.logAction(`Território ${toId} CONQUISTADO por ${ownerAttacker.color}!`);
 
             this.gameMap.removeArmy(fromId, 1);
@@ -350,7 +354,10 @@ export class GameManager {
             success: true,
             conquered: conquered,
             attackLosses,
-            defenseLosses
+            defenseLosses,
+            // Return dice so UI can display them correctly
+            attackRolls,
+            defenseRolls
         };
     }
 
@@ -365,7 +372,6 @@ export class GameManager {
 
         if (!isAdjacent) return false;
 
-        // Enforce "Budget" rule during Fortification
         if (this.getPhaseName() === "FORTIFICAR") {
             const allowed = this.fortificationBudget[fromId] || 0;
             if (amount > allowed) {
@@ -379,7 +385,6 @@ export class GameManager {
             this.gameMap.removeArmy(fromId, amount);
             this.gameMap.addArmy(toId, amount);
 
-            // Deduct from budget
             if (this.getPhaseName() === "FORTIFICAR") {
                 this.fortificationBudget[fromId] = (this.fortificationBudget[fromId] || 0) - amount;
             }
@@ -390,7 +395,6 @@ export class GameManager {
         return false;
     }
 
-    // Helper for UI
     getFortificationBudget(territoryId) {
         return this.fortificationBudget[territoryId] ?? 0;
     }

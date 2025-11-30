@@ -55,7 +55,7 @@ interface GameContextType extends GameState {
     moveArmies: (source: string, target: string, moved: number) => void;
     calculateReinforcementTroops: (player?: Player) => any;
     placeReinforcement: (territory: string) => void;
-    undoReinforcement: (territory: string, type: 'exclusive' | 'continent' | 'free') => void; // NEW
+    undoReinforcement: (territory: string, type: 'exclusive' | 'continent' | 'free') => void;
 }
 
 const initialState: GameState = {
@@ -334,7 +334,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         }
     };
 
-    // NEW: Undo helper
     const undoReinforcement = (territory: string, type: 'exclusive' | 'continent' | 'free') => {
         const gm = gameState.gameManager;
         const rawPlayer = gm?.getPlayerPlaying();
@@ -363,7 +362,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 const currentPlayer = getCurrentPlayer();
                 if (!currentPlayer) return;
 
-                const result = gameState.gameManager.resolveAttack(source, target);
+                // FIX: Pass troops argument!
+                const result = gameState.gameManager.resolveAttack(source, target, troops);
 
                 if (!result.success) {
                     console.warn("Attack failed validation in backend");
@@ -529,7 +529,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         applyPostConquestMove,
         calculateReinforcementTroops,
         placeReinforcement,
-        undoReinforcement, // Export the new helper
+        undoReinforcement,
     };
 
     return (
