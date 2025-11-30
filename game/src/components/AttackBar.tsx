@@ -35,10 +35,10 @@ interface BattleResult {
 }
 
 const AttackBar: React.FC<AttackBarProps> = ({
-    isVisible,
-    onClose,
-    isDimmed = false,
-}) => {
+                                                 isVisible,
+                                                 onClose,
+                                                 isDimmed = false,
+                                             }) => {
     const { getCurrentPlayer, gameManager, applyPostConquestMove } =
         useGameContext();
     const currentPlayer = getCurrentPlayer();
@@ -63,12 +63,17 @@ const AttackBar: React.FC<AttackBarProps> = ({
         useState<PostConquestPayload | null>(null);
     const [moveCount, setMoveCount] = useState("1");
 
+    // HELPER: Get troops safely from GameMap via GameManager
+    const getTroops = useCallback((territory: string) => {
+        if (!gameManager) return 0;
+        return gameManager.getTerritoryArmies(territory);
+    }, [gameManager]);
+
     // Listener para territory-selected (clicar no mapa)
     const handleTerritorySelected = useCallback(
         (territoryId: string) => {
             if (!currentPlayer || !gameManager) return;
 
-            // Verificar se é território do jogador
             const normalizedId = territoryId;
             const isOwned = currentPlayer.territories.some(
                 (t) =>
@@ -92,9 +97,9 @@ const AttackBar: React.FC<AttackBarProps> = ({
                             .replace(/[^a-z0-9]/g, "") === normalizedId
                 );
                 if (matchingTerritory) {
-                    const armies =
-                        currentPlayer.territoriesArmies?.[matchingTerritory] ??
-                        0;
+                    // FIX: Use helper instead of direct access
+                    const armies = getTroops(matchingTerritory);
+
                     if (armies <= 1) {
                         console.log(
                             "Território sem tropas suficientes para atacar"
@@ -116,12 +121,13 @@ const AttackBar: React.FC<AttackBarProps> = ({
                 // Verificar se é vizinho válido
                 try {
                     const gmAny = gameManager as any;
-                    const neighbors =
-                        gmAny.gameMap?.territories?.getNeighbors(
-                            selectedSource
-                        ) || [];
+                    // Use new helper or fallback
+                    const neighbors = gmAny.getNeighbors ? gmAny.getNeighbors(selectedSource) : (gmAny.gameMap?.territories?.getNeighbors(selectedSource) || []);
+
+                    // Normalize check because neighbors might be objects {node: "Name"} or strings "Name" depending on API version
                     const isNeighbor = neighbors.some((n: any) => {
-                        const normalizedNeighbor = n.node
+                        const name = typeof n === 'string' ? n : n.node;
+                        const normalizedNeighbor = name
                             .normalize("NFD")
                             .replace(/\p{Diacritic}+/gu, "")
                             .toLowerCase()
@@ -158,7 +164,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
                 }
             }
         },
-        [currentPlayer, gameManager, selectedSource, attackPhase]
+        [currentPlayer, gameManager, selectedSource, attackPhase, getTroops]
     );
 
     useEffect(() => {
@@ -250,14 +256,12 @@ const AttackBar: React.FC<AttackBarProps> = ({
         ) {
             const playerTerritories = currentPlayer.territories
                 .filter((t) => {
-                    const armies = currentPlayer.territoriesArmies?.[t] ?? 0;
+                    // FIX: Use helper
+                    const armies = getTroops(t);
                     return armies > 1; // Somente territórios com mais de 1 tropa
                 })
                 .map(normalize);
-            console.log(
-                "AttackBar: Highlighting player territories:",
-                playerTerritories
-            );
+
             EventBus.emit("highlight-territories", {
                 territories: playerTerritories,
                 mode: "player-territories",
@@ -270,22 +274,22 @@ const AttackBar: React.FC<AttackBarProps> = ({
             !showAttackResult &&
             !showPostConquest
         ) {
-            const gmAny = gameManager as any;
-            const neighbors =
-                gmAny.gameMap?.territories?.getNeighbors(selectedSource) || [];
+            // FIX: Use GameManager helper
+            const neighbors = gameManager.getNeighbors(selectedSource);
+
             const enemyNeighbors = neighbors
-                .filter((n: any) => {
+                .filter((n: string) => {
                     // Verificar se é território inimigo
                     for (const player of gameManager.players) {
                         if (player.id === currentPlayer.id) continue;
                         const hasTerritory = player.territories.some(
-                            (t) => normalize(t) === normalize(n.node)
+                            (t) => normalize(t) === normalize(n)
                         );
                         if (hasTerritory) return true;
                     }
                     return false;
                 })
-                .map((n: any) => normalize(n.node));
+                .map((n: string) => normalize(n));
 
             const highlightList = [
                 normalize(selectedSource),
@@ -332,14 +336,16 @@ const AttackBar: React.FC<AttackBarProps> = ({
         currentPlayer,
         gameManager,
         postConquestData,
+        getTroops
     ]);
 
     const maxAttackable = useMemo(() => {
         if (!selectedSource || !currentPlayer) return 0;
-        const armies = currentPlayer.territoriesArmies?.[selectedSource] ?? 0;
+        // FIX: Use helper
+        const armies = getTroops(selectedSource);
         const possible = Math.max(0, armies - 1);
         return Math.min(3, possible);
-    }, [selectedSource, currentPlayer]);
+    }, [selectedSource, currentPlayer, getTroops]);
 
     useEffect(() => {
         const currentQty = parseInt(attackQuantity) || 1;
@@ -349,17 +355,6 @@ const AttackBar: React.FC<AttackBarProps> = ({
             setAttackQuantity(String(maxAttackable));
         }
     }, [maxAttackable, attackQuantity]);
-
-    const getTerritoryTroops = (territory: string): number => {
-        if (!gameManager) return 0;
-
-        for (const player of gameManager.players) {
-            if (player.territories.includes(territory)) {
-                return player.territoriesArmies?.[territory] ?? 0;
-            }
-        }
-        return 0;
-    };
 
     const handleAttack = () => {
         if (!selectedSource || !selectedTarget) return;
@@ -457,117 +452,117 @@ const AttackBar: React.FC<AttackBarProps> = ({
                         isDimmed ? "dimmed" : ""
                     }`}
                 >
-                <div className="attack-result-content">
-                    <div className="result-header">
-                        <h3
-                            className={
-                                attackResult.conquered ? "victory" : "defeat"
-                            }
-                        >
-                            {attackResult.conquered
-                                ? "TERRITÓRIO CONQUISTADO!"
-                                : "ATAQUE DEFENDIDO!"}
-                        </h3>
-                    </div>
+                    <div className="attack-result-content">
+                        <div className="result-header">
+                            <h3
+                                className={
+                                    attackResult.conquered ? "victory" : "defeat"
+                                }
+                            >
+                                {attackResult.conquered
+                                    ? "TERRITÓRIO CONQUISTADO!"
+                                    : "ATAQUE DEFENDIDO!"}
+                            </h3>
+                        </div>
 
-                    <div className="battle-summary">
-                        <div className="battle-info">
+                        <div className="battle-summary">
+                            <div className="battle-info">
                             <span>
                                 {attackResult.source} ⚔️ {attackResult.target}
                             </span>
-                            <span className="troops-used">
+                                <span className="troops-used">
                                 Tropas usadas: {attackResult.troopsUsed}
                             </span>
-                        </div>
+                            </div>
 
-                        <div className="dice-results">
-                            <div className="dice-group">
-                                <span className="dice-label">Atacante</span>
-                                <div className="dice-container">
-                                    {attackResult.attackerDice.map(
-                                        (value, index) => (
-                                            <div
-                                                key={index}
-                                                className="dice"
-                                                style={{
-                                                    backgroundColor:
-                                                        attackResult.attackerColor
-                                                            ? getPlayerColor(
-                                                                  attackResult.attackerColor
-                                                              )
-                                                            : undefined,
-                                                }}
-                                            >
-                                                {value}
-                                            </div>
-                                        )
-                                    )}
-                                </div>
-                                <span className="loss-text">
+                            <div className="dice-results">
+                                <div className="dice-group">
+                                    <span className="dice-label">Atacante</span>
+                                    <div className="dice-container">
+                                        {attackResult.attackerDice.map(
+                                            (value, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="dice"
+                                                    style={{
+                                                        backgroundColor:
+                                                            attackResult.attackerColor
+                                                                ? getPlayerColor(
+                                                                    attackResult.attackerColor
+                                                                )
+                                                                : undefined,
+                                                    }}
+                                                >
+                                                    {value}
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+                                    <span className="loss-text">
                                     Perdas: {attackResult.attackerLoss}
                                 </span>
-                            </div>
-
-                            <div className="dice-group">
-                                <span className="dice-label">Defensor</span>
-                                <div className="dice-container">
-                                    {attackResult.defenderDice.map(
-                                        (value, index) => (
-                                            <div
-                                                key={index}
-                                                className="dice"
-                                                style={{
-                                                    backgroundColor:
-                                                        attackResult.defenderColor
-                                                            ? getPlayerColor(
-                                                                  attackResult.defenderColor
-                                                              )
-                                                            : undefined,
-                                                }}
-                                            >
-                                                {value}
-                                            </div>
-                                        )
-                                    )}
                                 </div>
-                                <span className="loss-text">
+
+                                <div className="dice-group">
+                                    <span className="dice-label">Defensor</span>
+                                    <div className="dice-container">
+                                        {attackResult.defenderDice.map(
+                                            (value, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="dice"
+                                                    style={{
+                                                        backgroundColor:
+                                                            attackResult.defenderColor
+                                                                ? getPlayerColor(
+                                                                    attackResult.defenderColor
+                                                                )
+                                                                : undefined,
+                                                    }}
+                                                >
+                                                    {value}
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+                                    <span className="loss-text">
                                     Perdas: {attackResult.defenderLoss}
                                 </span>
+                                </div>
+                            </div>
+
+                            <div
+                                className={`result-message ${
+                                    attackResult.conquered ? "victory" : "defeat"
+                                }`}
+                            >
+                                {attackResult.conquered ? (
+                                    <div>
+                                        <h4>VITÓRIA!</h4>
+                                        <p>
+                                            {attackResult.source} conquistou{" "}
+                                            {attackResult.target}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <h4>DERROTA</h4>
+                                        <p>
+                                            {attackResult.target} resistiu ao ataque
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        <div
-                            className={`result-message ${
-                                attackResult.conquered ? "victory" : "defeat"
-                            }`}
+                        <button
+                            className="continue-btn"
+                            onClick={handleCloseAttackResult}
                         >
-                            {attackResult.conquered ? (
-                                <div>
-                                    <h4>VITÓRIA!</h4>
-                                    <p>
-                                        {attackResult.source} conquistou{" "}
-                                        {attackResult.target}
-                                    </p>
-                                </div>
-                            ) : (
-                                <div>
-                                    <h4>DERROTA</h4>
-                                    <p>
-                                        {attackResult.target} resistiu ao ataque
-                                    </p>
-                                </div>
-                            )}
-                        </div>
+                            Continuar
+                        </button>
                     </div>
-
-                    <button
-                        className="continue-btn"
-                        onClick={handleCloseAttackResult}
-                    >
-                        Continuar
-                    </button>
                 </div>
-            </div>
             </>
         );
     }
@@ -703,9 +698,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
                                 </span>
                                 <span className="selection-chip-text">
                                     {selectedSource} (
-                                    {currentPlayer.territoriesArmies?.[
-                                        selectedSource
-                                    ] || 0}{" "}
+                                    {getTroops(selectedSource)}{" "}
                                     tropas)
                                 </span>
                                 <button
@@ -724,7 +717,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
                                 </span>
                                 <span className="selection-chip-text">
                                     {selectedTarget} (
-                                    {getTerritoryTroops(selectedTarget)} tropas)
+                                    {getTroops(selectedTarget)} tropas)
                                 </span>
                                 <button
                                     className="selection-chip-remove"
@@ -793,4 +786,3 @@ const AttackBar: React.FC<AttackBarProps> = ({
 };
 
 export default AttackBar;
-
