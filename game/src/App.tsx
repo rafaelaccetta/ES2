@@ -26,10 +26,15 @@ const AppContent = () => {
 
         EventBus.on('start-game-ui', handleStartGame);
         EventBus.on('back-to-menu', handleBackToMenu);
+        const handleHideUI = () => {
+            setShowGameUI(false);
+        };
+        EventBus.on('hide-ui', handleHideUI);
 
         return () => {
             EventBus.removeListener('start-game-ui');
             EventBus.removeListener('back-to-menu');
+            EventBus.removeListener('hide-ui');
         };
     }, [resetGame]);
 

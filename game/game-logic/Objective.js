@@ -50,7 +50,18 @@ export class DominateContinentObjective extends Objective {
     checkWin(player, gameState) {
         const territoriesByContinent = gameState.getTerritoriesByContinent();
 
-        for (const cont of this.continents) {
+        const normalizeContinent = (c) => {
+            if (!c && c !== 0) return c;
+            if (typeof c === 'string') return c;
+            if (typeof c === 'object') {
+                if (c.name) return c.name;
+                return String(c);
+            }
+            return String(c);
+        };
+
+        for (const rawCont of this.continents) {
+            const cont = normalizeContinent(rawCont);
             if (!player.hasConqueredContinent(cont, territoriesByContinent)) {
                 return false;
             }
@@ -63,7 +74,18 @@ export class DominateContinentObjective extends Objective {
 
     _continentTerritoriesCount(territoriesByContinent) {
         let count = 0;
-        for (const cont of this.continents) {
+        const normalizeContinent = (c) => {
+            if (!c && c !== 0) return c;
+            if (typeof c === 'string') return c;
+            if (typeof c === 'object') {
+                if (c.name) return c.name;
+                return String(c);
+            }
+            return String(c);
+        };
+
+        for (const rawCont of this.continents) {
+            const cont = normalizeContinent(rawCont);
             count += (territoriesByContinent[cont] || []).length;
         }
         return count;

@@ -27,6 +27,15 @@ export class Game extends Scene
         }).setOrigin(0.5).setDepth(100);
 
         EventBus.emit('current-scene-ready', this);
+
+        EventBus.on('game-won', (payload: any) => {
+            try {
+                console.log('Game scene received game-won', payload);
+                this.scene.start('GameOver');
+            } catch (e) {
+                console.error('Error handling game-won in Game scene', e);
+            }
+        });
     }
 
     changeScene ()
