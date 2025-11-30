@@ -43,32 +43,28 @@ const AttackBar: React.FC<AttackBarProps> = ({
         useGameContext();
     const currentPlayer = getCurrentPlayer();
 
-    // Estado para controlar as fases de seleção
     type AttackPhase = "SELECT_SOURCE" | "SELECT_TARGET" | "SELECT_TROOPS";
     const [attackPhase, setAttackPhase] =
         useState<AttackPhase>("SELECT_SOURCE");
 
-    // Estado para ataque
     const [selectedSource, setSelectedSource] = useState<string>("");
     const [selectedTarget, setSelectedTarget] = useState<string>("");
     const [attackQuantity, setAttackQuantity] = useState<string>("1");
 
-    // Estado para resultado do ataque
     const [showAttackResult, setShowAttackResult] = useState(false);
     const [attackResult, setAttackResult] = useState<BattleResult | null>(null);
 
-    // Estado para pós-conquista
     const [showPostConquest, setShowPostConquest] = useState(false);
     const [postConquestData, setPostConquestData] =
         useState<PostConquestPayload | null>(null);
-    const [moveCount, setMoveCount] = useState("1");
+    // FIX: Default to "0" since 1 troop already auto-moves
+    const [moveCount, setMoveCount] = useState("0");
 
     const getTroops = useCallback((territory: string) => {
         if (!gameManager) return 0;
         return gameManager.getTerritoryArmies(territory);
     }, [gameManager]);
 
-    // Listener para territory-selected (clicar no mapa)
     const handleTerritorySelected = useCallback(
         (territoryId: string) => {
             if (!currentPlayer || !gameManager) return;
@@ -84,7 +80,6 @@ const AttackBar: React.FC<AttackBarProps> = ({
                         .replace(/[^a-z0-9]/g, "") === normalizedId
             );
 
-            // Fase 1: Selecionando território de origem
             if (attackPhase === "SELECT_SOURCE" && isOwned) {
                 const matchingTerritory = currentPlayer.territories.find(
                     (t) =>
@@ -109,7 +104,6 @@ const AttackBar: React.FC<AttackBarProps> = ({
                     setAttackPhase("SELECT_TARGET");
                 }
             }
-            // Fase 2: Selecionando território alvo
             else if (
                 attackPhase === "SELECT_TARGET" &&
                 selectedSource &&
@@ -168,7 +162,6 @@ const AttackBar: React.FC<AttackBarProps> = ({
         };
     }, [isVisible, handleTerritorySelected]);
 
-    // Listener para resultado do ataque
     useEffect(() => {
         const handleAttackResult = (data: any) => {
             const result = data as BattleResult;
@@ -182,12 +175,10 @@ const AttackBar: React.FC<AttackBarProps> = ({
         };
     }, []);
 
-    // Listener para pós-conquista
     useEffect(() => {
         const handlePostConquest = (data: any) => {
             const p = data as PostConquestPayload;
 
-            // FIX: If no moves possible (e.g. 1 troop left), skip modal and auto-confirm 0
             if (p.maxCanMove <= 0) {
                 console.log("No troops to move after conquest (1 must stay). Auto-skipping move.");
                 applyPostConquestMove(p.source, p.target, 0);
@@ -199,8 +190,8 @@ const AttackBar: React.FC<AttackBarProps> = ({
             }
 
             setPostConquestData(p);
-            const defaultMove = Math.min(1, Math.max(1, p.maxCanMove));
-            setMoveCount(String(defaultMove));
+            // Default to 0 additional troops
+            setMoveCount("0");
             setShowPostConquest(true);
             setShowAttackResult(false);
         };
@@ -221,13 +212,19 @@ const AttackBar: React.FC<AttackBarProps> = ({
             setShowAttackResult(false);
             setAttackResult(null);
             setAttackPhase("SELECT_SOURCE");
-            EventBus.emit("highlight-territories", { territories: [], mode: "none" });
+            EventBus.emit("highlight-territories", {
+                territories: [],
+                mode: "none",
+            });
         }
     }, [isVisible]);
 
     useEffect(() => {
         if (!isVisible || !currentPlayer || !gameManager) {
-            EventBus.emit("highlight-territories", { territories: [], mode: "none" });
+            EventBus.emit("highlight-territories", {
+                territories: [],
+                mode: "none",
+            });
             return;
         }
 
@@ -239,20 +236,28 @@ const AttackBar: React.FC<AttackBarProps> = ({
                 .replace(/\s+/g, "")
                 .replace(/[^a-z0-9]/g, "");
 
-        if (attackPhase === "SELECT_SOURCE" && !showAttackResult && !showPostConquest) {
+        if (
+            attackPhase === "SELECT_SOURCE" &&
+            !showAttackResult &&
+            !showPostConquest
+        ) {
             const playerTerritories = currentPlayer.territories
                 .filter((t) => {
                     const armies = getTroops(t);
                     return armies > 1;
                 })
                 .map(normalize);
-
             EventBus.emit("highlight-territories", {
                 territories: playerTerritories,
                 mode: "player-territories",
             });
         }
-        else if (attackPhase === "SELECT_TARGET" && selectedSource && !showAttackResult && !showPostConquest) {
+        else if (
+            attackPhase === "SELECT_TARGET" &&
+            selectedSource &&
+            !showAttackResult &&
+            !showPostConquest
+        ) {
             const neighbors = gameManager.getNeighbors(selectedSource);
             const enemyNeighbors = neighbors
                 .filter((n: string) => {
@@ -267,14 +272,21 @@ const AttackBar: React.FC<AttackBarProps> = ({
                 })
                 .map((n: string) => normalize(n));
 
-            const highlightList = [normalize(selectedSource), ...enemyNeighbors];
+            const highlightList = [
+                normalize(selectedSource),
+                ...enemyNeighbors,
+            ];
             EventBus.emit("highlight-territories", {
                 territories: highlightList,
                 mode: "attack-selection",
             });
         }
         else if (
-            (attackPhase === "SELECT_TROOPS" && selectedSource && selectedTarget && !showAttackResult && !showPostConquest) ||
+            (attackPhase === "SELECT_TROOPS" &&
+                selectedSource &&
+                selectedTarget &&
+                !showAttackResult &&
+                !showPostConquest) ||
             showAttackResult ||
             showPostConquest
         ) {
@@ -378,7 +390,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
     useEffect(() => {
         if (!postConquestData) return;
 
-        const currentMove = parseInt(moveCount) || 1;
+        const currentMove = parseInt(moveCount) || 0;
         const maxPossible = Math.min(
             postConquestData.troopsRequested,
             postConquestData.maxCanMove
@@ -387,7 +399,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
         if (currentMove > maxPossible && maxPossible > 0) {
             setMoveCount(String(maxPossible));
         } else if (maxPossible === 0) {
-            setMoveCount("1");
+            setMoveCount("0");
         }
     }, [postConquestData, moveCount]);
 
@@ -408,11 +420,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
         return (
             <>
                 <div className="attack-result-overlay" />
-                <div
-                    className={`attack-bar attack-result ${
-                        isDimmed ? "dimmed" : ""
-                    }`}
-                >
+                <div className={`attack-bar attack-result ${isDimmed ? "dimmed" : ""}`}>
                     <div className="attack-result-content">
                         <div className="result-header">
                             <h3 className={attackResult.conquered ? "victory" : "defeat"}>
@@ -482,16 +490,18 @@ const AttackBar: React.FC<AttackBarProps> = ({
                 <div className="attack-bar-content">
                     <span className="conquest-message">
                         <strong>{postConquestData.target}</strong> conquistado!
-                        Mover tropas de <strong>{postConquestData.source}</strong>?
+                        Mover tropas extras de <strong>{postConquestData.source}</strong>?
                     </span>
                     <div className="troop-move-controls">
                         <div className="troop-buttons-inline">
+                            {/* FIX: Added option to move 0 */}
+                            <button className={`troop-btn-small ${moveCount === "0" ? "selected" : ""}`} onClick={() => setMoveCount("0")}>0</button>
                             <button className={`troop-btn-small ${moveCount === "1" ? "selected" : ""}`} onClick={() => setMoveCount("1")} disabled={postConquestData.maxCanMove < 1}>1</button>
                             <button className={`troop-btn-small ${moveCount === "2" ? "selected" : ""}`} onClick={() => setMoveCount("2")} disabled={postConquestData.maxCanMove < 2}>2</button>
                             <button className={`troop-btn-small ${moveCount === "3" ? "selected" : ""}`} onClick={() => setMoveCount("3")} disabled={postConquestData.maxCanMove < 3}>3</button>
                         </div>
                         <button className="confirm-move-btn" onClick={handleConfirmMove}>
-                            Mover {moveCount} tropa{parseInt(moveCount) > 1 ? "s" : ""}
+                            {moveCount === "0" ? "Concluir sem mover" : `Mover ${moveCount} extra(s)`}
                         </button>
                     </div>
                 </div>

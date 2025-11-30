@@ -43,30 +43,35 @@ describe('GameContext Integration', () => {
         const { result } = renderHook(() => useGameContext(), { wrapper });
 
         await act(async () => {
-            result.current.startGame(2);
+            // Start with 4 humans to prevent AI auto-play from draining reserves immediately
+            // This ensures we have a predictable state to test the bridge
+            result.current.startGame(4);
         });
 
-        const p0 = result.current.getCurrentPlayer();
-        expect(p0).not.toBeNull();
+        const currentPlayer = result.current.getCurrentPlayer();
+        expect(currentPlayer).not.toBeNull();
 
         const lastCall = (EventBus.emit as any).mock.calls.find((call: any[]) => call[0] === 'players-updated');
         const payload = lastCall[1];
-        const player0Data = payload.players[0];
 
-        expect(player0Data.pendingReinforcements).toBeGreaterThan(0);
-        expect(player0Data.pendingReinforcements).toBe(p0!.armies);
+        // Find data for the current player
+        const playerData = payload.players.find((p: any) => p.id === currentPlayer?.id);
+
+        expect(playerData.pendingReinforcements).toBeDefined();
+        // Since we disabled AI, reserves should be intact (5 for start)
+        expect(playerData.pendingReinforcements).toBe(5);
+        expect(playerData.pendingReinforcements).toBe(currentPlayer!.armies);
     });
 
     it('should handle territory reinforcement via the new helper', async () => {
         const { result } = renderHook(() => useGameContext(), { wrapper });
 
         await act(async () => {
-            result.current.startGame(2);
+            result.current.startGame(4); // 4 Humans
         });
 
         const player = result.current.getCurrentPlayer();
-        // Fallback: If player 0 is AI (unlikely with id=0 but possible with shuffle), ensure we get a human or handle it
-        if (!player) return;
+        if (!player) throw new Error("No player found");
 
         const territory = player.territories[0];
         const initialReserves = player.armies;
@@ -76,7 +81,10 @@ describe('GameContext Integration', () => {
             result.current.placeReinforcement(territory);
         });
 
-        expect(player.armies).toBe(initialReserves - 1);
+        // Re-fetch player to see updated state
+        const updatedPlayer = result.current.getCurrentPlayer();
+
+        expect(updatedPlayer!.armies).toBe(initialReserves - 1);
         expect(result.current.gameManager!.getTerritoryArmies(territory)).toBe(initialOnBoard + 1);
     });
 
@@ -84,38 +92,45 @@ describe('GameContext Integration', () => {
         const { result } = renderHook(() => useGameContext(), { wrapper });
 
         await act(async () => {
-            // Start with 4 human players to avoid AI auto-playing and messing up our tracking
             result.current.startGame(4);
         });
 
-        // --- ROUND 0: Everyone just reinforces then passes turn ---
-        // Player 0
-        let p = result.current.getCurrentPlayer();
-        p!.removeArmies(p!.armies); // Drain armies to allow passing
-        act(() => result.current.nextPhase());
+        const drainArmies = () => {
+            // Must fetch fresh player instance every time
+            const player = result.current.gameManager!.getPlayerPlaying();
+            if (!player || player.armies <= 0) return;
 
-        // Should NOT go to ATTACK in Round 0, should go to Player 1 REINFORCE
-        expect(result.current.currentPhase).toBe("REFORÇAR");
-        expect(result.current.currentPlayerIndex).not.toBe(p!.id);
+            const target = player.territories[0];
+            const amount = player.armies;
 
-        // Fast forward through rest of Round 0
-        for (let i = 0; i < 3; i++) {
-            p = result.current.getCurrentPlayer();
-            p!.removeArmies(p!.armies);
+            act(() => {
+                for(let k=0; k<amount; k++) {
+                    result.current.placeReinforcement(target);
+                }
+            });
+        };
+
+        // Round 0 Loop
+        for (let i = 0; i < 4; i++) {
+            drainArmies();
+            const currentPlayerIdBefore = result.current.getCurrentPlayer()?.id;
+
             act(() => result.current.nextPhase());
+
+            // In Round 0, phase stays REFORÇAR, but player changes
+            if (i < 3) {
+                expect(result.current.currentPhase).toBe("REFORÇAR");
+                expect(result.current.getCurrentPlayer()?.id).not.toBe(currentPlayerIdBefore);
+            }
         }
 
-        // --- ROUND 1: Now we can attack ---
-        // We are back to Player 0 (or whoever is first index)
-        p = result.current.getCurrentPlayer();
-        p!.removeArmies(p!.armies); // Drain reinforcement
+        // Round 1 Begins (Back to first player)
+        // Now phase transitions should work normally
+        drainArmies();
 
-        // Pass Reinforce -> Attack
         act(() => result.current.nextPhase());
-
         expect(result.current.currentPhase).toBe("ATACAR");
 
-        // Pass Attack -> Fortify
         act(() => result.current.nextPhase());
         expect(result.current.currentPhase).toBe("FORTIFICAR");
     });

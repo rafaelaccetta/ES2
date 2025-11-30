@@ -97,17 +97,19 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 territoriesArmies[t] = gameState.gameManager!.getTerritoryArmies(t);
             });
 
-            return {
-                id: p.id,
-                color: p.color,
-                territories: p.territories,
+            return Object.assign(Object.create(Object.getPrototypeOf(p)), p, {
                 territoriesArmies: territoriesArmies,
-                armies: p.armies,
                 pendingReinforcements: p.armies,
-                cards: p.cards,
-            };
+            });
         });
 
+        // Update React State
+        setGameState(prev => ({
+            ...prev,
+            players: playersPayload
+        }));
+
+        // Emit Event for Phaser
         EventBus.emit("players-updated", {
             playerCount: gameState.players.length,
             players: playersPayload,
@@ -132,10 +134,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         loadObjectives();
     }, []);
 
-    // --- NEW: Handle Map State Requests (Fixes Color Glitch) ---
+    // Handle Map State Requests
     useEffect(() => {
         const handleRequestState = () => {
-            console.log("GameContext: Map requested state update");
             broadcastGameState();
         };
         EventBus.on("request-game-state", handleRequestState);
@@ -144,20 +145,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         };
     }, [broadcastGameState]);
 
-    // --- NEW: Watch for AI Turns (Fixes AI Start Issue) ---
+    // Watch for AI Turns
     useEffect(() => {
         if (!gameState.gameStarted || !gameState.gameManager) return;
 
         const currentPlayer = gameState.gameManager.getPlayerPlaying();
 
-        // If it is the AI's turn, execute it automatically
         if (currentPlayer && currentPlayer.isAI && currentPlayer.isActive) {
             console.log(`🤖 Detetada vez da IA (${currentPlayer.color}). Executando...`);
 
-            // Execute logic
             gameState.gameManager.executeAITurn();
 
-            // Update UI state to reflect AI moves + Phase change
             setGameState((prevState) => ({
                 ...prevState,
                 currentPlayerIndex: gameState.gameManager!.turn,
@@ -169,8 +167,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         }
     }, [
         gameState.gameStarted,
-        gameState.currentPlayerIndex, // Triggers when turn changes
-        gameState.currentPhase,       // Triggers when phase changes
+        gameState.currentPlayerIndex,
+        gameState.currentPhase,
         gameState.gameManager,
         broadcastGameState
     ]);
@@ -218,20 +216,15 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             firstRoundObjectiveShown: new Set(),
         }));
 
-        // Initial broadcast
         const playersPayload = gamePlayers.map((p) => {
             const territoriesArmies: Record<string, number> = {};
             p.territories.forEach((t) => {
                 territoriesArmies[t] = gameManager.getTerritoryArmies(t);
             });
-            return {
-                id: p.id,
-                color: p.color,
-                territories: p.territories,
+            return Object.assign(Object.create(Object.getPrototypeOf(p)), p, {
                 territoriesArmies: territoriesArmies,
-                armies: p.armies,
-                pendingReinforcements: p.armies,
-            };
+                pendingReinforcements: p.armies
+            });
         });
 
         EventBus.emit("players-updated", {
@@ -241,10 +234,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     };
 
     const getCurrentPlayer = (): Player | null => {
-        if (!gameState.gameManager || gameState.players.length === 0) {
-            return null;
+        if (gameState.players.length > 0 && gameState.currentPlayerIndex < gameState.players.length) {
+            return gameState.players[gameState.currentPlayerIndex];
         }
-        return gameState.gameManager.getPlayerPlaying();
+        if (gameState.gameManager) {
+            return gameState.gameManager.getPlayerPlaying();
+        }
+        return null;
     };
 
     const getCurrentObjective = (): Objective | null => {
@@ -279,8 +275,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         if (!gameState.gameManager) return;
 
         const currentPlayer = getCurrentPlayer();
+        const reserves = (currentPlayer as any).pendingReinforcements || currentPlayer.armies || 0;
 
-        if (gameState.currentPhase === 'REFORÇAR' && currentPlayer && currentPlayer.armies > 0) {
+        if (gameState.currentPhase === 'REFORÇAR' && currentPlayer && reserves > 0) {
             console.warn('Não pode avançar: ainda existem reforços para alocar.');
             return;
         }
@@ -325,11 +322,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
     const placeReinforcement = (territory: string) => {
         const gm = gameState.gameManager;
-        const player = getCurrentPlayer();
-        if (!gm || !player) return;
+        const rawPlayer = gm?.getPlayerPlaying();
 
-        if (player.hasTerritory(territory) && player.armies > 0) {
-            player.removeArmies(1);
+        if (!gm || !rawPlayer) return;
+
+        if (rawPlayer.hasTerritory(territory) && rawPlayer.armies > 0) {
+            rawPlayer.removeArmies(1);
             gm.gameMap.addArmy(territory, 1);
             broadcastGameState();
         }
@@ -338,9 +336,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
     useEffect(() => {
         const handleAttackRequest = (data: { source: string; target: string; troops: number }) => {
-            try {
-                if (!gameState.gameManager) return;
+            if (!gameState.gameManager) return;
 
+            try {
                 const { source, target, troops } = data as any;
                 const currentPlayer = getCurrentPlayer();
                 if (!currentPlayer) return;
@@ -380,10 +378,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                     });
                 }
 
-                broadcastGameState();
-
             } catch (err) {
                 console.error('Error processing attack-request', err);
+            } finally {
+                // FORCE UI UPDATE after attack, regardless of conquest result
+                broadcastGameState();
             }
         };
 
@@ -399,7 +398,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         const handleCardExchange = (data: { cards: PlayerCards[] }) => {
             try {
                 const { cardManager } = gameState;
-                const currentPlayer = getCurrentPlayer();
+                const currentPlayer = gameState.gameManager?.getPlayerPlaying();
                 if (!cardManager || !currentPlayer || !data.cards) return;
 
                 cardManager.executeCardExchange(data.cards, currentPlayer);
@@ -424,7 +423,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const applyPostConquestMove = (source: string, target: string, moved: number) => {
         if (!gameState.gameManager) return;
 
-        gameState.gameManager.moveTroops(source, target, moved);
+        // FIX: Only call moveTroops if we are moving > 0.
+        // Calling with 0 throws an error in GameMap.
+        if (moved > 0) {
+            gameState.gameManager.moveTroops(source, target, moved);
+        }
+
+        // Always refresh UI, even if moved 0, to exit battle state
         broadcastGameState();
     };
 
@@ -483,7 +488,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         if (!targetPlayer || !gameState.gameManager) {
             return { totalTroops: 0, territoryBonus: 0, continentBonus: 0, cardBonus: 0, continentBonuses: {} };
         }
-
         return (gameState.gameManager as any).calculateReinforcementTroops(targetPlayer);
     };
 
