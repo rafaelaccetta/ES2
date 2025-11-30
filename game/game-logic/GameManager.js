@@ -142,6 +142,7 @@ export class GameManager {
                 armiesToAdd += bonus;
             }
 
+            // Note: This adds to the player's "Reserve Pool", not the board directly.
             nextPlayer.addArmies(armiesToAdd);
             this.logAction(`Jogador ${nextPlayer.id} recebeu ${armiesToAdd} exércitos de reforço.`);
         }
@@ -154,8 +155,6 @@ export class GameManager {
     #passRound() {
         this.round++;
         console.log(`🔄 Nova rodada iniciada: Rodada ${this.round}`);
-        // likely extra state handling code is going to be here in the future
-        // so I put this function here already
         this.logAction(`Rodada ${this.round} iniciada.`);
     }
 
@@ -187,13 +186,47 @@ export class GameManager {
     }
 
     executeAIPlacement(ai, player) {
+        let safetyCounter = 0;
+        const MAX_LOOPS = 200; // Prevent infinite loops
+
         while (player.armies > 0) {
-            const territoryId = ai.decidePlacement(this);
+            safetyCounter++;
+            if (safetyCounter > MAX_LOOPS) {
+                console.warn("AI Placement forced break: Infinite loop detected or too many armies.");
+                break;
+            }
+            if (player.territories.length === 0) {
+                console.warn("AI has armies but no territories. Skipping placement.");
+                break;
+            }
+
+            // Check if there are Exclusive Armies (from Card Exchange) to place first
+            let forcedTerritory = null;
+            if (player.armiesExclusiveToTerritory.size > 0) {
+                for (const [terrId, amount] of player.armiesExclusiveToTerritory.entries()) {
+                    if (amount > 0 && player.hasTerritory(terrId)) {
+                        forcedTerritory = terrId;
+                        // Decrement the exclusive lock (the actual army is removed from general pool below)
+                        player.removeArmiesExclusive(terrId, 1);
+                        break;
+                    }
+                }
+            }
+
+            let territoryId = forcedTerritory;
+
+            // If no forced placement, ask AI logic
+            if (!territoryId) {
+                territoryId = ai.decidePlacement(this);
+            }
+
+            // Validation and Placement
             if (territoryId && player.hasTerritory(territoryId)) {
-                player.removeArmies(1);
-                this.gameMap.addArmy(territoryId, 1);
-                this.logAction(`IA colocou 1 exército em ${territoryId}`);
+                player.removeArmies(1); // Remove from Reserve
+                this.gameMap.addArmy(territoryId, 1); // Add to Map
+                // this.logAction(`IA colocou 1 exército em ${territoryId}`); // Detailed log can be spammy
             } else {
+                // Fallback: Random valid territory
                 const randomIdx = Math.floor(Math.random() * player.territories.length);
                 const randomTerritory = player.territories[randomIdx];
 
@@ -273,7 +306,7 @@ export class GameManager {
             }
         }
 
-        // Aplicação das baixas
+        // Aplicação das baixas (Diretamente no MAPA)
         if (attackLosses > 0) {
             this.gameMap.removeArmy(fromId, attackLosses);
         }
@@ -281,7 +314,6 @@ export class GameManager {
         if (defenseLosses > 0) {
             const currentDefenderArmies = this.gameMap.getArmies(toId);
 
-            // CORREÇÃO: Se as perdas zerarem o exército, usamos setArmies para evitar o erro do removeArmy
             if (currentDefenderArmies - defenseLosses <= 0) {
                 this.gameMap.setArmies(toId, 0);
             } else {
@@ -295,7 +327,7 @@ export class GameManager {
 
         let conquered = false;
 
-        // Verifica conquista (agora possível pois permitimos 0 exércitos acima)
+        // Verifica conquista
         if (this.gameMap.getArmies(toId) === 0) {
             conquered = true;
             this.dominate(ownerAttacker, ownerDefender, toId);
@@ -322,6 +354,7 @@ export class GameManager {
         }
 
         const fromTroops = this.gameMap.getArmies(fromId);
+        // Regra: Deve sobrar pelo menos 1 exército
         if (fromTroops > amount) {
             this.gameMap.removeArmy(fromId, amount);
             this.gameMap.addArmy(toId, amount);
@@ -331,10 +364,12 @@ export class GameManager {
         return false;
     }
 
+    // Legacy compatibility method, refined to use correct Getters/Setters
     moveArmies(territoryFromString, territoryToString, amountArmies) {
         let player = this.getPlayerPlaying();
         const ownsFrom = player.hasTerritory(territoryFromString);
         const ownsTo = player.hasTerritory(territoryToString);
+
         if (!ownsFrom || !ownsTo) {
             console.log("Movimento falhou: ao menos um território não pertence ao player.");
             return false;
@@ -345,7 +380,8 @@ export class GameManager {
             return false;
         }
 
-        const armiesOnFrom = this.gameMap.armies[territoryFromString];
+        // Use GameMap getter, not direct property access
+        const armiesOnFrom = this.gameMap.getArmies(territoryFromString);
 
         if (armiesOnFrom <= amountArmies) {
             console.log(`Movimento falhou: tropas insuficientes em ${territoryFromString}. Deve sobrar ao menos 1.`);
@@ -388,13 +424,14 @@ export class GameManager {
         return continentBonuses;
     }
 
+    // Helper for UI/Frontend
     calculateReinforcementTroops(player) {
         let territoryBonus = Math.max(3, Math.floor(player.territories.length / 2));
 
         const continentBonuses = this.calculateContinentBonus(player);
         let continentBonus = Object.values(continentBonuses).reduce((sum, bonus) => sum + bonus, 0);
 
-        let cardBonus = 0;
+        let cardBonus = 0; // Card bonus is handled via exchange actions, not statically here
 
         const totalTroops = territoryBonus + continentBonus + cardBonus;
 
