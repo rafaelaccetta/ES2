@@ -37,6 +37,8 @@ export interface GameState {
     showObjectiveConfirmation: boolean;
     firstRoundObjectiveShown: Set<number>;
     territorySelectionCallback: ((territory: string) => void) | null;
+    // NEW: Map of TerritoryID -> Remaining Moves
+    fortificationBudget: Record<string, number>;
 }
 
 interface GameContextType extends GameState {
@@ -68,6 +70,7 @@ const initialState: GameState = {
     showObjectiveConfirmation: false,
     firstRoundObjectiveShown: new Set(),
     territorySelectionCallback: null,
+    fortificationBudget: {},
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -103,13 +106,15 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             });
         });
 
-        // Update React State
+        // Get budget
+        const budget = { ...((gameState.gameManager as any).fortificationBudget || {}) };
+
         setGameState(prev => ({
             ...prev,
-            players: playersPayload
+            players: playersPayload,
+            fortificationBudget: budget
         }));
 
-        // Emit Event for Phaser
         EventBus.emit("players-updated", {
             playerCount: gameState.players.length,
             players: playersPayload,
@@ -381,7 +386,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             } catch (err) {
                 console.error('Error processing attack-request', err);
             } finally {
-                // FORCE UI UPDATE after attack, regardless of conquest result
                 broadcastGameState();
             }
         };
@@ -423,13 +427,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const applyPostConquestMove = (source: string, target: string, moved: number) => {
         if (!gameState.gameManager) return;
 
-        // FIX: Only call moveTroops if we are moving > 0.
-        // Calling with 0 throws an error in GameMap.
         if (moved > 0) {
             gameState.gameManager.moveTroops(source, target, moved);
         }
 
-        // Always refresh UI, even if moved 0, to exit battle state
         broadcastGameState();
     };
 

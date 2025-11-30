@@ -4,7 +4,6 @@ import { WarAI } from './WarAI.js';
 
 export class GameManager {
     constructor(players, cardManager = null) {
-
         this.players = players;
         this.AIs = [];
         this.turnsPerRound = this.players.length;
@@ -14,6 +13,9 @@ export class GameManager {
         this.PhaseIdx = 0;
         this.logs = [];
         this.conqueredThisRound = false;
+
+        // NEW: Stores the max troops allowed to move from each territory in this phase
+        this.fortificationBudget = {};
 
         const isCardManager = cardManager && (
             cardManager instanceof CardManager ||
@@ -70,6 +72,7 @@ export class GameManager {
         const currentPlayer = this.getPlayerPlaying();
         console.log(this.logs)
 
+        // Exit FORTIFICAR cleanup
         if (this.getPhaseName() === "FORTIFICAR") {
             if (this.conqueredThisRound && this.cardManager) {
                 const player = currentPlayer;
@@ -79,6 +82,8 @@ export class GameManager {
                 }
             }
             this.conqueredThisRound = false;
+            // Clear budget when phase ends
+            this.fortificationBudget = {};
         }
 
         if (this.round === 0 && this.getPhaseName() === "REFORÇAR") {
@@ -94,10 +99,21 @@ export class GameManager {
                 return
             }
         }
+
         if (this.PhaseIdx > this.PhaseNames.length - 1) {
             this.PhaseIdx = 0;
             this.#passTurn();
         } else {
+            // ENTERING NEW PHASE
+            const newPhase = this.getPhaseName();
+
+            // Initialize Budget when entering Fortify
+            if (newPhase === "FORTIFICAR") {
+                this.#initializeFortificationBudget();
+            } else {
+                this.fortificationBudget = {};
+            }
+
             if (currentPlayer.isAI) {
                 this.executeAITurn();
             }
@@ -120,11 +136,11 @@ export class GameManager {
         const continentBonuses = this.calculateContinentBonus(player);
         const continentBonus = Object.values(continentBonuses).reduce((sum, bonus) => sum + bonus, 0);
         const total = territoryBonus + continentBonus;
-        console.log(`Reinforcements for ${player.id}: ${total} (Terr: ${territoryBonus}, Cont: ${continentBonus})`);
         return total;
     }
 
     #passTurn() {
+        this.fortificationBudget = {}; // Clear budget
         this.turn = (this.turn + 1) % this.turnsPerRound;
         if (this.turn === 0) {
             this.#passRound();
@@ -148,6 +164,20 @@ export class GameManager {
         this.round++;
         console.log(`🔄 Nova rodada iniciada: Rodada ${this.round}`);
         this.logAction(`Rodada ${this.round} iniciada.`);
+    }
+
+    // NEW: Snapshots current armies to create the budget
+    #initializeFortificationBudget() {
+        this.fortificationBudget = {};
+        const player = this.getPlayerPlaying();
+        if (!player) return;
+
+        player.territories.forEach(t => {
+            const currentArmies = this.gameMap.getArmies(t);
+            // Can move everything except 1
+            this.fortificationBudget[t] = Math.max(0, currentArmies - 1);
+        });
+        console.log("Fortification Budget Initialized:", this.fortificationBudget);
     }
 
     executeAITurn() {
@@ -179,10 +209,7 @@ export class GameManager {
 
         while (player.armies > 0) {
             safetyCounter++;
-            if (safetyCounter > MAX_LOOPS) {
-                console.warn("AI Placement forced break: Infinite loop detected.");
-                break;
-            }
+            if (safetyCounter > MAX_LOOPS) break;
             if (player.territories.length === 0) break;
 
             let forcedTerritory = null;
@@ -241,6 +268,8 @@ export class GameManager {
     }
 
     executeAIFortification(ai) {
+        // Note: AI currently ignores the budget constraint for simplicity, 
+        // or we can enforce it here too. For now, AI logic is simple 1-step move.
         const move = ai.decideFortification(this);
         if (move) {
             this.moveTroops(move.from, move.to, move.numTroops);
@@ -334,67 +363,42 @@ export class GameManager {
 
         if (!isAdjacent) return false;
 
+        // NEW: Enforce "Budget" rule during Fortification
+        if (this.getPhaseName() === "FORTIFICAR") {
+            const allowed = this.fortificationBudget[fromId] || 0;
+            if (amount > allowed) {
+                console.warn(`Movimento bloqueado: tentou mover ${amount} de ${fromId}, mas budget é ${allowed}.`);
+                return false;
+            }
+        }
+
         const fromTroops = this.gameMap.getArmies(fromId);
         if (fromTroops > amount) {
             this.gameMap.removeArmy(fromId, amount);
             this.gameMap.addArmy(toId, amount);
+
+            // NEW: Deduct from budget
+            if (this.getPhaseName() === "FORTIFICAR") {
+                this.fortificationBudget[fromId] = (this.fortificationBudget[fromId] || 0) - amount;
+            }
+
             this.logAction(`Manobra: Moveu ${amount} tropas de ${fromId} para ${toId}.`);
             return true;
         }
         return false;
     }
 
+    // Helper for UI
+    getFortificationBudget(territoryId) {
+        return this.fortificationBudget[territoryId] ?? 0;
+    }
+
     moveArmies(territoryFromString, territoryToString, amountArmies) {
-        // 1. Check Ownership (Required by test to happen FIRST)
-        let player = this.getPlayerPlaying();
-        const ownsFrom = player.hasTerritory(territoryFromString);
-        const ownsTo = player.hasTerritory(territoryToString);
-
-        if (!ownsFrom || !ownsTo) {
-            console.log("Movimento falhou: ao menos um território não pertence ao player.");
-            return false;
-        }
-
-        // 2. Check Adjacency (Required by test to happen SECOND, with (to, from) args)
-        let isAdjacent = false;
-        if (typeof this.gameMap.areAdjacent === 'function') {
-            // Test expects (to, from) check
-            isAdjacent = this.gameMap.areAdjacent(territoryToString, territoryFromString);
-        } else {
-            const neighbors = this.getNeighbors(territoryToString);
-            isAdjacent = neighbors.includes(territoryFromString);
-        }
-
-        if (!isAdjacent) {
-            console.log("Movimento falhou: territórios não são adjacentes.")
-            return false;
-        }
-
-        // 3. Check Troop Counts
-        const armiesOnFrom = this.gameMap.getArmies(territoryFromString);
-
-        if (armiesOnFrom <= amountArmies) {
-            console.log(`Movimento falhou: tropas insuficientes em ${territoryFromString}. Deve sobrar ao menos 1.`);
-            return false;
-        }
-
-        try {
-            this.gameMap.removeArmy(territoryFromString, amountArmies);
-            this.gameMap.addArmy(territoryToString, amountArmies);
-            console.log(`Move successful: ${amountArmies} armies moved from ${territoryFromString} to ${territoryToString}.`);
-            return true;
-
-        } catch (error) {
-            console.error("Move failed with an unexpected error:", error.message);
-            return false;
-        }
+        return this.moveTroops(territoryFromString, territoryToString, amountArmies);
     }
 
     calculateContinentBonus(player) {
         const territoriesByContinent = this.gameMap.getTerritoriesByContinent();
-        // FIX: Safety check for bad mock returns
-        if (!territoriesByContinent) return {};
-
         const continentBonuses = {};
         const continentNames = Object.keys(territoriesByContinent);
 
