@@ -6,9 +6,8 @@ import TroopAllocation from "./TroopAllocation";
 import AttackBar from "./AttackBar";
 import "./GameUI.css";
 import FortifyBar from "./FortifyBar";
-import "./CardAward.css";
+// Removed CardAward.css import
 import CardExchange from "./CardTrade";
-import { EventBus } from "../game/EventBus";
 
 const GameUI: React.FC = () => {
     const {
@@ -29,12 +28,9 @@ const GameUI: React.FC = () => {
         players,
     } = useGameContext();
 
-    // FIX: Read from .armies (Reserve Pool) directly
     const getAvailableTroopsToAllocate = () => {
         const currentPlayer = getCurrentPlayer();
         if (!currentPlayer) return 0;
-
-        // In the new architecture, 'armies' represents unplaced reserves.
         return currentPlayer.armies || 0;
     };
 
@@ -46,28 +42,8 @@ const GameUI: React.FC = () => {
     const [showAttackBar, setShowAttackBar] = useState(false);
     const [showFortifyBar, setShowFortifyBar] = useState(false);
     const [showCardExchange, setShowCardExchange] = useState(false);
-    const [showCardAward, setShowCardAward] = useState(false);
-    const [awardedCard, setAwardedCard] = useState<{name:string;shape:string;playerColor?:string}|null>(null);
 
-    useEffect(() => {
-        const handler = (data: any) => {
-            setAwardedCard({
-                name: data.name,
-                shape: data.shape,
-                playerColor: data.playerColor || '#fbbf24'
-            });
-            setShowCardAward(true);
-        };
-        EventBus.on("card-awarded", handler);
-        return () => {
-            EventBus.removeListener("card-awarded", handler);
-        };
-    }, []);
-
-    const closeCardAward = () => {
-        setShowCardAward(false);
-        setAwardedCard(null);
-    };
+    // REMOVED: showCardAward, awardedCard state and useEffect listeners
 
     const lastPlayerRef = useRef<number | null>(null);
 
@@ -441,32 +417,7 @@ const GameUI: React.FC = () => {
                 }
             />
 
-            {showCardAward && awardedCard && (
-                <div className="card-award-overlay" onClick={closeCardAward}>
-                    <div className="card-award-modal" onClick={e=>e.stopPropagation()}>
-                        <div className="card-award-header">
-                            <h2>Você ganhou uma carta!</h2>
-                        </div>
-                        <div className="card-award-body">
-                            <div
-                                className="card-award-card"
-                                style={{ borderColor: awardedCard.playerColor || '#fbbf24' }}
-                            >
-                                <span className="card-shape" style={{color: awardedCard.playerColor || '#fbbf24'}}>
-                                    {awardedCard.shape === 'Square' && '■'}
-                                    {awardedCard.shape === 'Circle' && '●'}
-                                    {awardedCard.shape === 'Triangle' && '▲'}
-                                    {awardedCard.shape === 'Wildcard' && '★'}
-                                    {['Square','Circle','Triangle','Wildcard'].includes(awardedCard.shape) ? '' : '★'}
-                                </span>
-                            </div>
-                            <p className="card-award-name"><strong>{awardedCard.name}</strong></p>
-                            <p className="card-award-hint">Troque 3 cartas válidas para ganhar reforços.</p>
-                            <button className="confirm-btn" onClick={closeCardAward}>Ok</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* REMOVED: Card Award Modal */}
         </>
     );
 };

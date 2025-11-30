@@ -37,7 +37,6 @@ export interface GameState {
     showObjectiveConfirmation: boolean;
     firstRoundObjectiveShown: Set<number>;
     territorySelectionCallback: ((territory: string) => void) | null;
-    // NEW: Map of TerritoryID -> Remaining Moves
     fortificationBudget: Record<string, number>;
 }
 
@@ -293,7 +292,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         }
 
         const previousPhase = gameState.currentPhase;
-        const previousPlayer = getCurrentPlayer();
 
         gameState.gameManager.passPhase();
 
@@ -304,22 +302,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentRound: gameState.gameManager!.round,
         }));
 
+        // REMOVED: Card awarding emission block. 
+        // The backend handles adding the card to the player inventory automatically.
+        // We also clean up the buffer just in case.
         if (previousPhase === "FORTIFICAR") {
-            const awarded = gameState.gameManager.consumeLastAwardedCard?.();
-            if (awarded) {
-                const colorMap: Record<string, string> = {
-                    azul: "#2563eb",
-                    vermelho: "#dc2626",
-                    verde: "#16a34a",
-                    branco: "#b7c0cd",
-                };
-                const playerColorHex = previousPlayer ? (colorMap[previousPlayer.color] || '#fbbf24') : '#fbbf24';
-                EventBus.emit("card-awarded", {
-                    name: awarded.name,
-                    shape: awarded.geometricShape,
-                    playerColor: playerColorHex,
-                });
-            }
+            gameState.gameManager.consumeLastAwardedCard?.();
         }
 
         broadcastGameState();
