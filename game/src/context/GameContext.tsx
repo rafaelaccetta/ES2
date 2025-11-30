@@ -90,7 +90,6 @@ interface GameProviderProps {
 export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const [gameState, setGameState] = useState<GameState>(initialState);
 
-    // --- HELPER: Build snapshot for UI consumption ---
     const broadcastGameState = useCallback(() => {
         if (!gameState.gameManager) return;
 
@@ -356,14 +355,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     useEffect(() => {
         const handleAttackRequest = (data: { source: string; target: string; troops: number }) => {
             if (!gameState.gameManager) return;
+            const gm = gameState.gameManager;
 
             try {
                 const { source, target, troops } = data as any;
                 const currentPlayer = getCurrentPlayer();
                 if (!currentPlayer) return;
 
-                // FIX: Pass troops argument!
-                const result = gameState.gameManager.resolveAttack(source, target, troops);
+                const result = gm.resolveAttack(source, target, troops);
 
                 if (!result.success) {
                     console.warn("Attack failed validation in backend");
@@ -372,6 +371,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
                 const aDice = (result as any).attackRolls || [];
                 const dDice = (result as any).defenseRolls || [];
+                const defender = gm.getTerritoryOwner(target); // Note: might be null if no one owns it (conquered)
 
                 EventBus.emit('attack-result', {
                     source,
@@ -383,7 +383,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                     defenderLoss: result.defenseLosses,
                     conquered: result.conquered,
                     attackerColor: currentPlayer.color,
-                    defenderColor: gameState.gameManager.getTerritoryOwner(target)?.color || 'neutro',
+                    defenderColor: defender?.color || 'neutro',
                 });
 
                 if (result.conquered) {
@@ -394,8 +394,32 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                         attackerLoss: result.attackLosses,
                         defenderLoss: result.defenseLosses,
                         survivors: troops - result.attackLosses,
-                        maxCanMove: gameState.gameManager.getTerritoryArmies(source) - 1,
+                        maxCanMove: gm.getTerritoryArmies(source) - 1,
                     });
+
+                    // --- MERGED VICTORY LOGIC ---
+                    try {
+                        const objectiveGameState: any = {
+                            players: gm.players,
+                            getTerritoriesByContinent: () => gm.gameMap?.getTerritoriesByContinent?.(),
+                        };
+
+                        for (const p of gm.players) {
+                            if (!p.isActive) continue; // Skip defeated players
+
+                            const hasWon = p.checkWin(objectiveGameState);
+                            if (hasWon) {
+                                EventBus.emit('game-won', {
+                                    winnerId: p.id,
+                                    winnerColor: p.color,
+                                    winnerObjective: p.objective.title || p.objective.description || null,
+                                });
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error while processing post-conquest objective checks', e);
+                    }
                 }
 
             } catch (err) {
