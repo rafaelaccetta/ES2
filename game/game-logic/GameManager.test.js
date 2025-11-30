@@ -4,15 +4,17 @@ import { Player } from './Player.js';
 import { GameMap } from './GameMap.js';
 
 vi.mock('./GameMap.js', () => {
-    const GameMapMock = vi.fn();
-
-    GameMapMock.prototype.areAdjacent = vi.fn();
-    GameMapMock.prototype.removeArmy = vi.fn();
-    GameMapMock.prototype.addArmy = vi.fn();
-    GameMapMock.prototype.distributeTerritories = vi.fn();
-    GameMapMock.prototype.armies = {};
-
-    return { GameMap: GameMapMock };
+    const GameMap = vi.fn();
+    GameMap.prototype.distributeTerritories = vi.fn();
+    // Default fallback
+    GameMap.prototype.getTerritoriesByContinent = vi.fn().mockReturnValue({});
+    GameMap.prototype.areAdjacent = vi.fn();
+    GameMap.prototype.getArmies = vi.fn();
+    GameMap.prototype.removeArmy = vi.fn();
+    GameMap.prototype.addArmy = vi.fn();
+    GameMap.prototype.getNeighbors = vi.fn().mockReturnValue([]);
+    GameMap.prototype.armies = {};
+    return { GameMap };
 });
 
 describe('GameManager: moveArmies', () => {
@@ -24,8 +26,11 @@ describe('GameManager: moveArmies', () => {
     beforeEach(() => {
         vi.clearAllMocks();
 
-        player1 = new Player(1, 'red');
+        // FIX: Explicitly ensure this return value is set BEFORE new GameManager()
+        // This prevents the constructor crash during initialization
+        GameMap.prototype.getTerritoriesByContinent.mockReturnValue({});
 
+        player1 = new Player(1, 'red');
         player1.addTerritory('Brasil');
         player1.addTerritory('Argentina');
         player1.addTerritory('Mexico');
@@ -34,25 +39,30 @@ describe('GameManager: moveArmies', () => {
 
         mockGameMapInstance = GameMap.mock.instances[0];
 
-        mockGameMapInstance.armies['Brasil'] = 5;
-        mockGameMapInstance.armies['Argentina'] = 3;
-        mockGameMapInstance.armies['Mexico'] = 2;
+        mockGameMapInstance.armies = {
+            'Brasil': 5,
+            'Argentina': 3,
+            'Mexico': 2
+        };
+
+        // Ensure getArmies reads from the test data
+        mockGameMapInstance.getArmies.mockImplementation((territory) => {
+            return mockGameMapInstance.armies[territory] || 0;
+        });
 
         vi.spyOn(console, 'log').mockImplementation(() => {});
         vi.spyOn(console, 'error').mockImplementation(() => {});
     });
 
     afterEach(() => {
-        // Restaura os mocks do console
         vi.restoreAllMocks();
     });
 
     it('deve mover exércitos com sucesso se todas as condições forem válidas', () => {
-        const from = 'Brasil'; // Tem 5
+        const from = 'Brasil';
         const to = 'Argentina';
         const amount = 3;
 
-        // Definir que os territórios SÃO adjacentes
         mockGameMapInstance.areAdjacent.mockReturnValue(true);
 
         const result = gameManager.moveArmies(from, to, amount);
@@ -93,9 +103,9 @@ describe('GameManager: moveArmies', () => {
     });
 
     it('deve falhar se tentar mover TODOS os exércitos (deve sobrar 1)', () => {
-        const from = 'Brasil'; // Tem 5
+        const from = 'Brasil';
         const to = 'Argentina';
-        const amount = 5; // Tenta mover 5
+        const amount = 5;
 
         mockGameMapInstance.areAdjacent.mockReturnValue(true);
 
@@ -106,9 +116,9 @@ describe('GameManager: moveArmies', () => {
     });
 
     it('deve falhar se tentar mover MAIS exércitos do que possui', () => {
-        const from = 'Brasil'; // Tem 5
+        const from = 'Brasil';
         const to = 'Argentina';
-        const amount = 6; // Tenta mover 6
+        const amount = 6;
 
         mockGameMapInstance.areAdjacent.mockReturnValue(true);
 
@@ -119,7 +129,7 @@ describe('GameManager: moveArmies', () => {
     });
 
     it('deve falhar e retornar false se GameMap.removeArmy der erro', () => {
-        const from = 'Brasil'; // Tem 5
+        const from = 'Brasil';
         const to = 'Argentina';
         const amount = 3;
 

@@ -7,7 +7,7 @@ export class GameMap {
     constructor() {
         this.territories = new Graph();
         this.continents = {};
-        this.armies = {}; // The definitive storage for troops on the board
+        this.armies = {};
 
         this.loadMapData();
         this.initializeArmies();
@@ -32,7 +32,6 @@ export class GameMap {
     }
 
     initializeArmies() {
-        // All territories start with 1 troop
         for (const territory in territoriesJson) {
             this.armies[territory] = 1;
         }
@@ -82,7 +81,6 @@ export class GameMap {
         return this.territoriesBycontinents;
     }
 
-
     distributeTerritories(players) {
         var territoriesKeys = Object.keys(territoriesJson);
         territoriesKeys = territoriesKeys.sort(() => Math.random() - 0.5);
@@ -102,17 +100,22 @@ export class GameMap {
             players[playerIndex].addTerritory(territoriesKeys[currentIndex]);
             currentIndex++;
         }
-
-        // Note: initializeArmies() already placed 1 troop everywhere.
-        // We do NOT call player functions here to avoid state duplication.
     }
 
     getContinentBonusForPlayer(player) {
-        // Logic moved to GameManager to centralize rule processing
+        // Logic handled in GameManager
+    }
+
+    // Proxy method to allow mocking in tests without exposing 'this.territories' property
+    getNeighbors(territory) {
+        if (this.territories) {
+            return this.territories.getNeighbors(territory);
+        }
+        return [];
     }
 
     areAdjacent(territory1, territory2) {
-        const neighbors = this.territories.getNeighbors(territory1);
+        const neighbors = this.getNeighbors(territory1);
         return neighbors.some(neighbor => neighbor.node === territory2);
     }
 }

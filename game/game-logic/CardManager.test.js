@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CardManager } from './CardManager.js';
 import { Deck } from './Deck.js';
 import { PlayerCards } from './PlayerCards.js';
-import { Player } from './Player.js';
 
 vi.mock('./Deck.js');
 
@@ -19,8 +18,10 @@ describe('CardManager', () => {
             id: 1,
             cards: [],
             territories: [],
+            // Mocks for Player methods
             addArmies: vi.fn(),
             addArmiesExclusive: vi.fn(),
+            addCard: vi.fn(function(c) { this.cards.push(c); }),
             hasTerritory: vi.fn((territoryName) => player.territories.includes(territoryName)),
         };
 
@@ -29,7 +30,7 @@ describe('CardManager', () => {
 
     it('should draw a card if the player has less than 5 cards', () => {
         const fakeCard = new PlayerCards({ name: 'Test Card', geometricShape: 'Square' });
-        const playerWithFewCards = { cards: [] };
+        const playerWithFewCards = { ...player, cards: [] };
 
         Deck.prototype.draw.mockReturnValue(fakeCard);
 
@@ -40,7 +41,7 @@ describe('CardManager', () => {
     });
 
     it('should NOT draw a card if the player already has 5 cards', () => {
-        const playerWithMaxCards = { cards: [1, 2, 3, 4, 5] };
+        const playerWithMaxCards = { ...player, cards: [1, 2, 3, 4, 5] };
 
         const drawnCard = cardManager.drawCardForPlayer(playerWithMaxCards);
 
@@ -87,6 +88,7 @@ describe('CardManager', () => {
 
             cardManager.executeCardExchange(cards, player);
 
+            // Expect call with (TerritoryName, Amount)
             expect(player.addArmiesExclusive).toHaveBeenCalledWith('A', 2);
         });
     });
