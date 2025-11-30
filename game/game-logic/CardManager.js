@@ -20,7 +20,9 @@ export class CardManager {
     drawCardForPlayer(player) {
         // Regra: jogador recebe exatamente 1 carta se conquistou território na fase de ataque
         // Não há bloqueio por ter 5+ cartas; a troca obrigatória ocorre no início da fase de reforço.
-        return this.#_deck.draw();
+        if(player.cards < 5){
+            return this.#_deck.draw();
+        }
     }
 
     awardConquestCard(player) {
