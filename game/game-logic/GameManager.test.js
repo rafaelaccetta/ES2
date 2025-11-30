@@ -11,6 +11,7 @@ vi.mock('./GameMap.js', () => {
     GameMapMock.prototype.addArmy = vi.fn();
     GameMapMock.prototype.distributeTerritories = vi.fn();
     GameMapMock.prototype.armies = {};
+    GameMapMock.prototype.getTerritoriesByContinent = vi.fn(() => ({}));
 
     return { GameMap: GameMapMock };
 });
