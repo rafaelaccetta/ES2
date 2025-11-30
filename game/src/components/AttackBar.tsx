@@ -63,7 +63,6 @@ const AttackBar: React.FC<AttackBarProps> = ({
         useState<PostConquestPayload | null>(null);
     const [moveCount, setMoveCount] = useState("1");
 
-    // HELPER: Get troops safely from GameMap via GameManager
     const getTroops = useCallback((territory: string) => {
         if (!gameManager) return 0;
         return gameManager.getTerritoryArmies(territory);
@@ -97,9 +96,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
                             .replace(/[^a-z0-9]/g, "") === normalizedId
                 );
                 if (matchingTerritory) {
-                    // FIX: Use helper instead of direct access
                     const armies = getTroops(matchingTerritory);
-
                     if (armies <= 1) {
                         console.log(
                             "Território sem tropas suficientes para atacar"
@@ -118,13 +115,10 @@ const AttackBar: React.FC<AttackBarProps> = ({
                 selectedSource &&
                 !isOwned
             ) {
-                // Verificar se é vizinho válido
                 try {
                     const gmAny = gameManager as any;
-                    // Use new helper or fallback
                     const neighbors = gmAny.getNeighbors ? gmAny.getNeighbors(selectedSource) : (gmAny.gameMap?.territories?.getNeighbors(selectedSource) || []);
 
-                    // Normalize check because neighbors might be objects {node: "Name"} or strings "Name" depending on API version
                     const isNeighbor = neighbors.some((n: any) => {
                         const name = typeof n === 'string' ? n : n.node;
                         const normalizedNeighbor = name
@@ -137,7 +131,6 @@ const AttackBar: React.FC<AttackBarProps> = ({
                     });
 
                     if (isNeighbor) {
-                        // Encontrar o nome original do território
                         for (const player of gameManager.players) {
                             const matchingTerritory = player.territories.find(
                                 (t) =>
@@ -169,14 +162,9 @@ const AttackBar: React.FC<AttackBarProps> = ({
 
     useEffect(() => {
         if (!isVisible) return;
-
         EventBus.on("territory-selected", handleTerritorySelected);
-
         return () => {
-            EventBus.removeListener(
-                "territory-selected",
-                handleTerritorySelected
-            );
+            EventBus.removeListener("territory-selected", handleTerritorySelected);
         };
     }, [isVisible, handleTerritorySelected]);
 
@@ -198,20 +186,31 @@ const AttackBar: React.FC<AttackBarProps> = ({
     useEffect(() => {
         const handlePostConquest = (data: any) => {
             const p = data as PostConquestPayload;
+
+            // FIX: If no moves possible (e.g. 1 troop left), skip modal and auto-confirm 0
+            if (p.maxCanMove <= 0) {
+                console.log("No troops to move after conquest (1 must stay). Auto-skipping move.");
+                applyPostConquestMove(p.source, p.target, 0);
+                setSelectedSource("");
+                setSelectedTarget("");
+                setAttackPhase("SELECT_SOURCE");
+                EventBus.emit("highlight-territories", { territories: [], mode: "none" });
+                return;
+            }
+
             setPostConquestData(p);
             const defaultMove = Math.min(1, Math.max(1, p.maxCanMove));
             setMoveCount(String(defaultMove));
             setShowPostConquest(true);
-            setShowAttackResult(false); // Esconder resultado ao mostrar pós-conquista
+            setShowAttackResult(false);
         };
 
         EventBus.on("post-conquest", handlePostConquest);
         return () => {
             EventBus.removeListener("post-conquest", handlePostConquest);
         };
-    }, []);
+    }, [applyPostConquestMove]);
 
-    // Reset ao fechar
     useEffect(() => {
         if (!isVisible) {
             setSelectedSource("");
@@ -222,21 +221,13 @@ const AttackBar: React.FC<AttackBarProps> = ({
             setShowAttackResult(false);
             setAttackResult(null);
             setAttackPhase("SELECT_SOURCE");
-            // Limpar destaques quando fechar
-            EventBus.emit("highlight-territories", {
-                territories: [],
-                mode: "none",
-            });
+            EventBus.emit("highlight-territories", { territories: [], mode: "none" });
         }
     }, [isVisible]);
 
-    // Controlar destaques de territórios baseado na fase
     useEffect(() => {
         if (!isVisible || !currentPlayer || !gameManager) {
-            EventBus.emit("highlight-territories", {
-                territories: [],
-                mode: "none",
-            });
+            EventBus.emit("highlight-territories", { territories: [], mode: "none" });
             return;
         }
 
@@ -248,17 +239,11 @@ const AttackBar: React.FC<AttackBarProps> = ({
                 .replace(/\s+/g, "")
                 .replace(/[^a-z0-9]/g, "");
 
-        // Fase SELECT_SOURCE: destacar todos os territórios do jogador atual
-        if (
-            attackPhase === "SELECT_SOURCE" &&
-            !showAttackResult &&
-            !showPostConquest
-        ) {
+        if (attackPhase === "SELECT_SOURCE" && !showAttackResult && !showPostConquest) {
             const playerTerritories = currentPlayer.territories
                 .filter((t) => {
-                    // FIX: Use helper
                     const armies = getTroops(t);
-                    return armies > 1; // Somente territórios com mais de 1 tropa
+                    return armies > 1;
                 })
                 .map(normalize);
 
@@ -267,19 +252,10 @@ const AttackBar: React.FC<AttackBarProps> = ({
                 mode: "player-territories",
             });
         }
-        // Fase SELECT_TARGET: destacar origem + vizinhos inimigos
-        else if (
-            attackPhase === "SELECT_TARGET" &&
-            selectedSource &&
-            !showAttackResult &&
-            !showPostConquest
-        ) {
-            // FIX: Use GameManager helper
+        else if (attackPhase === "SELECT_TARGET" && selectedSource && !showAttackResult && !showPostConquest) {
             const neighbors = gameManager.getNeighbors(selectedSource);
-
             const enemyNeighbors = neighbors
                 .filter((n: string) => {
-                    // Verificar se é território inimigo
                     for (const player of gameManager.players) {
                         if (player.id === currentPlayer.id) continue;
                         const hasTerritory = player.territories.some(
@@ -291,22 +267,14 @@ const AttackBar: React.FC<AttackBarProps> = ({
                 })
                 .map((n: string) => normalize(n));
 
-            const highlightList = [
-                normalize(selectedSource),
-                ...enemyNeighbors,
-            ];
+            const highlightList = [normalize(selectedSource), ...enemyNeighbors];
             EventBus.emit("highlight-territories", {
                 territories: highlightList,
                 mode: "attack-selection",
             });
         }
-        // Fase SELECT_TROOPS, durante batalha, ou pós-conquista: destacar origem e alvo
         else if (
-            (attackPhase === "SELECT_TROOPS" &&
-                selectedSource &&
-                selectedTarget &&
-                !showAttackResult &&
-                !showPostConquest) ||
+            (attackPhase === "SELECT_TROOPS" && selectedSource && selectedTarget && !showAttackResult && !showPostConquest) ||
             showAttackResult ||
             showPostConquest
         ) {
@@ -314,7 +282,6 @@ const AttackBar: React.FC<AttackBarProps> = ({
             if (selectedSource) highlightList.push(normalize(selectedSource));
             if (selectedTarget) highlightList.push(normalize(selectedTarget));
 
-            // Se estiver em pós-conquista, usar os dados de postConquestData
             if (showPostConquest && postConquestData) {
                 highlightList.length = 0;
                 highlightList.push(normalize(postConquestData.source));
@@ -341,7 +308,6 @@ const AttackBar: React.FC<AttackBarProps> = ({
 
     const maxAttackable = useMemo(() => {
         if (!selectedSource || !currentPlayer) return 0;
-        // FIX: Use helper
         const armies = getTroops(selectedSource);
         const possible = Math.max(0, armies - 1);
         return Math.min(3, possible);
@@ -365,7 +331,6 @@ const AttackBar: React.FC<AttackBarProps> = ({
             target: selectedTarget,
             troops: qty,
         });
-        // Não fecha a barra, volta para a fase de seleção de origem
         setSelectedSource("");
         setSelectedTarget("");
         setAttackQuantity("1");
@@ -384,16 +349,13 @@ const AttackBar: React.FC<AttackBarProps> = ({
         setAttackPhase("SELECT_TARGET");
     };
 
-    // Handler para fechar resultado do ataque
     const handleCloseAttackResult = () => {
         setShowAttackResult(false);
         setAttackResult(null);
-        // Força limpeza de destaques e retorno à seleção de origem
         EventBus.emit("highlight-territories", { territories: [], mode: "none" });
         setAttackPhase("SELECT_SOURCE");
     };
 
-    // Handlers pós-conquista
     const handleConfirmMove = () => {
         if (!postConquestData) return;
         const moved = Math.max(
@@ -442,7 +404,6 @@ const AttackBar: React.FC<AttackBarProps> = ({
         return colorMap[color] || "#d2d9e3ff";
     };
 
-    // Modo resultado do ataque
     if (showAttackResult && attackResult) {
         return (
             <>
@@ -454,111 +415,59 @@ const AttackBar: React.FC<AttackBarProps> = ({
                 >
                     <div className="attack-result-content">
                         <div className="result-header">
-                            <h3
-                                className={
-                                    attackResult.conquered ? "victory" : "defeat"
-                                }
-                            >
-                                {attackResult.conquered
-                                    ? "TERRITÓRIO CONQUISTADO!"
-                                    : "ATAQUE DEFENDIDO!"}
+                            <h3 className={attackResult.conquered ? "victory" : "defeat"}>
+                                {attackResult.conquered ? "TERRITÓRIO CONQUISTADO!" : "ATAQUE DEFENDIDO!"}
                             </h3>
                         </div>
 
                         <div className="battle-summary">
                             <div className="battle-info">
-                            <span>
-                                {attackResult.source} ⚔️ {attackResult.target}
-                            </span>
-                                <span className="troops-used">
-                                Tropas usadas: {attackResult.troopsUsed}
-                            </span>
+                                <span>{attackResult.source} ⚔️ {attackResult.target}</span>
+                                <span className="troops-used">Tropas usadas: {attackResult.troopsUsed}</span>
                             </div>
 
                             <div className="dice-results">
                                 <div className="dice-group">
                                     <span className="dice-label">Atacante</span>
                                     <div className="dice-container">
-                                        {attackResult.attackerDice.map(
-                                            (value, index) => (
-                                                <div
-                                                    key={index}
-                                                    className="dice"
-                                                    style={{
-                                                        backgroundColor:
-                                                            attackResult.attackerColor
-                                                                ? getPlayerColor(
-                                                                    attackResult.attackerColor
-                                                                )
-                                                                : undefined,
-                                                    }}
-                                                >
-                                                    {value}
-                                                </div>
-                                            )
-                                        )}
+                                        {attackResult.attackerDice.map((value, index) => (
+                                            <div key={index} className="dice" style={{ backgroundColor: attackResult.attackerColor ? getPlayerColor(attackResult.attackerColor) : undefined }}>
+                                                {value}
+                                            </div>
+                                        ))}
                                     </div>
-                                    <span className="loss-text">
-                                    Perdas: {attackResult.attackerLoss}
-                                </span>
+                                    <span className="loss-text">Perdas: {attackResult.attackerLoss}</span>
                                 </div>
 
                                 <div className="dice-group">
                                     <span className="dice-label">Defensor</span>
                                     <div className="dice-container">
-                                        {attackResult.defenderDice.map(
-                                            (value, index) => (
-                                                <div
-                                                    key={index}
-                                                    className="dice"
-                                                    style={{
-                                                        backgroundColor:
-                                                            attackResult.defenderColor
-                                                                ? getPlayerColor(
-                                                                    attackResult.defenderColor
-                                                                )
-                                                                : undefined,
-                                                    }}
-                                                >
-                                                    {value}
-                                                </div>
-                                            )
-                                        )}
+                                        {attackResult.defenderDice.map((value, index) => (
+                                            <div key={index} className="dice" style={{ backgroundColor: attackResult.defenderColor ? getPlayerColor(attackResult.defenderColor) : undefined }}>
+                                                {value}
+                                            </div>
+                                        ))}
                                     </div>
-                                    <span className="loss-text">
-                                    Perdas: {attackResult.defenderLoss}
-                                </span>
+                                    <span className="loss-text">Perdas: {attackResult.defenderLoss}</span>
                                 </div>
                             </div>
 
-                            <div
-                                className={`result-message ${
-                                    attackResult.conquered ? "victory" : "defeat"
-                                }`}
-                            >
+                            <div className={`result-message ${attackResult.conquered ? "victory" : "defeat"}`}>
                                 {attackResult.conquered ? (
                                     <div>
                                         <h4>VITÓRIA!</h4>
-                                        <p>
-                                            {attackResult.source} conquistou{" "}
-                                            {attackResult.target}
-                                        </p>
+                                        <p>{attackResult.source} conquistou {attackResult.target}</p>
                                     </div>
                                 ) : (
                                     <div>
                                         <h4>DERROTA</h4>
-                                        <p>
-                                            {attackResult.target} resistiu ao ataque
-                                        </p>
+                                        <p>{attackResult.target} resistiu ao ataque</p>
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        <button
-                            className="continue-btn"
-                            onClick={handleCloseAttackResult}
-                        >
+                        <button className="continue-btn" onClick={handleCloseAttackResult}>
                             Continuar
                         </button>
                     </div>
@@ -567,56 +476,22 @@ const AttackBar: React.FC<AttackBarProps> = ({
         );
     }
 
-    // Modo pós-conquista
     if (showPostConquest && postConquestData) {
         return (
-            <div
-                className={`attack-bar post-conquest ${
-                    isDimmed ? "dimmed" : ""
-                }`}
-            >
+            <div className={`attack-bar post-conquest ${isDimmed ? "dimmed" : ""}`}>
                 <div className="attack-bar-content">
                     <span className="conquest-message">
                         <strong>{postConquestData.target}</strong> conquistado!
-                        Mover tropas de{" "}
-                        <strong>{postConquestData.source}</strong>?
+                        Mover tropas de <strong>{postConquestData.source}</strong>?
                     </span>
                     <div className="troop-move-controls">
                         <div className="troop-buttons-inline">
-                            <button
-                                className={`troop-btn-small ${
-                                    moveCount === "1" ? "selected" : ""
-                                }`}
-                                onClick={() => setMoveCount("1")}
-                                disabled={postConquestData.maxCanMove < 1}
-                            >
-                                1
-                            </button>
-                            <button
-                                className={`troop-btn-small ${
-                                    moveCount === "2" ? "selected" : ""
-                                }`}
-                                onClick={() => setMoveCount("2")}
-                                disabled={postConquestData.maxCanMove < 2}
-                            >
-                                2
-                            </button>
-                            <button
-                                className={`troop-btn-small ${
-                                    moveCount === "3" ? "selected" : ""
-                                }`}
-                                onClick={() => setMoveCount("3")}
-                                disabled={postConquestData.maxCanMove < 3}
-                            >
-                                3
-                            </button>
+                            <button className={`troop-btn-small ${moveCount === "1" ? "selected" : ""}`} onClick={() => setMoveCount("1")} disabled={postConquestData.maxCanMove < 1}>1</button>
+                            <button className={`troop-btn-small ${moveCount === "2" ? "selected" : ""}`} onClick={() => setMoveCount("2")} disabled={postConquestData.maxCanMove < 2}>2</button>
+                            <button className={`troop-btn-small ${moveCount === "3" ? "selected" : ""}`} onClick={() => setMoveCount("3")} disabled={postConquestData.maxCanMove < 3}>3</button>
                         </div>
-                        <button
-                            className="confirm-move-btn"
-                            onClick={handleConfirmMove}
-                        >
-                            Mover {moveCount} tropa
-                            {parseInt(moveCount) > 1 ? "s" : ""}
+                        <button className="confirm-move-btn" onClick={handleConfirmMove}>
+                            Mover {moveCount} tropa{parseInt(moveCount) > 1 ? "s" : ""}
                         </button>
                     </div>
                 </div>
@@ -624,67 +499,34 @@ const AttackBar: React.FC<AttackBarProps> = ({
         );
     }
 
-    // Modo normal de ataque
     const hasSelection = selectedSource || selectedTarget;
-    const canAttack =
-        selectedSource &&
-        selectedTarget &&
-        parseInt(attackQuantity) > 0 &&
-        parseInt(attackQuantity) <= maxAttackable;
+    const canAttack = selectedSource && selectedTarget && parseInt(attackQuantity) > 0 && parseInt(attackQuantity) <= maxAttackable;
 
     return (
         <div className={`attack-bar ${isDimmed ? "dimmed" : ""}`}>
             <div className="attack-bar-content">
                 <span className="attack-instruction">
-                    {attackPhase === "SELECT_SOURCE" && (
-                        <>
-                            Selecione um <strong>território de origem</strong>{" "}
-                            para atacar
-                        </>
-                    )}
-                    {attackPhase === "SELECT_TARGET" && selectedSource && (
-                        <>
-                            Selecione um{" "}
-                            <strong>território inimigo vizinho</strong> de{" "}
-                            <strong>{selectedSource}</strong> para atacar
-                        </>
-                    )}
-                    {attackPhase === "SELECT_TROOPS" &&
-                        selectedSource &&
-                        selectedTarget && (
-                            <>
-                                Escolha <strong>quantas tropas</strong> usar
-                                para atacar <strong>{selectedTarget}</strong>
-                            </>
-                        )}
+                    {attackPhase === "SELECT_SOURCE" && <>Selecione um <strong>território de origem</strong> para atacar</>}
+                    {attackPhase === "SELECT_TARGET" && selectedSource && <>Selecione um <strong>território inimigo vizinho</strong> de <strong>{selectedSource}</strong> para atacar</>}
+                    {attackPhase === "SELECT_TROOPS" && selectedSource && selectedTarget && <>Escolha <strong>quantas tropas</strong> usar para atacar <strong>{selectedTarget}</strong></>}
                 </span>
                 <div className="attack-bar-buttons">
                     {canAttack && (
                         <button className="attack-btn" onClick={handleAttack}>
-                            Atacar com {attackQuantity} tropa
-                            {parseInt(attackQuantity) > 1 ? "s" : ""}
+                            Atacar com {attackQuantity} tropa{parseInt(attackQuantity) > 1 ? "s" : ""}
                         </button>
                     )}
-                    <button
-                        className="close-attack-btn"
-                        onClick={() => {
-                            // Reset manual de seleção/highlight caso algo trave
-                            setSelectedSource("");
-                            setSelectedTarget("");
-                            setAttackResult(null);
-                            setShowAttackResult(false);
-                            setShowPostConquest(false);
-                            setPostConquestData(null);
-                            setAttackPhase("SELECT_SOURCE");
-                            EventBus.emit("highlight-territories", { territories: [], mode: "none" });
-                        }}
-                        title="Limpar seleção e destaques"
-                    >
-                        Resetar Seleção
-                    </button>
-                    <button className="close-attack-btn" onClick={onClose}>
-                        Fechar Ataque
-                    </button>
+                    <button className="close-attack-btn" onClick={() => {
+                        setSelectedSource("");
+                        setSelectedTarget("");
+                        setAttackResult(null);
+                        setShowAttackResult(false);
+                        setShowPostConquest(false);
+                        setPostConquestData(null);
+                        setAttackPhase("SELECT_SOURCE");
+                        EventBus.emit("highlight-territories", { territories: [], mode: "none" });
+                    }} title="Limpar seleção e destaques">Resetar Seleção</button>
+                    <button className="close-attack-btn" onClick={onClose}>Fechar Ataque</button>
                 </div>
             </div>
 
@@ -693,91 +535,28 @@ const AttackBar: React.FC<AttackBarProps> = ({
                     <div className="attack-selections">
                         {selectedSource && (
                             <div className="selection-chip">
-                                <span className="selection-chip-label">
-                                    Origem:
-                                </span>
-                                <span className="selection-chip-text">
-                                    {selectedSource} (
-                                    {getTroops(selectedSource)}{" "}
-                                    tropas)
-                                </span>
-                                <button
-                                    className="selection-chip-remove"
-                                    onClick={handleRemoveSource}
-                                    title="Remover seleção"
-                                >
-                                    ×
-                                </button>
+                                <span className="selection-chip-label">Origem:</span>
+                                <span className="selection-chip-text">{selectedSource} ({getTroops(selectedSource)} tropas)</span>
+                                <button className="selection-chip-remove" onClick={handleRemoveSource} title="Remover seleção">×</button>
                             </div>
                         )}
                         {selectedTarget && (
                             <div className="selection-chip target">
-                                <span className="selection-chip-label">
-                                    Alvo:
-                                </span>
-                                <span className="selection-chip-text">
-                                    {selectedTarget} (
-                                    {getTroops(selectedTarget)} tropas)
-                                </span>
-                                <button
-                                    className="selection-chip-remove"
-                                    onClick={handleRemoveTarget}
-                                    title="Remover seleção"
-                                >
-                                    ×
-                                </button>
+                                <span className="selection-chip-label">Alvo:</span>
+                                <span className="selection-chip-text">{selectedTarget} ({getTroops(selectedTarget)} tropas)</span>
+                                <button className="selection-chip-remove" onClick={handleRemoveTarget} title="Remover seleção">×</button>
                             </div>
                         )}
-                        {selectedSource &&
-                            selectedTarget &&
-                            attackPhase === "SELECT_TROOPS" && (
-                                <div className="troop-selection-inline">
-                                    <span className="troop-selection-label">
-                                        Atacar com:
-                                    </span>
-                                    <div className="troop-buttons-inline">
-                                        <button
-                                            className={`troop-btn-small ${
-                                                attackQuantity === "1"
-                                                    ? "selected"
-                                                    : ""
-                                            }`}
-                                            onClick={() =>
-                                                setAttackQuantity("1")
-                                            }
-                                            disabled={maxAttackable < 1}
-                                        >
-                                            1
-                                        </button>
-                                        <button
-                                            className={`troop-btn-small ${
-                                                attackQuantity === "2"
-                                                    ? "selected"
-                                                    : ""
-                                            }`}
-                                            onClick={() =>
-                                                setAttackQuantity("2")
-                                            }
-                                            disabled={maxAttackable < 2}
-                                        >
-                                            2
-                                        </button>
-                                        <button
-                                            className={`troop-btn-small ${
-                                                attackQuantity === "3"
-                                                    ? "selected"
-                                                    : ""
-                                            }`}
-                                            onClick={() =>
-                                                setAttackQuantity("3")
-                                            }
-                                            disabled={maxAttackable < 3}
-                                        >
-                                            3
-                                        </button>
-                                    </div>
+                        {selectedSource && selectedTarget && attackPhase === "SELECT_TROOPS" && (
+                            <div className="troop-selection-inline">
+                                <span className="troop-selection-label">Atacar com:</span>
+                                <div className="troop-buttons-inline">
+                                    <button className={`troop-btn-small ${attackQuantity === "1" ? "selected" : ""}`} onClick={() => setAttackQuantity("1")} disabled={maxAttackable < 1}>1</button>
+                                    <button className={`troop-btn-small ${attackQuantity === "2" ? "selected" : ""}`} onClick={() => setAttackQuantity("2")} disabled={maxAttackable < 2}>2</button>
+                                    <button className={`troop-btn-small ${attackQuantity === "3" ? "selected" : ""}`} onClick={() => setAttackQuantity("3")} disabled={maxAttackable < 3}>3</button>
                                 </div>
-                            )}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

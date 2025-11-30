@@ -137,6 +137,9 @@ export class Jogo extends Scene {
 
                 EventBus.on("players-updated", handlePlayersUpdate as any);
 
+                // NEW: Request initial state immediately
+                EventBus.emit("request-game-state");
+
                 return () => {
                     EventBus.removeListener("players-updated");
                 };
@@ -272,4 +275,3 @@ export class Jogo extends Scene {
         });
     }
 }
-

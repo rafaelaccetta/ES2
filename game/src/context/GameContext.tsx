@@ -53,7 +53,7 @@ interface GameContextType extends GameState {
     applyPostConquestMove: (source: string, target: string, moved: number) => void;
     moveArmies: (source: string, target: string, moved: number) => void;
     calculateReinforcementTroops: (player?: Player) => any;
-    placeReinforcement: (territory: string) => void; // New helper
+    placeReinforcement: (territory: string) => void;
 }
 
 const initialState: GameState = {
@@ -88,13 +88,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const [gameState, setGameState] = useState<GameState>(initialState);
 
     // --- HELPER: Build snapshot for UI consumption ---
-    // The UI expects a specific structure (like territoriesArmies) that currently
-    // lives inside GameMap, not the Player object. This bridges the gap.
     const broadcastGameState = useCallback(() => {
         if (!gameState.gameManager) return;
 
         const playersPayload = gameState.gameManager.players.map((p) => {
-            // Reconstruct the {Territory: Count} object for the frontend
             const territoriesArmies: Record<string, number> = {};
             p.territories.forEach((t) => {
                 territoriesArmies[t] = gameState.gameManager!.getTerritoryArmies(t);
@@ -105,7 +102,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 color: p.color,
                 territories: p.territories,
                 territoriesArmies: territoriesArmies,
-                // Map the backend 'armies' (Reserve) to the UI's 'pendingReinforcements'
                 armies: p.armies,
                 pendingReinforcements: p.armies,
                 cards: p.cards,
@@ -136,6 +132,49 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         loadObjectives();
     }, []);
 
+    // --- NEW: Handle Map State Requests (Fixes Color Glitch) ---
+    useEffect(() => {
+        const handleRequestState = () => {
+            console.log("GameContext: Map requested state update");
+            broadcastGameState();
+        };
+        EventBus.on("request-game-state", handleRequestState);
+        return () => {
+            EventBus.removeListener("request-game-state", handleRequestState);
+        };
+    }, [broadcastGameState]);
+
+    // --- NEW: Watch for AI Turns (Fixes AI Start Issue) ---
+    useEffect(() => {
+        if (!gameState.gameStarted || !gameState.gameManager) return;
+
+        const currentPlayer = gameState.gameManager.getPlayerPlaying();
+
+        // If it is the AI's turn, execute it automatically
+        if (currentPlayer && currentPlayer.isAI && currentPlayer.isActive) {
+            console.log(`🤖 Detetada vez da IA (${currentPlayer.color}). Executando...`);
+
+            // Execute logic
+            gameState.gameManager.executeAITurn();
+
+            // Update UI state to reflect AI moves + Phase change
+            setGameState((prevState) => ({
+                ...prevState,
+                currentPlayerIndex: gameState.gameManager!.turn,
+                currentPhase: gameState.gameManager!.getPhaseName(),
+                currentRound: gameState.gameManager!.round,
+            }));
+
+            broadcastGameState();
+        }
+    }, [
+        gameState.gameStarted,
+        gameState.currentPlayerIndex, // Triggers when turn changes
+        gameState.currentPhase,       // Triggers when phase changes
+        gameState.gameManager,
+        broadcastGameState
+    ]);
+
     const startGame = (playerCount: number) => {
         const playerColors = ["azul", "vermelho", "verde", "branco"];
         const gamePlayers = Array.from(
@@ -143,7 +182,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             (_, index) => new Player(index, playerColors[index], null, (index >= playerCount))
         );
 
-        console.log('🎮 Iniciando jogo com jogadores:', gamePlayers.map(p => ({ id: p.id, color: p.color })));
+        console.log('🎮 Iniciando jogo com jogadores:', gamePlayers.map(p => ({ id: p.id, color: p.color, isAI: p.isAI })));
 
         const cardManager = new CardManager();
         const gameManager = new GameManager(gamePlayers, cardManager);
@@ -152,7 +191,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             .map((o) => createObjectiveFromJson(o))
             .filter((o) => o !== null);
 
-        // Shuffle Objectives
         for (let i = objectiveInstances.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [objectiveInstances[i], objectiveInstances[j]] = [objectiveInstances[j], objectiveInstances[i]];
@@ -180,8 +218,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             firstRoundObjectiveShown: new Set(),
         }));
 
-        // Need to wait for state update to settle or just emit immediately with local variables?
-        // Emitting immediately using the instances we just created is safer.
+        // Initial broadcast
         const playersPayload = gamePlayers.map((p) => {
             const territoriesArmies: Record<string, number> = {};
             p.territories.forEach((t) => {
@@ -243,7 +280,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
         const currentPlayer = getCurrentPlayer();
 
-        // Check reserve pool (mapped from p.armies)
         if (gameState.currentPhase === 'REFORÇAR' && currentPlayer && currentPlayer.armies > 0) {
             console.warn('Não pode avançar: ainda existem reforços para alocar.');
             return;
@@ -257,7 +293,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         const previousPhase = gameState.currentPhase;
         const previousPlayer = getCurrentPlayer();
 
-        // Execute Backend Logic
         gameState.gameManager.passPhase();
 
         setGameState((prevState) => ({
@@ -267,7 +302,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentRound: gameState.gameManager!.round,
         }));
 
-        // Handle Card Awarding (Logic moved to backend, checking result here)
         if (previousPhase === "FORTIFICAR") {
             const awarded = gameState.gameManager.consumeLastAwardedCard?.();
             if (awarded) {
@@ -289,20 +323,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         broadcastGameState();
     };
 
-    // --- REINFORCEMENT PLACEMENT (Frontend Helper) ---
-    // The backend's executeAIPlacement handles this for AI, but for humans
-    // we need to bridge the UI click to the GameManager.
     const placeReinforcement = (territory: string) => {
         const gm = gameState.gameManager;
         const player = getCurrentPlayer();
         if (!gm || !player) return;
 
         if (player.hasTerritory(territory) && player.armies > 0) {
-            // Decrease reserve
             player.removeArmies(1);
-            // Increase board
             gm.gameMap.addArmy(territory, 1);
-
             broadcastGameState();
         }
     };
@@ -317,20 +345,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 const currentPlayer = getCurrentPlayer();
                 if (!currentPlayer) return;
 
-                // --- DELEGATE TO BACKEND ---
                 const result = gameState.gameManager.resolveAttack(source, target);
 
-                // If the backend call was invalid (e.g. bad validation), it returns success:false
                 if (!result.success) {
                     console.warn("Attack failed validation in backend");
                     return;
                 }
 
-                // Note: The backend currently calculates dice internally but might not return them 
-                // in the structure expected by the UI. 
-                // We construct a mock dice result if the backend doesn't provide it, 
-                // or use the backend's data if available.
-                // Assuming GameManager has been updated or we accept visual desync for dice.
                 const aDice = (result as any).attackRolls || [];
                 const dDice = (result as any).defenseRolls || [];
 
@@ -338,7 +359,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                     source,
                     target,
                     troopsUsed: troops,
-                    attackerDice: aDice, // Might be empty if backend doesn't return them
+                    attackerDice: aDice,
                     defenderDice: dDice,
                     attackerLoss: result.attackLosses,
                     defenderLoss: result.defenseLosses,
@@ -354,8 +375,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                         troopsRequested: troops,
                         attackerLoss: result.attackLosses,
                         defenderLoss: result.defenseLosses,
-                        // Logic for survivors/move is tricky without backend guidance, 
-                        // but map is already updated by resolveAttack
                         survivors: troops - result.attackLosses,
                         maxCanMove: gameState.gameManager.getTerritoryArmies(source) - 1,
                     });
@@ -384,8 +403,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 if (!cardManager || !currentPlayer || !data.cards) return;
 
                 cardManager.executeCardExchange(data.cards, currentPlayer);
-
-                // Update UI
                 broadcastGameState();
 
             } catch (err) {
@@ -407,7 +424,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const applyPostConquestMove = (source: string, target: string, moved: number) => {
         if (!gameState.gameManager) return;
 
-        // Delegate to backend
         gameState.gameManager.moveTroops(source, target, moved);
         broadcastGameState();
     };
@@ -473,8 +489,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
     const moveArmies = (source: string, target: string, moved: number) => {
         if (!gameState.gameManager) return;
-
-        // Delegate to backend
         gameState.gameManager.moveTroops(source, target, moved);
         broadcastGameState();
     };
@@ -494,7 +508,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         moveArmies,
         applyPostConquestMove,
         calculateReinforcementTroops,
-        placeReinforcement, // Exported for TroopAllocation to use
+        placeReinforcement,
     };
 
     return (
