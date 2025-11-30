@@ -23,29 +23,24 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
     const {
         getCurrentPlayer,
         currentRound,
-        players,
         calculateReinforcementTroops,
         gameManager,
-        placeReinforcement
+        placeReinforcement,
+        undoReinforcement // NEW: Import undo helper
     } = useGameContext() as any;
 
     const [allocations, setAllocations] = useState<Record<string, number>>({});
     const [lastRoundPlayer, setLastRoundPlayer] = useState<string>("");
     const [initialTroops, setInitialTroops] = useState(0);
 
-    // Pools
     const [continentPools, setContinentPools] = useState<Record<string, number>>({});
     const [exclusivePools, setExclusivePools] = useState<Record<string, number>>({});
 
-    // Phases: 'exclusive' -> 'continent' -> 'free'
     const [allocationPhase, setAllocationPhase] = useState<'exclusive' | 'continent' | 'free'>('continent');
     const [currentContinentFocus, setCurrentContinentFocus] = useState<string | null>(null);
     const [currentExclusiveFocus, setCurrentExclusiveFocus] = useState<string | null>(null);
 
-    const [initialContinentBonus, setInitialContinentBonus] = useState(0);
     const [continentTroopsSpent, setContinentTroopsSpent] = useState(0);
-
-    const [initialExclusiveBonus, setInitialExclusiveBonus] = useState(0);
     const [exclusiveTroopsSpent, setExclusiveTroopsSpent] = useState(0);
 
     const lastClickTimestampRef = useRef<number>(0);
@@ -66,9 +61,8 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
         const continentBonus = calc?.continentBonus || 0;
         const base = territoryBonus + continentBonus;
 
-        let cardBonus = 0;
         const pending = currentPlayer.armies || 0;
-        cardBonus = Math.max(0, pending - base);
+        const cardBonus = Math.max(0, pending - base);
 
         const continents = Object.keys(calc?.continentBonuses || {});
         return { base, cardBonus, territoryBonus, continentBonus, continents };
@@ -105,13 +99,10 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 setContinentTroopsSpent(0);
                 setExclusiveTroopsSpent(0);
 
-                // 1. Setup Exclusive Pools
                 const exPools = { ...(currentPlayer.exclusiveArmies || {}) };
                 setExclusivePools(exPools);
                 const totalEx = Object.values(exPools).reduce((a:number,b:number)=>a+b, 0);
-                setInitialExclusiveBonus(totalEx);
 
-                // 2. Setup Continent Pools
                 const calc = calculateReinforcementTroops(currentPlayer) as any;
                 const cPools: Record<string, number> = {};
                 Object.entries(calc?.continentBonuses || {}).forEach(([continentName, bonus]) => {
@@ -119,9 +110,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 });
                 setContinentPools(cPools);
                 const totalCont = Object.values(cPools).reduce((s: number, v: number) => s + v, 0);
-                setInitialContinentBonus(totalCont);
 
-                // 3. Determine Initial Phase
                 if (totalEx > 0) {
                     setAllocationPhase('exclusive');
                     const firstEx = Object.keys(exPools)[0];
@@ -168,10 +157,7 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 (t: string) => normalizeId(t) === territoryId
             );
 
-            if (!matchingTerritory) {
-                console.log("TroopAllocation: territory not owned by player");
-                return;
-            }
+            if (!matchingTerritory) return;
 
             let territoryContinent: string | null = null;
             try {
@@ -186,32 +172,23 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
 
             // --- PHASE VALIDATION ---
             if (allocationPhase === 'exclusive') {
-                if (matchingTerritory !== currentExclusiveFocus) {
-                    console.log("Alocação bloqueada: deve alocar no território exclusivo", currentExclusiveFocus);
-                    return;
-                }
+                if (matchingTerritory !== currentExclusiveFocus) return;
                 if ((exclusivePools[currentExclusiveFocus] || 0) <= 0) return;
             }
             else if (allocationPhase === 'continent') {
-                if (!currentContinentFocus || territoryContinent !== currentContinentFocus) {
-                    console.log("Alocação bloqueada: deve alocar no continente", currentContinentFocus);
-                    return;
-                }
+                if (!currentContinentFocus || territoryContinent !== currentContinentFocus) return;
                 if ((continentPools[currentContinentFocus] || 0) <= 0) return;
             }
             else {
                 if (getRemainingTroops <= 0) return;
             }
 
-            // --- EXECUTE ---
             allocatedCountRef.current += 1;
 
             if (placeReinforcement) {
-                // This calls backend AND emits 'players-updated' with fresh data
                 placeReinforcement(matchingTerritory);
             }
 
-            // --- UPDATE LOCAL STATE ---
             if (allocationPhase === 'exclusive' && currentExclusiveFocus) {
                 setExclusiveTroopsSpent(prev => prev + 1);
                 setExclusivePools(prev => ({
@@ -227,16 +204,12 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 }));
             }
 
-            // FIX: Removed manual EventBus.emit() here.
-            // placeReinforcement already emits the correct state.
-            // Emitting here with stale props caused the visual bug.
-
             setAllocations((prev) => ({
                 ...prev,
                 [matchingTerritory]: (prev[matchingTerritory] || 0) + 1,
             }));
         },
-        [currentPlayer, players, normalizeId, continentPools, exclusivePools, gameManager, allocationPhase, currentContinentFocus, currentExclusiveFocus, getRemainingTroops, placeReinforcement]
+        [currentPlayer, normalizeId, continentPools, exclusivePools, gameManager, allocationPhase, currentContinentFocus, currentExclusiveFocus, getRemainingTroops, placeReinforcement]
     );
 
     useEffect(() => {
@@ -253,11 +226,13 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
             const allocated = allocations[territory];
             if (!allocated || allocated <= 0) return;
 
-            try {
-                gameManager.gameMap.removeArmy(territory, 1);
-            } catch (e) { return; }
+            // FIX: Delegate to Context
+            if (undoReinforcement) {
+                undoReinforcement(territory, allocationPhase);
+            }
 
-            let restoredToPool = false;
+            // Update local UI state
+            allocatedCountRef.current = Math.max(0, allocatedCountRef.current - 1);
 
             if (allocationPhase === 'exclusive' && territory === currentExclusiveFocus) {
                 setExclusiveTroopsSpent(p => Math.max(0, p - 1));
@@ -265,55 +240,14 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                     ...prev,
                     [territory]: (prev[territory] || 0) + 1
                 }));
-                currentPlayer.addArmiesExclusive(territory, 1);
-                restoredToPool = true;
             }
-            else if (allocationPhase === 'continent') {
-                if (currentContinentFocus) {
-                    setContinentTroopsSpent(p => Math.max(0, p - 1));
-                    setContinentPools(prev => ({
-                        ...prev,
-                        [currentContinentFocus]: (prev[currentContinentFocus] || 0) + 1
-                    }));
-                    currentPlayer.addArmies(1);
-                    restoredToPool = true;
-                }
+            else if (allocationPhase === 'continent' && currentContinentFocus) {
+                setContinentTroopsSpent(p => Math.max(0, p - 1));
+                setContinentPools(prev => ({
+                    ...prev,
+                    [currentContinentFocus]: (prev[currentContinentFocus] || 0) + 1
+                }));
             }
-
-            if (!restoredToPool) {
-                currentPlayer.addArmies(1);
-            }
-
-            allocatedCountRef.current = Math.max(0, allocatedCountRef.current - 1);
-
-            // Manual broadcast is needed here because we bypassed GameContext helpers
-            const playersPayload = players.map((p: any) => {
-                const territoriesArmies: Record<string, number> = {};
-                p.territories.forEach((t: string) => {
-                    territoriesArmies[t] = gameManager.getTerritoryArmies(t);
-                });
-
-                const ex: Record<string, number> = {};
-                if (p.armiesExclusiveToTerritory) {
-                    for (const [t, amount] of p.armiesExclusiveToTerritory.entries()) {
-                        if (amount > 0) ex[t] = amount;
-                    }
-                }
-                return {
-                    id: p.id,
-                    color: p.color,
-                    territories: p.territories,
-                    territoriesArmies: territoriesArmies,
-                    armies: p.armies,
-                    pendingReinforcements: p.armies,
-                    exclusiveArmies: ex
-                };
-            });
-
-            EventBus.emit("players-updated", {
-                playerCount: players.length,
-                players: playersPayload
-            });
 
             setAllocations((prev) => {
                 const newValue = prev[territory] - 1;
@@ -324,13 +258,13 @@ const TroopAllocation: React.FC<TroopAllocationProps> = ({
                 return { ...prev, [territory]: newValue };
             });
         },
-        [currentPlayer, allocations, players, allocationPhase, currentContinentFocus, currentExclusiveFocus, gameManager]
+        [currentPlayer, allocations, allocationPhase, currentContinentFocus, currentExclusiveFocus, gameManager, undoReinforcement]
     );
 
     const handleConfirm = useCallback(() => {
         if (allocationPhase === 'exclusive') {
             const remaining = exclusivePools[currentExclusiveFocus || ''] || 0;
-            if (remaining > 0) return; // Must place all
+            if (remaining > 0) return;
 
             setAllocations({});
 

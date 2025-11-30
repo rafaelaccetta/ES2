@@ -55,6 +55,7 @@ interface GameContextType extends GameState {
     moveArmies: (source: string, target: string, moved: number) => void;
     calculateReinforcementTroops: (player?: Player) => any;
     placeReinforcement: (territory: string) => void;
+    undoReinforcement: (territory: string, type: 'exclusive' | 'continent' | 'free') => void; // NEW
 }
 
 const initialState: GameState = {
@@ -99,7 +100,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 territoriesArmies[t] = gameState.gameManager!.getTerritoryArmies(t);
             });
 
-            // NEW: Serialize exclusive armies Map to Object for UI
             const exclusiveArmies: Record<string, number> = {};
             if (p.armiesExclusiveToTerritory) {
                 for (const [t, amount] of p.armiesExclusiveToTerritory.entries()) {
@@ -323,7 +323,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         if (!gm || !rawPlayer) return;
 
         if (rawPlayer.hasTerritory(territory) && rawPlayer.armies > 0) {
-            // NEW: Handle Exclusive Armies logic
             const exclusiveCount = rawPlayer.armiesExclusiveToTerritory.get(territory) || 0;
             if (exclusiveCount > 0) {
                 rawPlayer.removeArmiesExclusive(territory, 1);
@@ -335,6 +334,25 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         }
     };
 
+    // NEW: Undo helper
+    const undoReinforcement = (territory: string, type: 'exclusive' | 'continent' | 'free') => {
+        const gm = gameState.gameManager;
+        const rawPlayer = gm?.getPlayerPlaying();
+        if (!gm || !rawPlayer) return;
+
+        try {
+            gm.gameMap.removeArmy(territory, 1);
+
+            if (type === 'exclusive') {
+                rawPlayer.addArmiesExclusive(territory, 1);
+            } else {
+                rawPlayer.addArmies(1);
+            }
+            broadcastGameState();
+        } catch (e) {
+            console.error("Undo Reinforcement failed:", e);
+        }
+    };
 
     useEffect(() => {
         const handleAttackRequest = (data: { source: string; target: string; troops: number }) => {
@@ -511,6 +529,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         applyPostConquestMove,
         calculateReinforcementTroops,
         placeReinforcement,
+        undoReinforcement, // Export the new helper
     };
 
     return (
