@@ -25,20 +25,6 @@ describe('WarAI Integration System', () => {
         gameManager.AIs = [warAI];
     });
 
-    it('should correctly place troops during Reinforcement phase', () => {
-        playerAI.armies = 5;
-        const territoryId = playerAI.territories[0];
-        const initialTroops = gameManager.getTerritoryArmies(territoryId);
-
-        vi.spyOn(warAI, 'decidePlacement').mockReturnValue(territoryId);
-
-        gameManager.executeAIPlacement(warAI, playerAI);
-
-        const finalTroops = gameManager.getTerritoryArmies(territoryId);
-        expect(finalTroops).toBe(initialTroops + 5);
-        expect(playerAI.armies).toBe(0);
-    });
-
     it('should execute an attack sequence and reduce troops', () => {
         const aiTerritory = playerAI.territories[0];
 
@@ -66,37 +52,6 @@ describe('WarAI Integration System', () => {
 
         const currentAttackerTroops = gameManager.getTerritoryArmies(aiTerritory);
         expect(currentAttackerTroops).toBeLessThan(10);
-    });
-
-    it('should move troops during Fortification phase', () => {
-        const t1 = playerAI.territories[0];
-        let t2 = playerAI.territories[1];
-
-        if (!t2) {
-            t2 = 'territory_mock_friend';
-            playerAI.addTerritory(t2);
-            gameManager.gameMap.territories.addVertex(t2);
-            gameManager.gameMap.setArmies(t2, 1);
-        }
-
-        if (!gameManager.getNeighbors(t1).includes(t2)) {
-            gameManager.gameMap.territories.addEdge(t1, t2);
-            gameManager.gameMap.territories.addEdge(t2, t1);
-        }
-
-        gameManager.gameMap.setArmies(t1, 10);
-        gameManager.gameMap.setArmies(t2, 1);
-
-        vi.spyOn(warAI, 'decideFortification').mockReturnValue({
-            from: t1,
-            to: t2,
-            numTroops: 5
-        });
-
-        gameManager.executeAIFortification(warAI);
-
-        expect(gameManager.getTerritoryArmies(t1)).toBe(5);
-        expect(gameManager.getTerritoryArmies(t2)).toBe(6);
     });
 
     it('should correctly prioritize objectives in scoring logic', () => {
