@@ -8,28 +8,31 @@ export class Player {
         this.isAI = isAI
         this.territories = [];
         this.cards = [];
-        this.armies = 0; // Represents the "reserve" pool of armies available to place
-        this.pendingReinforcements = 0; // tropas calculadas para alocar na fase REFORÇAR
+
+        // REFACTOR: this.armies now STRICTLY represents the "Reserve Pool"
+        // (Troops waiting to be placed on the board).
+        // It does NOT count troops currently on the map.
+        this.armies = 0;
+
+        this.pendingReinforcements = 0; // Tropas calculadas para alocar na fase REFORÇAR
         this.isActive = true;
-        this.armiesExclusiveToTerritory = new Map() // example: {"Brazil": 2} means 2 troops can only be deployed in Brazil
-        this.territoriesArmies = {}; // objeto para armazenar exércitos por território
+        this.armiesExclusiveToTerritory = new Map(); // example: {"Brazil": 2}
+
+        // REFACTOR: Removed this.territoriesArmies. 
+        // The GameMap is now the Single Source of Truth for board state.
     }
 
     addTerritory(territory) {
         if (!this.territories.includes(territory)) {
             this.territories.push(territory);
-            this.territoriesArmies[territory] = 0;
         }
     }
 
     removeTerritory(territory) {
         this.territories = this.territories.filter((t) => t !== territory);
-        // If the player had an entry for this territory in territoriesArmies, remove it.
-        // Use the `in` operator to catch zero values as well (0 is falsy).
-        if (territory in this.territoriesArmies) {
-            this.armies -= this.territoriesArmies[territory] || 0;
-            delete this.territoriesArmies[territory];
-        }
+
+        // REFACTOR: Removed logic that subtracted 'territoriesArmies' from 'this.armies'.
+        // Losing a territory on the board should NOT reduce your unplaced reinforcements.
     }
 
     getTerritoriesCount() {
@@ -39,7 +42,7 @@ export class Player {
     addCard(card) {
         this.cards.push(card);
     }
-    
+
     // chamada na função de calcular o bônus de continente no GameMap
     hasConqueredContinent(continentName, territoriesByContinent) {
         const continentTerritories = territoriesByContinent[continentName];
@@ -48,10 +51,12 @@ export class Player {
     }
 
     // Adiciona tropas para o saldo (pool) do jogador que ainda serão alocadas.
-    addArmiesToPool(amount) {
+    // Can be called 'receiveReinforcements' conceptually.
+    addArmies(amount) {
         this.armies = this.armies + amount;
     }
 
+    // Called when the GameManager actually places a troop on the map.
     removeArmies(amount) {
         this.armies = this.armies >= amount ? this.armies - amount : 0;
     }
@@ -59,20 +64,21 @@ export class Player {
     hasArmies(amount) {
         return this.armies >= amount
     }
-    
+
     addArmiesExclusive(territoryName, amount){
-        // Aplica diretamente no território e marca como exclusivo
+        // REFACTOR: Adds to the general reserve pool, but marks them as restricted.
+        // The GameManager/UI must check 'armiesExclusiveToTerritory' when placing.
         if (this.hasTerritory(territoryName)) {
-            this.addArmiesToTerritory(territoryName, amount);
+            this.addArmies(amount); // Add to reserve
             const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
             this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
         }
     }
-    
+
     removeArmiesExclusive(territoryName, amount){
         const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
-        if (currentAmount >= amount) {    
-            this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
+        if (currentAmount >= amount) {
+            this.armiesExclusiveToTerritory.set(territoryName, currentAmount - amount);
         }
     }
 
@@ -80,30 +86,26 @@ export class Player {
         return this.territories.includes(territoryName)
     }
 
+    // REFACTOR: This method used to mix Reserve logic with Board logic.
+    // It is now an alias for addArmies (adding to reserve) to maintain compatibility 
+    // where 'adding armies' meant giving the player reinforcements.
+    // The GameMap calls that used this to sync board state have been removed.
     addArmiesToTerritory(territory, quantity) {
-        //logic to add armies to a territory
-        // at the begining of the turn or because of card exchange or because of a continent control
-        if (this.territories.includes(territory)) {
-            if (!this.territoriesArmies[territory]) {
-                this.territoriesArmies[territory] = 0;
-            }
-            this.territoriesArmies[territory] += quantity;
-            this.armies += quantity;
-        }
-    }
-
-    // Compatibilidade legacy: muitas partes do código ainda chamam player.addArmies(territory, qty)
-    // Mantém assinatura antiga direcionando para addArmiesToTerritory.
-    addArmies(territory, quantity) {
-        this.addArmiesToTerritory(territory, quantity);
+        // Warning: This adds to RESERVE. It does not place on the map.
+        this.addArmies(quantity);
     }
 
     spendPendingReinforcement(territory, amount = 1){
         if (this.pendingReinforcements <= 0) return false;
         if (!this.hasTerritory(territory)) return false;
+
         const toSpend = Math.min(amount, this.pendingReinforcements);
         this.pendingReinforcements -= toSpend;
-        this.addArmiesToTerritory(territory, toSpend);
+
+        // Moves from "Pending" to "Reserve". 
+        // The GameManager is responsible for taking from Reserve and calling GameMap.addArmy.
+        this.addArmies(toSpend);
+
         return true;
     }
 
@@ -112,18 +114,15 @@ export class Player {
     }
 
     deactivate() {
-        // logic to deactivate a player
         this.isActive = false;
     }
 
     activate() {
-        // logic to activate a player
         this.isActive = true;
     }
 
     checkWin(gameState) {
         if (!this.objective || typeof this.objective.checkWin !== "function") return false;
-        return this.objective.checkWin(this, gameState);   
+        return this.objective.checkWin(this, gameState);
     }
 }
-
