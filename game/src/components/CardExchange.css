@@ -1,0 +1,92 @@
+@import "./TroopAllocation.css";
+
+.card-exchange-modal .troop-allocation-content {
+    padding-top: 20px;
+}
+
+.card-exchange-info {
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.exchange-hint {
+    font-size: 0.95rem;
+    color: #a59b7b;
+    margin: 4px 0;
+}
+
+.exchange-hint.must-exchange {
+    color: #fbbf24;
+    font-weight: 600;
+}
+
+.cards-list {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fill,
+        minmax(180px, 1fr)
+    );
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: rgba(62, 94, 95, 0.3);
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid rgba(165, 155, 123, 0.3);
+    margin-bottom: 24px;
+}
+
+.card-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(62, 94, 95, 0.5);
+    color: white;
+    border: 2px solid #a59b7b;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    font-size: 1rem;
+}
+
+.card-btn:hover:not(:disabled) {
+    background: rgba(165, 155, 123, 0.2);
+    border-color: #c5b18a;
+    transform: translateY(-2px);
+}
+
+.card-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.card-btn.selected {
+    background: rgba(165, 155, 123, 0.5) !important;
+    color: #f4e4bc;
+    font-weight: 600;
+}
+
+.card-shape {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.card-name {
+    flex: 1;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.troop-allocation-header {
+    position: relative;
+}
+
+.troop-allocation-header .close-btn {
+    position: absolute;
+    top: 16px;
+    right: 24px;
+}

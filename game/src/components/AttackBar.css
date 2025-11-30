@@ -107,23 +107,12 @@
     cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    animation: pulse-attack-button 2s ease-in-out infinite;
 }
 
 .attack-btn:hover {
     background: linear-gradient(135deg, #c5b18a 0%, #a59b7b 100%);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-@keyframes pulse-attack-button {
-    0%,
-    100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
 }
 
 .close-attack-btn {
@@ -161,23 +150,12 @@
     cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    animation: pulse-button 2s ease-in-out infinite;
 }
 
 .confirm-move-btn:hover {
     background: linear-gradient(135deg, #15803d 0%, #166534 100%);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-@keyframes pulse-button {
-    0%,
-    100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
 }
 
 .cancel-move-btn {
@@ -221,7 +199,7 @@
     background: rgba(165, 155, 123, 0.2);
     border: 1px solid #a59b7b;
     border-radius: 20px;
-    padding: 6px 12px;
+    padding: 8px 12px;
     font-size: 0.875rem;
     color: #fff;
     transition: all 0.2s;
@@ -302,12 +280,13 @@
 
 .troop-buttons-inline {
     display: flex;
+    align-items: center;
     gap: 6px;
 }
 
 .troop-btn-small {
     min-width: 36px;
-    height: 36px;
+    height: 20px;
     background: linear-gradient(135deg, #3e5e5f 0%, #2a4142 100%);
     border: 2px solid #a59b7b;
     border-radius: 6px;

@@ -40,5 +40,7 @@
     "Dudinka" : "square",
     "Aral" : "square",
     "Omsk" : "circle",
-    "Oriente Médio" : "triangle"
+    "Oriente Médio" : "triangle",
+    "Coringa 1": "Wildcard",
+    "Coringa 2": "Wildcard"
 }

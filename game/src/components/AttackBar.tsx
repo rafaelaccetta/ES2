@@ -393,6 +393,9 @@ const AttackBar: React.FC<AttackBarProps> = ({
     const handleCloseAttackResult = () => {
         setShowAttackResult(false);
         setAttackResult(null);
+        // Força limpeza de destaques e retorno à seleção de origem
+        EventBus.emit("highlight-territories", { territories: [], mode: "none" });
+        setAttackPhase("SELECT_SOURCE");
     };
 
     // Handlers pós-conquista
@@ -411,6 +414,8 @@ const AttackBar: React.FC<AttackBarProps> = ({
         setPostConquestData(null);
         setSelectedSource("");
         setSelectedTarget("");
+        EventBus.emit("highlight-territories", { territories: [], mode: "none" });
+        setAttackPhase("SELECT_SOURCE");
     };
 
     useEffect(() => {
@@ -665,6 +670,23 @@ const AttackBar: React.FC<AttackBarProps> = ({
                             {parseInt(attackQuantity) > 1 ? "s" : ""}
                         </button>
                     )}
+                    <button
+                        className="close-attack-btn"
+                        onClick={() => {
+                            // Reset manual de seleção/highlight caso algo trave
+                            setSelectedSource("");
+                            setSelectedTarget("");
+                            setAttackResult(null);
+                            setShowAttackResult(false);
+                            setShowPostConquest(false);
+                            setPostConquestData(null);
+                            setAttackPhase("SELECT_SOURCE");
+                            EventBus.emit("highlight-territories", { territories: [], mode: "none" });
+                        }}
+                        title="Limpar seleção e destaques"
+                    >
+                        Resetar Seleção
+                    </button>
                     <button className="close-attack-btn" onClick={onClose}>
                         Fechar Ataque
                     </button>
