@@ -14,7 +14,7 @@ export class GameManager {
         this.logs = [];
         this.conqueredThisRound = false;
 
-        // NEW: Stores the max troops allowed to move from each territory in this phase
+        // Stores the max troops allowed to move from each territory in this phase
         this.fortificationBudget = {};
 
         const isCardManager = cardManager && (
@@ -166,7 +166,7 @@ export class GameManager {
         this.logAction(`Rodada ${this.round} iniciada.`);
     }
 
-    // NEW: Snapshots current armies to create the budget
+    // Snapshots current armies to create the budget
     #initializeFortificationBudget() {
         this.fortificationBudget = {};
         const player = this.getPlayerPlaying();
@@ -268,8 +268,6 @@ export class GameManager {
     }
 
     executeAIFortification(ai) {
-        // Note: AI currently ignores the budget constraint for simplicity, 
-        // or we can enforce it here too. For now, AI logic is simple 1-step move.
         const move = ai.decideFortification(this);
         if (move) {
             this.moveTroops(move.from, move.to, move.numTroops);
@@ -338,6 +336,10 @@ export class GameManager {
         if (this.gameMap.getArmies(toId) === 0) {
             conquered = true;
             this.dominate(ownerAttacker, ownerDefender, toId);
+
+            // FIX: Ensure this flag is set so the card is awarded at end of phase
+            this.markTerritoryConquered();
+
             this.logAction(`Território ${toId} CONQUISTADO por ${ownerAttacker.color}!`);
 
             this.gameMap.removeArmy(fromId, 1);
@@ -363,7 +365,7 @@ export class GameManager {
 
         if (!isAdjacent) return false;
 
-        // NEW: Enforce "Budget" rule during Fortification
+        // Enforce "Budget" rule during Fortification
         if (this.getPhaseName() === "FORTIFICAR") {
             const allowed = this.fortificationBudget[fromId] || 0;
             if (amount > allowed) {
@@ -377,7 +379,7 @@ export class GameManager {
             this.gameMap.removeArmy(fromId, amount);
             this.gameMap.addArmy(toId, amount);
 
-            // NEW: Deduct from budget
+            // Deduct from budget
             if (this.getPhaseName() === "FORTIFICAR") {
                 this.fortificationBudget[fromId] = (this.fortificationBudget[fromId] || 0) - amount;
             }
