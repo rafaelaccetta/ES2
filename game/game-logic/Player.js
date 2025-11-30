@@ -1,15 +1,17 @@
 import cardsSymbols from "../public/data/territories_cards.json" with {type: "json"};
+
 export class Player {
-    constructor(id, color, objective = null) {
+    constructor(id, color, objective = null, isAI = false) {
         this.id = id;
         this.color = color;
         this.objective = objective;
+        this.isAI = isAI
         this.territories = [];
         this.cards = [];
-        this.armies = 0;
+        this.armies = 0; // Represents the "reserve" pool of armies available to place
         this.pendingReinforcements = 0; // tropas calculadas para alocar na fase REFORÇAR
-        this.armiesExclusiveToTerritory = new Map() // example: {"Brazil": 2} means 2 troops can only be deployed in Brazil
         this.isActive = true;
+        this.armiesExclusiveToTerritory = new Map() // example: {"Brazil": 2} means 2 troops can only be deployed in Brazil
         this.territoriesArmies = {}; // objeto para armazenar exércitos por território
     }
 
@@ -41,6 +43,7 @@ export class Player {
     // chamada na função de calcular o bônus de continente no GameMap
     hasConqueredContinent(continentName, territoriesByContinent) {
         const continentTerritories = territoriesByContinent[continentName];
+        if (!continentTerritories) return false;
         return continentTerritories.every((territory) => this.territories.includes(territory));
     }
 
@@ -50,7 +53,7 @@ export class Player {
     }
 
     removeArmies(amount) {
-        this.armies = this.armies >= amount ? this.armies - amount : 0;    
+        this.armies = this.armies >= amount ? this.armies - amount : 0;
     }
 
     hasArmies(amount) {
@@ -73,10 +76,6 @@ export class Player {
         }
     }
 
-    hasArmiesExclusive(territoryName, amount){
-        return this.armiesExclusiveToTerritory.get(territoryName) >= amount;
-    }
-    
     hasTerritory(territoryName){
         return this.territories.includes(territoryName)
     }
@@ -112,17 +111,14 @@ export class Player {
         return this.pendingReinforcements > 0;
     }
 
-    removeArmies() {
-        // logic to remove armies of a territory
-        // because of attack, defense or movement
-    }
-
     deactivate() {
         // logic to deactivate a player
+        this.isActive = false;
     }
 
     activate() {
         // logic to activate a player
+        this.isActive = true;
     }
 
     checkWin(gameState) {
