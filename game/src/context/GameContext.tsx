@@ -99,13 +99,21 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 territoriesArmies[t] = gameState.gameManager!.getTerritoryArmies(t);
             });
 
+            // NEW: Serialize exclusive armies Map to Object for UI
+            const exclusiveArmies: Record<string, number> = {};
+            if (p.armiesExclusiveToTerritory) {
+                for (const [t, amount] of p.armiesExclusiveToTerritory.entries()) {
+                    if (amount > 0) exclusiveArmies[t] = amount;
+                }
+            }
+
             return Object.assign(Object.create(Object.getPrototypeOf(p)), p, {
                 territoriesArmies: territoriesArmies,
                 pendingReinforcements: p.armies,
+                exclusiveArmies: exclusiveArmies
             });
         });
 
-        // Get budget
         const budget = { ...((gameState.gameManager as any).fortificationBudget || {}) };
 
         setGameState(prev => ({
@@ -138,7 +146,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         loadObjectives();
     }, []);
 
-    // Handle Map State Requests
     useEffect(() => {
         const handleRequestState = () => {
             broadcastGameState();
@@ -149,7 +156,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         };
     }, [broadcastGameState]);
 
-    // Watch for AI Turns
     useEffect(() => {
         if (!gameState.gameStarted || !gameState.gameManager) return;
 
@@ -227,7 +233,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             });
             return Object.assign(Object.create(Object.getPrototypeOf(p)), p, {
                 territoriesArmies: territoriesArmies,
-                pendingReinforcements: p.armies
+                pendingReinforcements: p.armies,
+                exclusiveArmies: {}
             });
         });
 
@@ -302,9 +309,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentRound: gameState.gameManager!.round,
         }));
 
-        // REMOVED: Card awarding emission block. 
-        // The backend handles adding the card to the player inventory automatically.
-        // We also clean up the buffer just in case.
         if (previousPhase === "FORTIFICAR") {
             gameState.gameManager.consumeLastAwardedCard?.();
         }
@@ -319,6 +323,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         if (!gm || !rawPlayer) return;
 
         if (rawPlayer.hasTerritory(territory) && rawPlayer.armies > 0) {
+            // NEW: Handle Exclusive Armies logic
+            const exclusiveCount = rawPlayer.armiesExclusiveToTerritory.get(territory) || 0;
+            if (exclusiveCount > 0) {
+                rawPlayer.removeArmiesExclusive(territory, 1);
+            }
+
             rawPlayer.removeArmies(1);
             gm.gameMap.addArmy(territory, 1);
             broadcastGameState();
