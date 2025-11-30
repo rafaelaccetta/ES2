@@ -13,18 +13,24 @@ export class GameManager {
         this.PhaseNames = ["REFORÇAR", "ATACAR", "FORTIFICAR"];
         this.PhaseIdx = 0;
         this.logs = [];
-        this.conqueredThisRound = false; // Rastreia se o jogador conquistou território nesta rodada de ataque
+        this.conqueredThisRound = false;
         this.cardManager = cardManager instanceof CardManager ? cardManager : null;
-        this.lastAwardedCard = null; // Guarda carta concedida ao final da fase de ataque
+        this.lastAwardedCard = null;
         this.initializeGame();
     }
 
     initializeGame() {
         this.players.sort(() => Math.random() - 0.5);
         this.gameMap = new GameMap();
-        // Distribuir territórios automaticamente
         this.gameMap.distributeTerritories(this.players);
-        this.#prepareReinforcements();
+
+        // Initial reinforcements calculation
+        const p = this.getPlayerPlaying();
+        if (p) {
+            const amount = this.calculateReinforcements(p);
+            p.addArmies(amount); // Direct add to reserve
+        }
+
         this.logAction("Jogo Inicializado. Territórios distribuídos.");
     }
 
@@ -54,7 +60,7 @@ export class GameManager {
     passPhase() {
         const currentPlayer = this.getPlayerPlaying();
         console.log(this.logs)
-        // Se está saindo da fase de FORTIFICAR (movimentação) e houve conquista na rodada, dar 1 carta
+
         if (this.getPhaseName() === "FORTIFICAR") {
             if (this.conqueredThisRound && this.cardManager) {
                 const player = currentPlayer;
@@ -66,10 +72,9 @@ export class GameManager {
             this.conqueredThisRound = false;
         }
 
-        // RODADA 0 (primeira rodada): só permite REFORÇAR, depois vai pro próximo jogador
+        // Round 0 logic
         if (this.round === 0 && this.getPhaseName() === "REFORÇAR") {
             this.#passTurn();
-            this.#prepareReinforcements();
             return;
         }
 
@@ -84,7 +89,6 @@ export class GameManager {
         if (this.PhaseIdx > this.PhaseNames.length - 1) {
             this.PhaseIdx = 0;
             this.#passTurn();
-            this.#prepareReinforcements();
         } else {
             if (currentPlayer.isAI) {
                 this.executeAITurn();
@@ -104,23 +108,12 @@ export class GameManager {
 
     calculateReinforcements(player) {
         if (!player) return 0;
-
-        // Bônus base de territórios: número de territórios dividido por 2 (mínimo 3)
         const territoryBonus = Math.max(3, Math.floor(player.territories.length / 2));
-
-        // Bônus de continentes conquistados (usando método real do calculateContinentBonus)
         const continentBonuses = this.calculateContinentBonus(player);
         const continentBonus = Object.values(continentBonuses).reduce((sum, bonus) => sum + bonus, 0);
-
         const total = territoryBonus + continentBonus;
-        console.log(`Reforços calculados para jogador ${player.id}: ${player.territories.length} territórios = ${territoryBonus}, continentes = ${continentBonus}, total = ${total}`);
+        console.log(`Reinforcements for ${player.id}: ${total} (Terr: ${territoryBonus}, Cont: ${continentBonus})`);
         return total;
-    }
-
-    #prepareReinforcements() {
-        const p = this.getPlayerPlaying();
-        if (!p) return;
-        p.pendingReinforcements = this.calculateReinforcements(p);
     }
 
     #passTurn() {
@@ -133,17 +126,8 @@ export class GameManager {
         this.logAction(`Turno iniciado para o Jogador ${nextPlayer.id} (${nextPlayer.color})`);
 
         if (nextPlayer.isActive) {
-            const territoriesCount = nextPlayer.territories.length;
-            let armiesToAdd = Math.floor(territoriesCount / 2);
-            if (armiesToAdd < 3) armiesToAdd = 3;
-
-            const bonuses = this.calculateContinentBonus(nextPlayer);
-            for (const bonus of Object.values(bonuses)) {
-                armiesToAdd += bonus;
-            }
-
-            // Note: This adds to the player's "Reserve Pool", not the board directly.
-            nextPlayer.addArmies(armiesToAdd);
+            let armiesToAdd = this.calculateReinforcements(nextPlayer);
+            nextPlayer.addArmies(armiesToAdd); // Add to reserve
             this.logAction(`Jogador ${nextPlayer.id} recebeu ${armiesToAdd} exércitos de reforço.`);
         }
 
@@ -159,7 +143,7 @@ export class GameManager {
     }
 
     // =================================================================
-    // LÓGICA DA IA (EXECUÇÃO)
+    // AI LOGIC
     // =================================================================
 
     executeAITurn() {
@@ -187,26 +171,22 @@ export class GameManager {
 
     executeAIPlacement(ai, player) {
         let safetyCounter = 0;
-        const MAX_LOOPS = 200; // Prevent infinite loops
+        const MAX_LOOPS = 200;
 
         while (player.armies > 0) {
             safetyCounter++;
             if (safetyCounter > MAX_LOOPS) {
-                console.warn("AI Placement forced break: Infinite loop detected or too many armies.");
+                console.warn("AI Placement forced break: Infinite loop detected.");
                 break;
             }
-            if (player.territories.length === 0) {
-                console.warn("AI has armies but no territories. Skipping placement.");
-                break;
-            }
+            if (player.territories.length === 0) break;
 
-            // Check if there are Exclusive Armies (from Card Exchange) to place first
+            // Handle Exclusive Armies (Card Exchange)
             let forcedTerritory = null;
             if (player.armiesExclusiveToTerritory.size > 0) {
                 for (const [terrId, amount] of player.armiesExclusiveToTerritory.entries()) {
                     if (amount > 0 && player.hasTerritory(terrId)) {
                         forcedTerritory = terrId;
-                        // Decrement the exclusive lock (the actual army is removed from general pool below)
                         player.removeArmiesExclusive(terrId, 1);
                         break;
                     }
@@ -214,26 +194,20 @@ export class GameManager {
             }
 
             let territoryId = forcedTerritory;
-
-            // If no forced placement, ask AI logic
             if (!territoryId) {
                 territoryId = ai.decidePlacement(this);
             }
 
-            // Validation and Placement
             if (territoryId && player.hasTerritory(territoryId)) {
-                player.removeArmies(1); // Remove from Reserve
-                this.gameMap.addArmy(territoryId, 1); // Add to Map
-                // this.logAction(`IA colocou 1 exército em ${territoryId}`); // Detailed log can be spammy
+                player.removeArmies(1);
+                this.gameMap.addArmy(territoryId, 1);
             } else {
-                // Fallback: Random valid territory
+                // Fallback
                 const randomIdx = Math.floor(Math.random() * player.territories.length);
                 const randomTerritory = player.territories[randomIdx];
-
                 if (randomTerritory) {
                     player.removeArmies(1);
                     this.gameMap.addArmy(randomTerritory, 1);
-                    this.logAction(`IA (fallback) colocou 1 exército em ${randomTerritory}`);
                 } else {
                     break;
                 }
@@ -270,7 +244,7 @@ export class GameManager {
     }
 
     // =================================================================
-    // AÇÕES DE JOGO (RESOLUÇÃO DE REGRAS)
+    // GAME RULES & ACTIONS
     // =================================================================
 
     resolveAttack(fromId, toId) {
@@ -306,14 +280,13 @@ export class GameManager {
             }
         }
 
-        // Aplicação das baixas (Diretamente no MAPA)
+        // Apply losses to MAP
         if (attackLosses > 0) {
             this.gameMap.removeArmy(fromId, attackLosses);
         }
 
         if (defenseLosses > 0) {
             const currentDefenderArmies = this.gameMap.getArmies(toId);
-
             if (currentDefenderArmies - defenseLosses <= 0) {
                 this.gameMap.setArmies(toId, 0);
             } else {
@@ -321,19 +294,15 @@ export class GameManager {
             }
         }
 
-        this.logAction(`Ataque de ${fromId} (${ownerAttacker.color}) para ${toId} (${ownerDefender.color}). 
-            Dados: Atacante[${attackRolls.join(',')}] vs Defensor[${defenseRolls.join(',')}]. 
-            Baixas: Atacante -${attackLosses}, Defensor -${defenseLosses}.`);
+        this.logAction(`Ataque ${fromId}->${toId}. Dados: A[${attackRolls}] D[${defenseRolls}]. Perdas: A-${attackLosses} D-${defenseLosses}.`);
 
         let conquered = false;
 
-        // Verifica conquista
         if (this.gameMap.getArmies(toId) === 0) {
             conquered = true;
             this.dominate(ownerAttacker, ownerDefender, toId);
             this.logAction(`Território ${toId} CONQUISTADO por ${ownerAttacker.color}!`);
 
-            // Move 1 tropa obrigatoriamente do atacante para o conquistado
             this.gameMap.removeArmy(fromId, 1);
             this.gameMap.addArmy(toId, 1);
         }
@@ -348,13 +317,9 @@ export class GameManager {
 
     moveTroops(fromId, toId, amount) {
         const neighbors = this.getNeighbors(fromId);
-        if (!neighbors.includes(toId)) {
-            console.warn(`Manobra inválida: ${fromId} e ${toId} não são vizinhos.`);
-            return false;
-        }
+        if (!neighbors.includes(toId)) return false;
 
         const fromTroops = this.gameMap.getArmies(fromId);
-        // Regra: Deve sobrar pelo menos 1 exército
         if (fromTroops > amount) {
             this.gameMap.removeArmy(fromId, amount);
             this.gameMap.addArmy(toId, amount);
@@ -364,75 +329,33 @@ export class GameManager {
         return false;
     }
 
-    // Legacy compatibility method, refined to use correct Getters/Setters
     moveArmies(territoryFromString, territoryToString, amountArmies) {
-        let player = this.getPlayerPlaying();
-        const ownsFrom = player.hasTerritory(territoryFromString);
-        const ownsTo = player.hasTerritory(territoryToString);
-
-        if (!ownsFrom || !ownsTo) {
-            console.log("Movimento falhou: ao menos um território não pertence ao player.");
-            return false;
-        }
-
-        if (!this.gameMap.areAdjacent(territoryToString, territoryFromString)) {
-            console.log("Movimento falhou: territórios não são adjacentes.")
-            return false;
-        }
-
-        // Use GameMap getter, not direct property access
-        const armiesOnFrom = this.gameMap.getArmies(territoryFromString);
-
-        if (armiesOnFrom <= amountArmies) {
-            console.log(`Movimento falhou: tropas insuficientes em ${territoryFromString}. Deve sobrar ao menos 1.`);
-            return false;
-        }
-
-        try {
-            this.gameMap.removeArmy(territoryFromString, amountArmies);
-            this.gameMap.addArmy(territoryToString, amountArmies);
-
-            console.log(`Move successful: ${amountArmies} armies moved from ${territoryFromString} to ${territoryToString}.`);
-            return true;
-
-        } catch (error) {
-            console.error("Move failed with an unexpected error:", error.message);
-            return false;
-        }
+        return this.moveTroops(territoryFromString, territoryToString, amountArmies);
     }
 
     calculateContinentBonus(player) {
         const territoriesByContinent = this.gameMap.getTerritoriesByContinent();
         const continentBonuses = {};
-
         const continentNames = Object.keys(territoriesByContinent);
 
         for (const continentName of continentNames) {
-            const hasConquered = player.hasConqueredContinent(continentName, territoriesByContinent);
-
-            if (hasConquered) {
+            if (player.hasConqueredContinent(continentName, territoriesByContinent)) {
                 const continentAbbreviation = Object.keys(this.gameMap.continents).find(key =>
                     this.gameMap.continents[key].name === continentName
                 );
-
                 if (continentAbbreviation) {
-                    const bonusValue = this.gameMap.continents[continentAbbreviation].bonus;
-                    continentBonuses[continentName] = bonusValue;
+                    continentBonuses[continentName] = this.gameMap.continents[continentAbbreviation].bonus;
                 }
             }
         }
         return continentBonuses;
     }
 
-    // Helper for UI/Frontend
     calculateReinforcementTroops(player) {
         let territoryBonus = Math.max(3, Math.floor(player.territories.length / 2));
-
         const continentBonuses = this.calculateContinentBonus(player);
         let continentBonus = Object.values(continentBonuses).reduce((sum, bonus) => sum + bonus, 0);
-
-        let cardBonus = 0; // Card bonus is handled via exchange actions, not statically here
-
+        let cardBonus = 0;
         const totalTroops = territoryBonus + continentBonus + cardBonus;
 
         return {

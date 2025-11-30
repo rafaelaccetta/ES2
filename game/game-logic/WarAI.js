@@ -1,20 +1,14 @@
 /**
  * WarAI - Artificial Intelligence for the War game
- * This class implements decision-making logic for an AI player in War,
- * handling troop placement, attacks, and fortification moves.
  */
 export class WarAI {
-    /**
-     * @param {number} playerId - O ID deste bot (ex: 2 para player 2).
-     * @param {object} objective - O objetivo secreto deste bot.
-     */
     constructor(playerId, objective) {
         this.myId = playerId;
         this.objective = objective;
     }
 
     // =================================================================
-    // FASE 1: DISTRIBUIÇÃO (Onde colocar as tropas no início do turno)
+    // FASE 1: DISTRIBUIÇÃO
     // =================================================================
 
     decidePlacement(gameManager) {
@@ -25,7 +19,6 @@ export class WarAI {
         let bestTerritory = null;
         let highestScore = -Infinity;
 
-        // Uses GameManager getters (Safe)
         myTerritories.forEach(terr => {
             let score = this._scoreForDefense(terr, gameManager) +
                 this._scoreForObjective(terr, gameManager) +
@@ -41,19 +34,16 @@ export class WarAI {
     }
 
     // =================================================================
-    // FASE 2: ATAQUE (Escolher origem e destino)
+    // FASE 2: ATAQUE
     // =================================================================
 
     decideAttack(gameManager) {
-        // Uses GameManager.getAllPossibleAttacks which reads from GameMap (Safe)
         const possibleAttacks = gameManager.getAllPossibleAttacks(this.myId);
         let bestAttack = null;
-        let highestScore = 30; // Courage threshold
+        let highestScore = 30;
 
         possibleAttacks.forEach(attack => {
-            if (attack.from.troops <= attack.to.troops + 1) {
-                return;
-            }
+            if (attack.from.troops <= attack.to.troops + 1) return;
 
             let score = 0;
             const troopRatio = attack.from.troops / attack.to.troops;
@@ -73,7 +63,7 @@ export class WarAI {
     }
 
     // =================================================================
-    // FASE 3: MANOBRA (Mover tropas no fim do turno)
+    // FASE 3: MANOBRA
     // =================================================================
 
     decideFortification(gameManager) {
@@ -96,7 +86,6 @@ export class WarAI {
         let bestDonor = null;
         let maxSpareTroops = 0;
 
-        // Uses GameManager helper which checks GameMap armies (Safe)
         const friendlyNeighbors = gameManager.getFriendlyNeighbors(neediestTerritory, this.myId);
 
         friendlyNeighbors.forEach(neighbor => {
@@ -125,7 +114,7 @@ export class WarAI {
     }
 
     // =================================================================
-    // MÉTODOS DE AVALIAÇÃO ESTRATÉGICA
+    // AVALIAÇÃO ESTRATÉGICA
     // =================================================================
 
     _scoreAttackStrategicValue(targetTerritory, gameManager) {
@@ -146,9 +135,7 @@ export class WarAI {
             }
         }
 
-        if (enemy.territories.length === 1) {
-            score += 200;
-        }
+        if (enemy.territories.length === 1) score += 200;
 
         return score;
     }
@@ -156,26 +143,15 @@ export class WarAI {
     _calculateRearRisk(fromTerritory, gameManager) {
         let risk = 0;
         const enemies = gameManager.getEnemyNeighbors(fromTerritory.id, this.myId);
-
-        enemies.forEach(enemy => {
-            risk += enemy.troops;
-        });
-
+        enemies.forEach(enemy => risk += enemy.troops);
         return risk * 2;
     }
 
     _scoreForDefense(territoryId, gameManager) {
-        const player = gameManager.players.find(p => p.id === this.myId);
-        if (!player) return 0;
-
         const enemyNeighbors = gameManager.getEnemyNeighbors(territoryId, this.myId);
-
-        if (enemyNeighbors.length === 0) {
-            return -10;
-        }
+        if (enemyNeighbors.length === 0) return -10;
 
         const threatLevel = enemyNeighbors.reduce((sum, enemy) => sum + enemy.troops, 0);
-        // Correct usage of GameManager proxy to GameMap
         const myTroops = gameManager.getTerritoryArmies(territoryId);
 
         return threatLevel - myTroops;
@@ -202,7 +178,6 @@ export class WarAI {
                 return 60;
             }
         }
-
         return 0;
     }
 
@@ -219,11 +194,7 @@ export class WarAI {
         const myPercent = myTerritoriesInContinent.length / continentTerritories.length;
 
         if (myPercent >= 1.0) return 0;
-
-        if (myPercent > 0.6) {
-            return continent.bonus * 20;
-        }
-
+        if (myPercent > 0.6) return continent.bonus * 20;
         return continent.bonus * 2;
     }
 }

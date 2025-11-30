@@ -7,7 +7,7 @@ export class GameMap {
     constructor() {
         this.territories = new Graph();
         this.continents = {};
-        this.armies = {}; // The Single Source of Truth for army counts
+        this.armies = {}; // The definitive storage for troops on the board
 
         this.loadMapData();
         this.initializeArmies();
@@ -32,7 +32,7 @@ export class GameMap {
     }
 
     initializeArmies() {
-        // Sets the initial state of the board: 1 army per territory.
+        // All territories start with 1 troop
         for (const territory in territoriesJson) {
             this.armies[territory] = 1;
         }
@@ -57,8 +57,6 @@ export class GameMap {
         const currentArmies = this.armies[territory];
         const resultingArmies = currentArmies - amount;
 
-        // Note: Logic in GameManager determines if a territory is conquered (goes to 0).
-        // Standard removal (e.g. moving troops) usually requires leaving 1 behind.
         if (resultingArmies < 0) {
             console.error(`Error: Attempted to remove ${amount} from ${territory} (has ${currentArmies})`);
             this.armies[territory] = 0;
@@ -67,9 +65,7 @@ export class GameMap {
         this.armies[territory] = resultingArmies;
     }
 
-    // cria um objeto continents que armazena os territórios de acordo com o continente que pertencem 
     getTerritoriesByContinent() {
-        // se já tiver sido calculado, retorna o valor armazenado
         if (this.territoriesBycontinents) {
             return this.territoriesBycontinents;
         }
@@ -94,7 +90,6 @@ export class GameMap {
         var territoriesPerPlayer = Math.floor(territoriesKeys.length / players.length);
         var currentIndex = 0;
 
-        // distribuir territórios igualmente
         for (var i = 0; i < players.length; i++) {
             for (var j = 0; j < territoriesPerPlayer; j++) {
                 players[i].addTerritory(territoriesKeys[currentIndex]);
@@ -108,17 +103,16 @@ export class GameMap {
             currentIndex++;
         }
 
-        // REFACTOR: Removed the loop that called players[i].addArmiesToTerritory(...).
-        // 1. initializeArmies() already set all territories to 1.
-        // 2. The Player object no longer tracks board state, so no need to sync.
+        // Note: initializeArmies() already placed 1 troop everywhere.
+        // We do NOT call player functions here to avoid state duplication.
     }
 
     getContinentBonusForPlayer(player) {
-        // verificar se um jogador domina algum continente e retornar o bônus
+        // Logic moved to GameManager to centralize rule processing
     }
 
     areAdjacent(territory1, territory2) {
-        const neighbors = this.territories.getNeighbors(territory1); //
+        const neighbors = this.territories.getNeighbors(territory1);
         return neighbors.some(neighbor => neighbor.node === territory2);
     }
 }

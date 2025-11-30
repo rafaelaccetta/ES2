@@ -9,17 +9,12 @@ export class Player {
         this.territories = [];
         this.cards = [];
 
-        // REFACTOR: this.armies now STRICTLY represents the "Reserve Pool"
-        // (Troops waiting to be placed on the board).
-        // It does NOT count troops currently on the map.
+        // STRICTLY "Reserve Pool": Troops waiting to be placed on the board.
+        // Does not include troops already on the GameMap.
         this.armies = 0;
 
-        this.pendingReinforcements = 0; // Tropas calculadas para alocar na fase REFORÇAR
         this.isActive = true;
         this.armiesExclusiveToTerritory = new Map(); // example: {"Brazil": 2}
-
-        // REFACTOR: Removed this.territoriesArmies. 
-        // The GameMap is now the Single Source of Truth for board state.
     }
 
     addTerritory(territory) {
@@ -30,9 +25,6 @@ export class Player {
 
     removeTerritory(territory) {
         this.territories = this.territories.filter((t) => t !== territory);
-
-        // REFACTOR: Removed logic that subtracted 'territoriesArmies' from 'this.armies'.
-        // Losing a territory on the board should NOT reduce your unplaced reinforcements.
     }
 
     getTerritoriesCount() {
@@ -43,20 +35,18 @@ export class Player {
         this.cards.push(card);
     }
 
-    // chamada na função de calcular o bônus de continente no GameMap
     hasConqueredContinent(continentName, territoriesByContinent) {
         const continentTerritories = territoriesByContinent[continentName];
         if (!continentTerritories) return false;
         return continentTerritories.every((territory) => this.territories.includes(territory));
     }
 
-    // Adiciona tropas para o saldo (pool) do jogador que ainda serão alocadas.
-    // Can be called 'receiveReinforcements' conceptually.
+    // Add troops to the Reserve Pool (e.g., beginning of turn, card trade)
     addArmies(amount) {
         this.armies = this.armies + amount;
     }
 
-    // Called when the GameManager actually places a troop on the map.
+    // Remove troops from Reserve Pool (e.g., when placing them on the map)
     removeArmies(amount) {
         this.armies = this.armies >= amount ? this.armies - amount : 0;
     }
@@ -66,10 +56,9 @@ export class Player {
     }
 
     addArmiesExclusive(territoryName, amount){
-        // REFACTOR: Adds to the general reserve pool, but marks them as restricted.
-        // The GameManager/UI must check 'armiesExclusiveToTerritory' when placing.
+        // Adds to general reserve, but marks as restricted for the UI/AI to handle
         if (this.hasTerritory(territoryName)) {
-            this.addArmies(amount); // Add to reserve
+            this.addArmies(amount);
             const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
             this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
         }
@@ -86,31 +75,9 @@ export class Player {
         return this.territories.includes(territoryName)
     }
 
-    // REFACTOR: This method used to mix Reserve logic with Board logic.
-    // It is now an alias for addArmies (adding to reserve) to maintain compatibility 
-    // where 'adding armies' meant giving the player reinforcements.
-    // The GameMap calls that used this to sync board state have been removed.
+    // Legacy alias: directs to the Reserve Pool
     addArmiesToTerritory(territory, quantity) {
-        // Warning: This adds to RESERVE. It does not place on the map.
         this.addArmies(quantity);
-    }
-
-    spendPendingReinforcement(territory, amount = 1){
-        if (this.pendingReinforcements <= 0) return false;
-        if (!this.hasTerritory(territory)) return false;
-
-        const toSpend = Math.min(amount, this.pendingReinforcements);
-        this.pendingReinforcements -= toSpend;
-
-        // Moves from "Pending" to "Reserve". 
-        // The GameManager is responsible for taking from Reserve and calling GameMap.addArmy.
-        this.addArmies(toSpend);
-
-        return true;
-    }
-
-    hasPendingReinforcements(){
-        return this.pendingReinforcements > 0;
     }
 
     deactivate() {
