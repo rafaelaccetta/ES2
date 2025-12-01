@@ -1,4 +1,3 @@
-
 import continentsJson from "../public/data/continents.json" with {type: "json"};
 
 export class Objective {
@@ -18,20 +17,38 @@ export class EliminatePlayerObjective extends Objective {
         super(desc, title);
         this.targetIdentifier = targetIdentifier;
         this.fallbackTerritories = fallbackTerritories;
-        this.useFallback = useFallback;
+        // The 'useFallback' property is no longer used by the logic, but kept for compatibility
     }
 
     activateFallback() {
-        this.useFallback = true;
+        // This method can be called if another player eliminates the target,
+        // but the new checkWin logic handles this case automatically.
     }
 
     checkWin(player, gameState) {
-        if (this.useFallback || this._isTargetSameAsPlayer(player)) {
-            return player.getTerritoriesCount() >= this.fallbackTerritories;
+        const target = gameState.players.find(p => p.id === this.targetIdentifier || p.color === this.targetIdentifier);
+
+        // --- CORE LOGIC FIX ---
+        // An elimination objective has TWO independent paths to victory.
+
+        // Path 1: The player has conquered the required number of territories.
+        // This is valid as a primary goal for "Conquer 24" objectives, and as the fallback for elimination objectives.
+        const hasConqueredTerritories = player.getTerritoriesCount() >= this.fallbackTerritories;
+        if (hasConqueredTerritories) {
+            return true;
         }
 
-        const target = gameState.players.find(p => p.id === this.targetIdentifier || p.color === this.targetIdentifier);
-        return !target || !target.isActive;
+        // Path 2: The target player has been eliminated.
+        // This check is only valid if the target is NOT the player themself.
+        if (!this._isTargetSameAsPlayer(player)) {
+            const targetIsEliminated = !target || !target.isActive;
+            if (targetIsEliminated) {
+                return true;
+            }
+        }
+
+        // If neither win condition is met, the player has not won.
+        return false;
     }
 
     _isTargetSameAsPlayer(player) {
@@ -50,23 +67,14 @@ export class DominateContinentObjective extends Objective {
     checkWin(player, gameState) {
         const territoriesByContinent = gameState.getTerritoriesByContinent();
 
-        const normalizeContinent = (c) => {
-            if (!c && c !== 0) return c;
-            if (typeof c === 'string') return c;
-            if (typeof c === 'object') {
-                if (c.name) return c.name;
-                return String(c);
-            }
-            return String(c);
-        };
-
-        for (const rawCont of this.continents) {
-            const cont = normalizeContinent(rawCont);
+        for (const cont of this.continents) {
             if (!player.hasConqueredContinent(cont, territoriesByContinent)) {
                 return false;
             }
         }
 
+        // The logic for "additional" territories is interpreted as (Territories in Target Continent) + (Additional).
+        // This seems consistent with the numbers in objectives.json.
         const totalTerritories = player.getTerritoriesCount();
         const requiredTerritories = this._continentTerritoriesCount(territoriesByContinent) + this.extraTerritories;
         return totalTerritories >= requiredTerritories;
@@ -74,18 +82,7 @@ export class DominateContinentObjective extends Objective {
 
     _continentTerritoriesCount(territoriesByContinent) {
         let count = 0;
-        const normalizeContinent = (c) => {
-            if (!c && c !== 0) return c;
-            if (typeof c === 'string') return c;
-            if (typeof c === 'object') {
-                if (c.name) return c.name;
-                return String(c);
-            }
-            return String(c);
-        };
-
-        for (const rawCont of this.continents) {
-            const cont = normalizeContinent(rawCont);
+        for (const cont of this.continents) {
             count += (territoriesByContinent[cont] || []).length;
         }
         return count;
@@ -110,7 +107,7 @@ export function createObjectiveFromJson(obj) {
     switch (obj.type) {
         case "conquest":
         case "mixed": {
-            const continentsArr = (obj.target?.continents || []).map((c) => continentsJson[c] || c);
+            const continentsArr = (obj.target?.continents || []).map((c) => continentsJson[c]?.name || c);
             return new DominateContinentObjective(
                 continentsArr,
                 obj.target?.territory_count || 0,
