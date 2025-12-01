@@ -13,6 +13,15 @@ import { EventBus } from "../game/EventBus";
 import { CardManager } from "../../game-logic/CardManager.js";
 import { PlayerCards } from "../../game-logic/PlayerCards.js";
 
+// --- TYPES ---
+export interface LogEntry {
+    turn: number;
+    round: number;
+    phase: string;
+    message: string;
+    timestamp: number;
+}
+
 export interface Objective {
     id: number;
     type: string;
@@ -38,6 +47,8 @@ export interface GameState {
     firstRoundObjectiveShown: Set<number>;
     territorySelectionCallback: ((territory: string) => void) | null;
     fortificationBudget: Record<string, number>;
+    // RESTORED: Logs state
+    logs: LogEntry[];
 }
 
 interface GameContextType extends GameState {
@@ -71,6 +82,7 @@ const initialState: GameState = {
     firstRoundObjectiveShown: new Set(),
     territorySelectionCallback: null,
     fortificationBudget: {},
+    logs: [], // Init empty
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -90,6 +102,7 @@ interface GameProviderProps {
 export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const [gameState, setGameState] = useState<GameState>(initialState);
 
+    // --- HELPER: Build snapshot for UI consumption ---
     const broadcastGameState = useCallback(() => {
         if (!gameState.gameManager) return;
 
@@ -115,10 +128,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
         const budget = { ...((gameState.gameManager as any).fortificationBudget || {}) };
 
+        // RESTORED: Pull logs from manager
+        const currentLogs = [...(gameState.gameManager.getLogs() || [])];
+
         setGameState(prev => ({
             ...prev,
             players: playersPayload,
-            fortificationBudget: budget
+            fortificationBudget: budget,
+            logs: currentLogs
         }));
 
         EventBus.emit("players-updated", {
@@ -165,6 +182,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
             gameState.gameManager.executeAITurn();
 
+            // Sync after AI moves
             setGameState((prevState) => ({
                 ...prevState,
                 currentPlayerIndex: gameState.gameManager!.turn,
@@ -223,6 +241,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentRound: gameManager.round,
             gameStarted: true,
             firstRoundObjectiveShown: new Set(),
+            logs: [] // Reset logs
         }));
 
         const playersPayload = gamePlayers.map((p) => {
@@ -387,15 +406,9 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 });
 
                 if (result.conquered) {
-                    // FIX: Calculate maxCanMove based on attacking troops, not total armies.
-                    // This enforces the rule that only participating troops can move.
                     const armiesLeftAtSource = gm.getTerritoryArmies(source);
-                    // The number of optional troops you can move is the number you attacked with,
-                    // minus any losses, minus the one that MUST stay behind.
-                    // However, a simpler interpretation is troops you attacked with, minus 1 (the auto-move).
                     const optionalMoves = troops - 1;
 
-                    // Ensure you can't move more than what's physically left.
                     const physicalLimit = armiesLeftAtSource - 1;
                     const maxCanMove = Math.min(optionalMoves, physicalLimit);
 
@@ -409,7 +422,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                         maxCanMove: Math.max(0, maxCanMove)
                     });
 
-                    // --- MERGED VICTORY LOGIC ---
                     try {
                         const objectiveGameState: any = {
                             players: gm.players,
