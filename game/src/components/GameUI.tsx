@@ -8,6 +8,7 @@ import "./GameUI.css";
 import FortifyBar from "./FortifyBar";
 import CardExchange from "./CardTrade";
 import GameLog from "./GameLog";
+import { EventBus } from "../game/EventBus";
 
 const GameUI: React.FC = () => {
     const {
@@ -42,6 +43,9 @@ const GameUI: React.FC = () => {
     const [showFortifyBar, setShowFortifyBar] = useState(false);
     const [showCardExchange, setShowCardExchange] = useState(false);
 
+    // NEW: State for Reinforcement Highlight Toggle
+    const [isReinforceHighlightActive, setIsReinforceHighlightActive] = useState(false);
+
     const lastPlayerRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -67,6 +71,28 @@ const GameUI: React.FC = () => {
         gameStarted,
         firstRoundObjectiveShown,
     ]);
+
+    // Effect to handle highlighting based on the new toggle state
+    useEffect(() => {
+        const currentPlayer = getCurrentPlayer();
+        if (!currentPlayer) return;
+
+        const normalize = (s: string) =>
+            s.normalize("NFD").replace(/\p{Diacritic}+/gu, "").toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
+
+        if (isReinforceHighlightActive && currentPhase === "REFORÇAR") {
+            const territoriesToHighlight = currentPlayer.territories.map(normalize);
+            EventBus.emit("highlight-territories", {
+                territories: territoriesToHighlight,
+                mode: "player-territories"
+            });
+        } else {
+            // Clear highlights if toggle is off or phase changes
+            if (!showAttackBar && !showFortifyBar) {
+                EventBus.emit("highlight-territories", { territories: [], mode: "none" });
+            }
+        }
+    }, [isReinforceHighlightActive, currentPhase, currentPlayerIndex]); // Re-run when toggle, phase or player changes
 
 
     const handleStartGame = (playerCount: number) => {
@@ -104,15 +130,21 @@ const GameUI: React.FC = () => {
     };
 
     const handleShowTroopAllocation = () => {
-        setShowTroopAllocation(true);
+        // Toggle behavior
+        const willBeVisible = !showTroopAllocation;
+        setShowTroopAllocation(willBeVisible);
+        setIsReinforceHighlightActive(willBeVisible);
     };
 
     const handleShowAttackBar = () => {
         setShowAttackBar(true);
+        // Turn off reinforcement highlight when opening another bar
+        setIsReinforceHighlightActive(false);
     };
 
     const handleShowFortifyBar = () => {
         setShowFortifyBar(true);
+        setIsReinforceHighlightActive(false);
     }
 
     const handleCloseAttackBar = () => {
@@ -122,8 +154,11 @@ const GameUI: React.FC = () => {
     const handleCloseFortifyBar = () => {
         setShowFortifyBar(false);
     }
+
     const handleCloseTroopAllocation = () => {
         setShowTroopAllocation(false);
+        // Also turn off highlight when closing the allocation bar
+        setIsReinforceHighlightActive(false);
     };
 
     const mustExchangeCards =
@@ -137,7 +172,9 @@ const GameUI: React.FC = () => {
     }, [mustExchangeCards]);
 
     useEffect(() => {
+        // Reset state on turn/phase change
         setShowTroopAllocation(false);
+        setIsReinforceHighlightActive(false);
     }, [currentPlayerIndex, currentRound, currentPhase]);
 
     const getPlayerColor = (color: string) => {
@@ -234,9 +271,9 @@ const GameUI: React.FC = () => {
                                         : "Tropas já foram alocadas nesta fase"
                             }
                         >
-                            {getAvailableTroopsToAllocate() > 0
+                            {showTroopAllocation ? "Ocultar Alocação" : (getAvailableTroopsToAllocate() > 0
                                 ? "Alocar Tropas"
-                                : "Tropas Alocadas"}
+                                : "Tropas Alocadas")}
                         </button>
                     )}
 
@@ -343,8 +380,7 @@ const GameUI: React.FC = () => {
                                     }}
                                 />
                                 {player.color}
-                                {/* NEW: Add AI Label */}
-                                {player.isAI && <span className="ai-label">(IA)</span>}
+                                {player.isAI && <span className="ai-label">(AI)</span>}
                             </div>
                         ))}
                     </div>
