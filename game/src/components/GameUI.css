@@ -309,7 +309,12 @@
     grid-template-columns: 1fr 1fr;
     gap: 8px;
 }
-
+.ai-label {
+    font-size: 10px;
+    color: #94a3b8;
+    font-weight: normal;
+    margin-left: 4px;
+}
 .player-item {
   display: flex;
   align-items: center;

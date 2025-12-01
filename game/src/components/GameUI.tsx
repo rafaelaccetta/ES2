@@ -343,6 +343,8 @@ const GameUI: React.FC = () => {
                                     }}
                                 />
                                 {player.color}
+                                {/* NEW: Add AI Label */}
+                                {player.isAI && <span className="ai-label">(IA)</span>}
                             </div>
                         ))}
                     </div>

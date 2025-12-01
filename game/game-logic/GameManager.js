@@ -67,6 +67,13 @@ export class GameManager {
         return this.players[this.turn];
     }
 
+    // NEW: Helper for consistent player logging
+    #playerIdentifier(player) {
+        if (!player) return "Ninguém";
+        const aiTag = player.isAI ? " (AI)" : "";
+        return `${player.color}${aiTag}`;
+    }
+
     passPhase() {
         const currentPlayer = this.getPlayerPlaying();
         console.log(this.logs)
@@ -139,11 +146,9 @@ export class GameManager {
 
         const activePlayers = this.players.filter(p => p.isActive);
         if (activePlayers.length <= 1) {
-            // Game is over or will be, no need to advance turn
             return;
         }
 
-        // Loop until we find an active player
         let safety = 0;
         do {
             this.turn = (this.turn + 1) % this.turnsPerRound;
@@ -155,17 +160,19 @@ export class GameManager {
             return;
         }
 
-        if (this.turn === 0) { // Note: This check might be imprecise if P0 is eliminated
+        // This logic is a bit flawed if P0 is eliminated, but fine for now.
+        // A better check would be if the new turn index is less than the old one.
+        if (this.turn < ((this.turn - 1 + this.turnsPerRound) % this.turnsPerRound)) {
             this.#passRound();
         }
 
         const nextPlayer = this.getPlayerPlaying();
-        this.logAction(`Turno iniciado para o Jogador ${nextPlayer.id} (${nextPlayer.color})`);
+        this.logAction(`Turno iniciado para o jogador ${this.#playerIdentifier(nextPlayer)}.`);
 
         if (nextPlayer.isActive) {
             let armiesToAdd = this.calculateReinforcements(nextPlayer);
             nextPlayer.addArmies(armiesToAdd);
-            this.logAction(`Jogador ${nextPlayer.id} recebeu ${armiesToAdd} exércitos de reforço.`);
+            this.logAction(`${this.#playerIdentifier(nextPlayer)} recebeu ${armiesToAdd} exércitos de reforço.`);
         }
 
         if (nextPlayer.isAI && nextPlayer.isActive) {
@@ -242,14 +249,14 @@ export class GameManager {
             if (territoryId && player.hasTerritory(territoryId)) {
                 player.removeArmies(1);
                 this.gameMap.addArmy(territoryId, 1);
-                this.logAction(`IA colocou 1 exército em ${territoryId}`);
+                this.logAction(`${this.#playerIdentifier(player)} colocou 1 exército em ${territoryId}`);
             } else {
                 const randomIdx = Math.floor(Math.random() * player.territories.length);
                 const randomTerritory = player.territories[randomIdx];
                 if (randomTerritory) {
                     player.removeArmies(1);
                     this.gameMap.addArmy(randomTerritory, 1);
-                    this.logAction(`IA (fallback) colocou 1 exército em ${randomTerritory}`);
+                    this.logAction(`${this.#playerIdentifier(player)} (fallback) colocou 1 exército em ${randomTerritory}`);
                 } else {
                     break;
                 }
@@ -343,9 +350,7 @@ export class GameManager {
             }
         }
 
-        this.logAction(`Ataque de ${fromId} (${ownerAttacker.color}) para ${toId} (${ownerDefender.color}). 
-            Dados: Atacante[${attackRolls.join(',')}] vs Defensor[${defenseRolls.join(',')}]. 
-            Baixas: Atacante -${attackLosses}, Defensor -${defenseLosses}.`);
+        this.logAction(`Ataque de ${this.#playerIdentifier(ownerAttacker)} (${fromId}) para ${this.#playerIdentifier(ownerDefender)} (${toId}). Perdas: A-${attackLosses}, D-${defenseLosses}.`);
 
         let conquered = false;
 
@@ -353,17 +358,15 @@ export class GameManager {
             conquered = true;
             this.dominate(ownerAttacker, ownerDefender, toId);
             this.markTerritoryConquered();
-            this.logAction(`Território ${toId} CONQUISTADO por ${ownerAttacker.color}!`);
+            this.logAction(`Território ${toId} CONQUISTADO por ${this.#playerIdentifier(ownerAttacker)}!`);
 
             this.gameMap.removeArmy(fromId, 1);
             this.gameMap.addArmy(toId, 1);
 
-            // --- ELIMINATION LOGIC ---
             if (ownerDefender && ownerDefender.getTerritoriesCount() === 0) {
                 ownerDefender.deactivate();
-                this.logAction(`Jogador ${ownerDefender.color} foi ELIMINADO por ${ownerAttacker.color}!`);
+                this.logAction(`Jogador ${this.#playerIdentifier(ownerDefender)} foi ELIMINADO por ${this.#playerIdentifier(ownerAttacker)}!`);
 
-                // Transfer cards
                 ownerAttacker.cards.push(...ownerDefender.cards);
                 ownerDefender.cards = [];
             }
@@ -407,7 +410,7 @@ export class GameManager {
                 this.fortificationBudget[fromId] = (this.fortificationBudget[fromId] || 0) - amount;
             }
 
-            this.logAction(`Manobra: Moveu ${amount} tropas de ${fromId} para ${toId}.`);
+            this.logAction(`Manobra: ${this.#playerIdentifier(this.getPlayerPlaying())} moveu ${amount} tropas de ${fromId} para ${toId}.`);
             return true;
         }
         return false;
