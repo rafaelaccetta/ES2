@@ -329,9 +329,9 @@ const GameUI: React.FC = () => {
                             <div
                                 key={player.id}
                                 className={`player-item ${
-                                    player.id === currentPlayer.id
-                                        ? "active"
-                                        : ""
+                                    player.id === currentPlayer.id ? "active" : ""
+                                } ${
+                                    !player.isActive ? "eliminated" : "" // NEW: Class for eliminated players
                                 }`}
                             >
                                 <div
@@ -391,7 +391,6 @@ const GameUI: React.FC = () => {
                 }
             />
 
-            {/* FIX: Moved GameLog outside the main flex container */}
             <GameLog />
 
         </>

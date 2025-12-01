@@ -14,7 +14,6 @@ export class GameManager {
         this.logs = [];
         this.conqueredThisRound = false;
 
-        // Stores the max troops allowed to move from each territory in this phase
         this.fortificationBudget = {};
 
         const isCardManager = cardManager && (
@@ -72,7 +71,6 @@ export class GameManager {
         const currentPlayer = this.getPlayerPlaying();
         console.log(this.logs)
 
-        // Exit FORTIFICAR cleanup
         if (this.getPhaseName() === "FORTIFICAR") {
             if (this.conqueredThisRound && this.cardManager) {
                 const player = currentPlayer;
@@ -82,7 +80,6 @@ export class GameManager {
                 }
             }
             this.conqueredThisRound = false;
-            // Clear budget when phase ends
             this.fortificationBudget = {};
         }
 
@@ -104,10 +101,8 @@ export class GameManager {
             this.PhaseIdx = 0;
             this.#passTurn();
         } else {
-            // ENTERING NEW PHASE
             const newPhase = this.getPhaseName();
 
-            // Initialize Budget when entering Fortify
             if (newPhase === "FORTIFICAR") {
                 this.#initializeFortificationBudget();
             } else {
@@ -140,9 +135,27 @@ export class GameManager {
     }
 
     #passTurn() {
-        this.fortificationBudget = {}; // Clear budget
-        this.turn = (this.turn + 1) % this.turnsPerRound;
-        if (this.turn === 0) {
+        this.fortificationBudget = {};
+
+        const activePlayers = this.players.filter(p => p.isActive);
+        if (activePlayers.length <= 1) {
+            // Game is over or will be, no need to advance turn
+            return;
+        }
+
+        // Loop until we find an active player
+        let safety = 0;
+        do {
+            this.turn = (this.turn + 1) % this.turnsPerRound;
+            safety++;
+        } while (!this.getPlayerPlaying().isActive && safety < this.players.length * 2);
+
+        if (safety >= this.players.length * 2) {
+            console.error("Infinite loop detected in turn passing!");
+            return;
+        }
+
+        if (this.turn === 0) { // Note: This check might be imprecise if P0 is eliminated
             this.#passRound();
         }
 
@@ -166,7 +179,6 @@ export class GameManager {
         this.logAction(`Rodada ${this.round} iniciada.`);
     }
 
-    // Snapshots current armies to create the budget
     #initializeFortificationBudget() {
         this.fortificationBudget = {};
         const player = this.getPlayerPlaying();
@@ -174,7 +186,6 @@ export class GameManager {
 
         player.territories.forEach(t => {
             const currentArmies = this.gameMap.getArmies(t);
-            // Can move everything except 1
             this.fortificationBudget[t] = Math.max(0, currentArmies - 1);
         });
         console.log("Fortification Budget Initialized:", this.fortificationBudget);
@@ -274,7 +285,6 @@ export class GameManager {
         }
     }
 
-    // FIX: Added 'troopsCommitted' parameter to respect user selection
     resolveAttack(fromId, toId, troopsCommitted = null) {
         let isAdjacent = false;
         if (typeof this.gameMap.areAdjacent === 'function') {
@@ -296,7 +306,6 @@ export class GameManager {
 
         if (attackerTroops <= 1) return {success: false, conquered: false};
 
-        // Determine max dice based on troops present AND user commitment
         let maxDice = attackerTroops - 1;
         if (troopsCommitted !== null && troopsCommitted !== undefined) {
             maxDice = Math.min(maxDice, troopsCommitted);
@@ -348,6 +357,16 @@ export class GameManager {
 
             this.gameMap.removeArmy(fromId, 1);
             this.gameMap.addArmy(toId, 1);
+
+            // --- ELIMINATION LOGIC ---
+            if (ownerDefender && ownerDefender.getTerritoriesCount() === 0) {
+                ownerDefender.deactivate();
+                this.logAction(`Jogador ${ownerDefender.color} foi ELIMINADO por ${ownerAttacker.color}!`);
+
+                // Transfer cards
+                ownerAttacker.cards.push(...ownerDefender.cards);
+                ownerDefender.cards = [];
+            }
         }
 
         return {
@@ -355,7 +374,6 @@ export class GameManager {
             conquered: conquered,
             attackLosses,
             defenseLosses,
-            // Return dice so UI can display them correctly
             attackRolls,
             defenseRolls
         };
@@ -405,6 +423,8 @@ export class GameManager {
 
     calculateContinentBonus(player) {
         const territoriesByContinent = this.gameMap.getTerritoriesByContinent();
+        if (!territoriesByContinent) return {};
+
         const continentBonuses = {};
         const continentNames = Object.keys(territoriesByContinent);
 
