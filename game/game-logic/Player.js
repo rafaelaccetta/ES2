@@ -1,33 +1,30 @@
 import cardsSymbols from "../public/data/territories_cards.json" with {type: "json"};
+
 export class Player {
-    constructor(id, color, objective = null) {
+    constructor(id, color, objective = null, isAI = false) {
         this.id = id;
         this.color = color;
         this.objective = objective;
+        this.isAI = isAI
         this.territories = [];
         this.cards = [];
+
+        // STRICTLY "Reserve Pool": Troops waiting to be placed on the board.
+        // Does not include troops already on the GameMap.
         this.armies = 0;
-        this.pendingReinforcements = 0; // tropas calculadas para alocar na fase REFORÇAR
-        this.armiesExclusiveToTerritory = new Map() // example: {"Brazil": 2} means 2 troops can only be deployed in Brazil
+
         this.isActive = true;
-        this.territoriesArmies = {}; // objeto para armazenar exércitos por território
+        this.armiesExclusiveToTerritory = new Map(); // example: {"Brazil": 2}
     }
 
     addTerritory(territory) {
         if (!this.territories.includes(territory)) {
             this.territories.push(territory);
-            this.territoriesArmies[territory] = 0;
         }
     }
 
     removeTerritory(territory) {
         this.territories = this.territories.filter((t) => t !== territory);
-        // If the player had an entry for this territory in territoriesArmies, remove it.
-        // Use the `in` operator to catch zero values as well (0 is falsy).
-        if (territory in this.territoriesArmies) {
-            this.armies -= this.territoriesArmies[territory] || 0;
-            delete this.territoriesArmies[territory];
-        }
     }
 
     getTerritoriesCount() {
@@ -37,97 +34,62 @@ export class Player {
     addCard(card) {
         this.cards.push(card);
     }
-    
-    // chamada na função de calcular o bônus de continente no GameMap
+
     hasConqueredContinent(continentName, territoriesByContinent) {
         const continentTerritories = territoriesByContinent[continentName];
+        if (!continentTerritories) return false;
         return continentTerritories.every((territory) => this.territories.includes(territory));
     }
 
-    // Adiciona tropas para o saldo (pool) do jogador que ainda serão alocadas.
-    addArmiesToPool(amount) {
+    // Add troops to the Reserve Pool (e.g., beginning of turn, card trade)
+    addArmies(amount) {
         this.armies = this.armies + amount;
     }
 
+    // Remove troops from Reserve Pool (e.g., when placing them on the map)
     removeArmies(amount) {
-        this.armies = this.armies >= amount ? this.armies - amount : 0;    
+        this.armies = this.armies >= amount ? this.armies - amount : 0;
     }
 
     hasArmies(amount) {
         return this.armies >= amount
     }
-    
+
     addArmiesExclusive(territoryName, amount){
-        // Aplica diretamente no território e marca como exclusivo
+        // Adds to general reserve, but marks as restricted for the UI/AI to handle
         if (this.hasTerritory(territoryName)) {
-            this.addArmiesToTerritory(territoryName, amount);
+            this.addArmies(amount);
             const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
             this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
         }
     }
-    
+
     removeArmiesExclusive(territoryName, amount){
         const currentAmount = this.armiesExclusiveToTerritory.get(territoryName) || 0;
-        if (currentAmount >= amount) {    
-            this.armiesExclusiveToTerritory.set(territoryName, currentAmount + amount);
+        if (currentAmount >= amount) {
+            this.armiesExclusiveToTerritory.set(territoryName, currentAmount - amount);
         }
     }
 
-    hasArmiesExclusive(territoryName, amount){
-        return this.armiesExclusiveToTerritory.get(territoryName) >= amount;
-    }
-    
     hasTerritory(territoryName){
         return this.territories.includes(territoryName)
     }
 
+    // Legacy alias: directs to the Reserve Pool
     addArmiesToTerritory(territory, quantity) {
-        //logic to add armies to a territory
-        // at the begining of the turn or because of card exchange or because of a continent control
-        if (this.territories.includes(territory)) {
-            if (!this.territoriesArmies[territory]) {
-                this.territoriesArmies[territory] = 0;
-            }
-            this.territoriesArmies[territory] += quantity;
-            this.armies += quantity;
-        }
-    }
-
-    // Compatibilidade legacy: muitas partes do código ainda chamam player.addArmies(territory, qty)
-    // Mantém assinatura antiga direcionando para addArmiesToTerritory.
-    addArmies(territory, quantity) {
-        this.addArmiesToTerritory(territory, quantity);
-    }
-
-    spendPendingReinforcement(territory, amount = 1){
-        if (this.pendingReinforcements <= 0) return false;
-        if (!this.hasTerritory(territory)) return false;
-        const toSpend = Math.min(amount, this.pendingReinforcements);
-        this.pendingReinforcements -= toSpend;
-        this.addArmiesToTerritory(territory, toSpend);
-        return true;
-    }
-
-    hasPendingReinforcements(){
-        return this.pendingReinforcements > 0;
-    }
-
-    removeArmies() {
-        // logic to remove armies of a territory
-        // because of attack, defense or movement
+        this.addArmies(quantity);
     }
 
     deactivate() {
-        // logic to deactivate a player
+        this.isActive = false;
     }
 
     activate() {
-        // logic to activate a player
+        this.isActive = true;
     }
 
     checkWin(gameState) {
         if (!this.objective || typeof this.objective.checkWin !== "function") return false;
-        return this.objective.checkWin(this, gameState);   
+        return this.objective.checkWin(this, gameState);
     }
 }
-

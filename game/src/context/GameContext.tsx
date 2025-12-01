@@ -4,14 +4,23 @@ import React, {
     useState,
     useEffect,
     ReactNode,
+    useCallback,
 } from "react";
 import { GameManager } from "../../game-logic/GameManager.js";
 import { Player } from "../../game-logic/Player.js";
 import { createObjectiveFromJson } from "../../game-logic/Objective.js";
-import resolveAttack from "../../game-logic/Combat.js";
 import { EventBus } from "../game/EventBus";
-import { CardManager } from "../../game-logic/CardManager.js"; 
-import { PlayerCards } from "../../game-logic/PlayerCards.js"; 
+import { CardManager } from "../../game-logic/CardManager.js";
+import { PlayerCards } from "../../game-logic/PlayerCards.js";
+
+// --- TYPES ---
+export interface LogEntry {
+    turn: number;
+    round: number;
+    phase: string;
+    message: string;
+    timestamp: number;
+}
 
 export interface Objective {
     id: number;
@@ -37,6 +46,9 @@ export interface GameState {
     showObjectiveConfirmation: boolean;
     firstRoundObjectiveShown: Set<number>;
     territorySelectionCallback: ((territory: string) => void) | null;
+    fortificationBudget: Record<string, number>;
+    // RESTORED: Logs state
+    logs: LogEntry[];
 }
 
 interface GameContextType extends GameState {
@@ -53,6 +65,8 @@ interface GameContextType extends GameState {
     applyPostConquestMove: (source: string, target: string, moved: number) => void;
     moveArmies: (source: string, target: string, moved: number) => void;
     calculateReinforcementTroops: (player?: Player) => any;
+    placeReinforcement: (territory: string) => void;
+    undoReinforcement: (territory: string, type: 'exclusive' | 'continent' | 'free') => void;
 }
 
 const initialState: GameState = {
@@ -67,7 +81,8 @@ const initialState: GameState = {
     showObjectiveConfirmation: false,
     firstRoundObjectiveShown: new Set(),
     territorySelectionCallback: null,
-    
+    fortificationBudget: {},
+    logs: [], // Init empty
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -87,6 +102,49 @@ interface GameProviderProps {
 export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const [gameState, setGameState] = useState<GameState>(initialState);
 
+    // --- HELPER: Build snapshot for UI consumption ---
+    const broadcastGameState = useCallback(() => {
+        if (!gameState.gameManager) return;
+
+        const playersPayload = gameState.gameManager.players.map((p) => {
+            const territoriesArmies: Record<string, number> = {};
+            p.territories.forEach((t) => {
+                territoriesArmies[t] = gameState.gameManager!.getTerritoryArmies(t);
+            });
+
+            const exclusiveArmies: Record<string, number> = {};
+            if (p.armiesExclusiveToTerritory) {
+                for (const [t, amount] of p.armiesExclusiveToTerritory.entries()) {
+                    if (amount > 0) exclusiveArmies[t] = amount;
+                }
+            }
+
+            return Object.assign(Object.create(Object.getPrototypeOf(p)), p, {
+                territoriesArmies: territoriesArmies,
+                pendingReinforcements: p.armies,
+                exclusiveArmies: exclusiveArmies
+            });
+        });
+
+        const budget = { ...((gameState.gameManager as any).fortificationBudget || {}) };
+
+        // RESTORED: Pull logs from manager
+        const currentLogs = [...(gameState.gameManager.getLogs() || [])];
+
+        setGameState(prev => ({
+            ...prev,
+            players: playersPayload,
+            fortificationBudget: budget,
+            logs: currentLogs
+        }));
+
+        EventBus.emit("players-updated", {
+            playerCount: gameState.players.length,
+            players: playersPayload,
+        });
+    }, [gameState.gameManager, gameState.players.length]);
+
+
     useEffect(() => {
         const loadObjectives = async () => {
             try {
@@ -104,14 +162,52 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         loadObjectives();
     }, []);
 
+    useEffect(() => {
+        const handleRequestState = () => {
+            broadcastGameState();
+        };
+        EventBus.on("request-game-state", handleRequestState);
+        return () => {
+            EventBus.removeListener("request-game-state", handleRequestState);
+        };
+    }, [broadcastGameState]);
+
+    useEffect(() => {
+        if (!gameState.gameStarted || !gameState.gameManager) return;
+
+        const currentPlayer = gameState.gameManager.getPlayerPlaying();
+
+        if (currentPlayer && currentPlayer.isAI && currentPlayer.isActive) {
+            console.log(`🤖 Detetada vez da IA (${currentPlayer.color}). Executando...`);
+
+            gameState.gameManager.executeAITurn();
+
+            // Sync after AI moves
+            setGameState((prevState) => ({
+                ...prevState,
+                currentPlayerIndex: gameState.gameManager!.turn,
+                currentPhase: gameState.gameManager!.getPhaseName(),
+                currentRound: gameState.gameManager!.round,
+            }));
+
+            broadcastGameState();
+        }
+    }, [
+        gameState.gameStarted,
+        gameState.currentPlayerIndex,
+        gameState.currentPhase,
+        gameState.gameManager,
+        broadcastGameState
+    ]);
+
     const startGame = (playerCount: number) => {
         const playerColors = ["azul", "vermelho", "verde", "branco"];
         const gamePlayers = Array.from(
-            { length: playerCount },
-            (_, index) => new Player(index, playerColors[index])
+            { length: 4 },
+            (_, index) => new Player(index, playerColors[index], null, (index >= playerCount))
         );
 
-        console.log('🎮 Iniciando jogo com jogadores:', gamePlayers.map(p => ({ id: p.id, color: p.color })));
+        console.log('🎮 Iniciando jogo com jogadores:', gamePlayers.map(p => ({ id: p.id, color: p.color, isAI: p.isAI })));
 
         const cardManager = new CardManager();
         const gameManager = new GameManager(gamePlayers, cardManager);
@@ -120,17 +216,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             .map((o) => createObjectiveFromJson(o))
             .filter((o) => o !== null);
 
-        const shuffle = (arr: any[]) => {
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-            }
-        };
-
-        shuffle(objectiveInstances);
+        for (let i = objectiveInstances.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [objectiveInstances[i], objectiveInstances[j]] = [objectiveInstances[j], objectiveInstances[i]];
+        }
 
         if (objectiveInstances.length < gamePlayers.length) {
-            console.warn("Not enough objectives for players; objectives will be reused.");
             const needed = gamePlayers.length - objectiveInstances.length;
             for (let i = 0; i < needed; i++) {
                 objectiveInstances.push(objectiveInstances[i % objectiveInstances.length]);
@@ -138,11 +229,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         }
 
         objectiveInstances = objectiveInstances.slice(0, gamePlayers.length);
-
         gameManager.distributeObjectives(objectiveInstances);
-
-        // Jogadores começam com 0 cartas
-        console.log("Jogadores inicializados sem cartas.");
 
         setGameState((prevState) => ({
             ...prevState,
@@ -153,28 +240,36 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentPhase: gameManager.getPhaseName(),
             currentRound: gameManager.round,
             gameStarted: true,
-            firstRoundObjectiveShown: new Set(), 
+            firstRoundObjectiveShown: new Set(),
+            logs: [] // Reset logs
         }));
 
-        console.log('🎯 Estado inicial - firstRoundObjectiveShown resetado');
+        const playersPayload = gamePlayers.map((p) => {
+            const territoriesArmies: Record<string, number> = {};
+            p.territories.forEach((t) => {
+                territoriesArmies[t] = gameManager.getTerritoryArmies(t);
+            });
+            return Object.assign(Object.create(Object.getPrototypeOf(p)), p, {
+                territoriesArmies: territoriesArmies,
+                pendingReinforcements: p.armies,
+                exclusiveArmies: {}
+            });
+        });
 
         EventBus.emit("players-updated", {
             playerCount,
-            players: gamePlayers.map((player) => ({
-                id: player.id,
-                color: player.color,
-                territories: player.territories,
-                territoriesArmies: player.territoriesArmies,
-                armies: player.armies,
-            })),
+            players: playersPayload
         });
     };
 
     const getCurrentPlayer = (): Player | null => {
-        if (!gameState.gameManager || gameState.players.length === 0) {
-            return null;
+        if (gameState.players.length > 0 && gameState.currentPlayerIndex < gameState.players.length) {
+            return gameState.players[gameState.currentPlayerIndex];
         }
-        return gameState.gameManager.getPlayerPlaying();
+        if (gameState.gameManager) {
+            return gameState.gameManager.getPlayerPlaying();
+        }
+        return null;
     };
 
     const getCurrentObjective = (): Objective | null => {
@@ -209,19 +304,20 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         if (!gameState.gameManager) return;
 
         const currentPlayer = getCurrentPlayer();
-        
-        if (gameState.currentPhase === 'REFORÇAR' && currentPlayer && currentPlayer.pendingReinforcements > 0) {
+        const reserves = (currentPlayer as any).pendingReinforcements || currentPlayer.armies || 0;
+
+        if (gameState.currentPhase === 'REFORÇAR' && currentPlayer && reserves > 0) {
             console.warn('Não pode avançar: ainda existem reforços para alocar.');
             return;
         }
-        
+
         if (currentPlayer && gameState.currentPhase === "REFORÇAR" && currentPlayer.cards.length >= 5) {
             console.warn("Não pode avançar, troca de cartas é obrigatória.");
             return;
         }
 
         const previousPhase = gameState.currentPhase;
-        const previousPlayer = getCurrentPlayer();
+
         gameState.gameManager.passPhase();
 
         setGameState((prevState) => ({
@@ -231,123 +327,70 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentRound: gameState.gameManager!.round,
         }));
 
-        // Se saiu de FORTIFICAR (movimentação), emitir carta conquistada (se houver)
         if (previousPhase === "FORTIFICAR") {
-            const awarded = gameState.gameManager.consumeLastAwardedCard?.();
-            if (awarded) {
-                // Emitir com a cor do jogador que acabou de jogar (não o próximo)
-                const colorMap: Record<string, string> = {
-                    azul: "#2563eb",
-                    vermelho: "#dc2626",
-                    verde: "#16a34a",
-                    branco: "#b7c0cd",
-                };
-                const playerColorHex = previousPlayer ? (colorMap[previousPlayer.color] || '#fbbf24') : '#fbbf24';
-                EventBus.emit("card-awarded", {
-                    name: awarded.name,
-                    shape: awarded.geometricShape,
-                    playerColor: playerColorHex,
-                });
-            }
+            gameState.gameManager.consumeLastAwardedCard?.();
         }
 
-        EventBus.emit("players-updated", {
-            playerCount: gameState.players.length,
-            players: gameState.players.map((player) => ({
-                id: player.id,
-                color: player.color,
-                territories: player.territories,
-                territoriesArmies: player.territoriesArmies,
-                armies: player.armies,
-                cards: player.cards,
-                pendingReinforcements: player.pendingReinforcements,
-            })),
-        });
+        broadcastGameState();
+    };
+
+    const placeReinforcement = (territory: string) => {
+        const gm = gameState.gameManager;
+        const rawPlayer = gm?.getPlayerPlaying();
+
+        if (!gm || !rawPlayer) return;
+
+        if (rawPlayer.hasTerritory(territory) && rawPlayer.armies > 0) {
+            const exclusiveCount = rawPlayer.armiesExclusiveToTerritory.get(territory) || 0;
+            if (exclusiveCount > 0) {
+                rawPlayer.removeArmiesExclusive(territory, 1);
+            }
+
+            rawPlayer.removeArmies(1);
+            gm.gameMap.addArmy(territory, 1);
+            broadcastGameState();
+        }
+    };
+
+    const undoReinforcement = (territory: string, type: 'exclusive' | 'continent' | 'free') => {
+        const gm = gameState.gameManager;
+        const rawPlayer = gm?.getPlayerPlaying();
+        if (!gm || !rawPlayer) return;
+
+        try {
+            gm.gameMap.removeArmy(territory, 1);
+
+            if (type === 'exclusive') {
+                rawPlayer.addArmiesExclusive(territory, 1);
+            } else {
+                rawPlayer.addArmies(1);
+            }
+            broadcastGameState();
+        } catch (e) {
+            console.error("Undo Reinforcement failed:", e);
+        }
     };
 
     useEffect(() => {
         const handleAttackRequest = (data: { source: string; target: string; troops: number }) => {
-            try {
-                if (!gameState.gameManager) {
-                    console.warn('No game manager available to process attack');
-                    return;
-                }
+            if (!gameState.gameManager) return;
+            const gm = gameState.gameManager;
 
+            try {
                 const { source, target, troops } = data as any;
                 const currentPlayer = getCurrentPlayer();
-                if (!currentPlayer) {
-                    console.warn('No current player for attack');
+                if (!currentPlayer) return;
+
+                const result = gm.resolveAttack(source, target, troops);
+
+                if (!result.success) {
+                    console.warn("Attack failed validation in backend");
                     return;
                 }
 
-                if (!currentPlayer.territories.includes(source)) {
-                    console.warn('Attack source does not belong to current player:', source);
-                    return;
-                }
-
-                const armiesAtSource = currentPlayer.territoriesArmies?.[source] ?? 0;
-                const maxAttackable = Math.min(3, Math.max(0, armiesAtSource - 1));
-                if (troops > maxAttackable) {
-                    console.warn('Requested troops greater than available to attack', { troops, maxAttackable });
-                    return;
-                }
-
-                const defender = gameState.players.find((p) => p.territories.includes(target));
-                const defenderArmies = defender?.territoriesArmies?.[target] ?? 0;
-
-                const { aDice, dDice, attackerLoss, defenderLoss } = resolveAttack(troops, defenderArmies);
-
-                currentPlayer.territoriesArmies[source] = Math.max(0, (currentPlayer.territoriesArmies[source] ?? 0) - attackerLoss);
-                currentPlayer.armies = Math.max(0, currentPlayer.armies - attackerLoss);
-
-                if (defender) {
-                    defender.territoriesArmies[target] = Math.max(0, (defender.territoriesArmies[target] ?? 0) - defenderLoss);
-                    defender.armies = Math.max(0, defender.armies - defenderLoss);
-                }
-
-                let conquered = false;
-                if ((defender ? (defender.territoriesArmies[target] ?? 0) : 0) <= 0) {
-                    conquered = true;
-                    
-                    // Marcar que o jogador conquistou território nesta rodada
-                    if (gameState.gameManager) {
-                        gameState.gameManager.markTerritoryConquered();
-                    }
-                    
-                    if (defender) defender.removeTerritory(target);
-                    currentPlayer.addTerritory(target);
-
-                    const survivors = Math.max(0, troops - attackerLoss);
-                    const armiesBefore = armiesAtSource;
-                    const sourceAfterLosses = Math.max(0, armiesBefore - attackerLoss);
-
-                    const maxCanMove = Math.max(0, sourceAfterLosses - 1);
-
-                    currentPlayer.territoriesArmies[target] = 0;
-
-                    EventBus.emit('post-conquest', {
-                        source,
-                        target,
-                        troopsRequested: troops,
-                        attackerLoss,
-                        defenderLoss,
-                        survivors,
-                        armiesBefore,
-                        sourceAfterLosses,
-                        maxCanMove,
-                    });
-                }
-
-                EventBus.emit('players-updated', {
-                    playerCount: gameState.players.length,
-                    players: gameState.players.map((player) => ({
-                        id: player.id,
-                        color: player.color,
-                        territories: player.territories,
-                        territoriesArmies: player.territoriesArmies,
-                        armies: player.armies,
-                    })),
-                });
+                const aDice = (result as any).attackRolls || [];
+                const dDice = (result as any).defenseRolls || [];
+                const defender = gm.getTerritoryOwner(target);
 
                 EventBus.emit('attack-result', {
                     source,
@@ -355,14 +398,58 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                     troopsUsed: troops,
                     attackerDice: aDice,
                     defenderDice: dDice,
-                    attackerLoss,
-                    defenderLoss,
-                    conquered,
+                    attackerLoss: result.attackLosses,
+                    defenderLoss: result.defenseLosses,
+                    conquered: result.conquered,
                     attackerColor: currentPlayer.color,
                     defenderColor: defender?.color || 'neutro',
                 });
+
+                if (result.conquered) {
+                    const armiesLeftAtSource = gm.getTerritoryArmies(source);
+                    const optionalMoves = troops - 1;
+
+                    const physicalLimit = armiesLeftAtSource - 1;
+                    const maxCanMove = Math.min(optionalMoves, physicalLimit);
+
+                    EventBus.emit('post-conquest', {
+                        source,
+                        target,
+                        troopsRequested: troops,
+                        attackerLoss: result.attackLosses,
+                        defenderLoss: result.defenseLosses,
+                        survivors: troops - result.attackLosses,
+                        maxCanMove: Math.max(0, maxCanMove)
+                    });
+
+                    try {
+                        const objectiveGameState: any = {
+                            players: gm.players,
+                            getTerritoriesByContinent: () => gm.gameMap?.getTerritoriesByContinent?.(),
+                        };
+
+                        for (const p of gm.players) {
+                            if (!p.isActive) continue;
+
+                            const hasWon = p.checkWin(objectiveGameState);
+                            if (hasWon) {
+                                EventBus.emit('game-won', {
+                                    winnerId: p.id,
+                                    winnerColor: p.color,
+                                    winnerObjective: p.objective.title || p.objective.description || null,
+                                });
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error while processing post-conquest objective checks', e);
+                    }
+                }
+
             } catch (err) {
                 console.error('Error processing attack-request', err);
+            } finally {
+                broadcastGameState();
             }
         };
 
@@ -378,59 +465,19 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         const handleCardExchange = (data: { cards: PlayerCards[] }) => {
             try {
                 const { cardManager } = gameState;
-                const currentPlayer = getCurrentPlayer();
-                if (!cardManager || !currentPlayer || !data.cards) {
-                    console.warn("Troca de cartas falhou: contexto inválido.");
-                    return;
-                }
-
-                console.log(
-                    `GameContext: Processando troca para ${currentPlayer.id} com`,
-                    data.cards
-                );
+                const currentPlayer = gameState.gameManager?.getPlayerPlaying();
+                if (!cardManager || !currentPlayer || !data.cards) return;
 
                 cardManager.executeCardExchange(data.cards, currentPlayer);
+                broadcastGameState();
 
-                // 2. Remove as cartas da mão do jogador (mutação da instância)
-                const exchangedCardNames = new Set(data.cards.map((c) => c.name));
-                currentPlayer.cards = currentPlayer.cards.filter(
-                    (card: any) => !exchangedCardNames.has(card.name)
-                );
-
-                // 3. Se alguma das cartas tinha território do jogador, já foi aplicado bônus exclusivo na CardManager.
-                // Aqui apenas log para facilitar depuração.
-                data.cards.forEach(card => {
-                    if (currentPlayer.hasTerritory(card.name)) {
-                        console.log(`Bônus de +2 tropas aplicado diretamente em ${card.name}`);
-                    }
-                });
-
-                console.log("Exércitos adicionados:", currentPlayer.armies);
-                console.log("Cartas restantes:", currentPlayer.cards.length);
-
-                setGameState((prev) => ({
-                    ...prev,
-                    players: [...prev.players], 
-                }));
-
-                EventBus.emit("players-updated", {
-                    playerCount: gameState.players.length,
-                    players: gameState.players.map((p) => ({
-                        id: p.id,
-                        color: p.color,
-                        territories: p.territories,
-                        territoriesArmies: p.territoriesArmies,
-                        armies: p.armies,
-                        pendingReinforcements: (p as any).pendingReinforcements,
-                    })),
-                });
             } catch (err) {
                 console.error("Erro ao processar card-exchange-request", err);
             }
         };
 
         EventBus.on("card-exchange-request", handleCardExchange as any);
-        
+
 
         return () => {
             EventBus.removeListener('attack-request');
@@ -438,73 +485,23 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             EventBus.removeListener("card-exchange-request", handleCardExchange);
 
         };
-    }, [gameState.gameManager, gameState.players, getCurrentPlayer]);
+    }, [gameState.gameManager, gameState.players, getCurrentPlayer, broadcastGameState]);
 
-        const applyPostConquestMove = (source: string, target: string, moved: number) => {
-            try {
-                const currentPlayer = getCurrentPlayer();
-                if (!currentPlayer) return;
+    const applyPostConquestMove = (source: string, target: string, moved: number) => {
+        if (!gameState.gameManager) return;
 
-                if (!currentPlayer.territories.includes(source) || !currentPlayer.territories.includes(target)) {
-                    console.warn('applyPostConquestMove invalid: player does not own source or target', { source, target });
-                    return;
-                }
+        if (moved > 0) {
+            gameState.gameManager.moveTroops(source, target, moved);
+        }
 
-                const sourceAfterLosses = currentPlayer.territoriesArmies?.[source] ?? 0;
-                const maxCanMove = Math.max(0, sourceAfterLosses - 1);
-                const toMove = Math.max(0, Math.min(moved, maxCanMove));
-
-                console.log('applyPostConquestMove', { source, target, moved, sourceAfterLosses, maxCanMove, toMove });
-                console.log('before apply', { src: currentPlayer.territoriesArmies[source], tgt: currentPlayer.territoriesArmies[target] });
-
-                currentPlayer.territoriesArmies[source] = Math.max(1, sourceAfterLosses - toMove);
-                currentPlayer.territoriesArmies[target] = toMove;
-
-                console.log('after apply', { src: currentPlayer.territoriesArmies[source], tgt: currentPlayer.territoriesArmies[target] });
-
-                setGameState((prev) => {
-                    const updatedPlayers = prev.players.map((p) => p);
-
-                    const payload = updatedPlayers.map((player) => ({
-                        id: player.id,
-                        color: player.color,
-                        territories: player.territories,
-                        territoriesArmies: player.territoriesArmies,
-                        armies: player.armies,
-                    }));
-
-                    console.log('GameContext: emitting players-updated with payload', {
-                        playerCount: updatedPlayers.length,
-                        players: payload,
-                        lastMove: { source, target, toMove },
-                    });
-
-                    try {
-                        console.log('GameContext: players-updated (json)', JSON.stringify({
-                            playerCount: updatedPlayers.length,
-                            players: payload,
-                            lastMove: { source, target, toMove },
-                        }, null, 2));
-                    } catch (e) {}
-
-                    EventBus.emit('players-updated', {
-                        playerCount: updatedPlayers.length,
-                        players: payload,
-                        lastMove: { source, target, toMove },
-                    });
-
-                    return { ...prev, players: updatedPlayers };
-                });
-            } catch (err) {
-                console.error('Error in applyPostConquestMove', err);
-            }
-        };
+        broadcastGameState();
+    };
 
     const resetGame = () => {
         setGameState((prevState) => ({
             ...initialState,
-            objectives: prevState.objectives, 
-            firstRoundObjectiveShown: new Set(), 
+            objectives: prevState.objectives,
+            firstRoundObjectiveShown: new Set(),
         }));
     };
 
@@ -521,7 +518,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const markObjectiveAsShown = () => {
         const currentPlayer = getCurrentPlayer();
         if (currentPlayer) {
-            console.log(`Marcando objetivo como visto para jogador ${currentPlayer.id}`);
             setGameState((prevState) => ({
                 ...prevState,
                 firstRoundObjectiveShown: new Set(
@@ -556,41 +552,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         if (!targetPlayer || !gameState.gameManager) {
             return { totalTroops: 0, territoryBonus: 0, continentBonus: 0, cardBonus: 0, continentBonuses: {} };
         }
-
         return (gameState.gameManager as any).calculateReinforcementTroops(targetPlayer);
     };
 
     const moveArmies = (source: string, target: string, moved: number) => {
-        const currentPlayer = getCurrentPlayer();
-        if (!currentPlayer) return;
-
-        if (!currentPlayer.territories.includes(source) || !currentPlayer.territories.includes(target)) {
-            console.warn('moveArmies invalid: player does not own source or target', { source, target });
-            return;
-        }
-
-        const sourceArmies = currentPlayer.territoriesArmies[source] ?? 0;
-        const maxCanMove = Math.max(0, sourceArmies - 1);
-        const toMove = Math.max(0, Math.min(moved, maxCanMove));
-
-        currentPlayer.territoriesArmies[source] = Math.max(1, sourceArmies - toMove);
-        currentPlayer.territoriesArmies[target] = (currentPlayer.territoriesArmies[target] ?? 0) + toMove;
-
-        setGameState((prev) => ({
-            ...prev,
-            players: prev.players.map((p) => (p.id === currentPlayer.id ? currentPlayer : p)),
-        }));
-
-        EventBus.emit('players-updated', {
-            playerCount: gameState.players.length,
-            players: gameState.players.map((player) => ({
-                id: player.id,
-                color: player.color,
-                territories: player.territories,
-                territoriesArmies: player.territoriesArmies,
-                armies: player.armies,
-            })),
-        });
+        if (!gameState.gameManager) return;
+        gameState.gameManager.moveTroops(source, target, moved);
+        broadcastGameState();
     };
 
     const contextValue: GameContextType = {
@@ -608,6 +576,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         moveArmies,
         applyPostConquestMove,
         calculateReinforcementTroops,
+        placeReinforcement,
+        undoReinforcement,
     };
 
     return (

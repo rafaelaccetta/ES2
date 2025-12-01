@@ -10,11 +10,12 @@ interface FortifyBarProps {
 }
 
 const FortifyBar: React.FC<FortifyBarProps> = ({
-    isVisible,
-    onClose,
-    isDimmed = false,
-}) => {
-    const { getCurrentPlayer, gameManager, moveArmies } = useGameContext();
+                                                   isVisible,
+                                                   onClose,
+                                                   isDimmed = false,
+                                               }) => {
+    // FIX: Destructure fortificationBudget
+    const { getCurrentPlayer, gameManager, moveArmies, fortificationBudget } = useGameContext();
     const currentPlayer = getCurrentPlayer();
 
     type FortifyPhase = "SELECT_SOURCE" | "SELECT_TARGET" | "SELECT_TROOPS";
@@ -23,39 +24,40 @@ const FortifyBar: React.FC<FortifyBarProps> = ({
     const [selectedTarget, setSelectedTarget] = useState<string>("");
     const [moveQuantity, setMoveQuantity] = useState<string>("1");
 
-    // Listener para territory-selected (clicar no mapa)
+    const getTroops = useCallback((territory: string) => {
+        if (!gameManager) return 0;
+        return gameManager.getTerritoryArmies(territory);
+    }, [gameManager]);
+
     const handleTerritorySelected = useCallback(
         (territoryId: string) => {
             if (!currentPlayer || !gameManager) return;
             const normalizedId = territoryId;
             const isOwned = currentPlayer.territories.some(
                 (t) =>
-                    t
-                        .normalize("NFD")
-                        .replace(/\p{Diacritic}+/gu, "")
-                        .toLowerCase()
-                        .replace(/\s+/g, "")
-                        .replace(/[^a-z0-9]/g, "") === normalizedId
+                    t.normalize("NFD").replace(/\p{Diacritic}+/gu, "").toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "") === normalizedId
             );
 
             // Fase 1: Selecionando território de origem
             if (fortifyPhase === "SELECT_SOURCE" && isOwned) {
                 const matchingTerritory = currentPlayer.territories.find(
                     (t) =>
-                        t
-                            .normalize("NFD")
-                            .replace(/\p{Diacritic}+/gu, "")
-                            .toLowerCase()
-                            .replace(/\s+/g, "")
-                            .replace(/[^a-z0-9]/g, "") === normalizedId
+                        t.normalize("NFD").replace(/\p{Diacritic}+/gu, "").toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "") === normalizedId
                 );
                 if (matchingTerritory) {
-                    const armies =
-                        currentPlayer.territoriesArmies?.[matchingTerritory] ?? 0;
+                    const armies = getTroops(matchingTerritory);
+                    // Also check budget
+                    const budget = fortificationBudget?.[matchingTerritory] ?? armies;
+
                     if (armies <= 1) {
                         console.log("Território sem tropas suficientes para movimentar");
                         return;
                     }
+                    if (budget <= 0) {
+                        console.log("Território sem orçamento de movimento nesta rodada.");
+                        return;
+                    }
+
                     setSelectedSource(matchingTerritory);
                     setSelectedTarget("");
                     setMoveQuantity("1");
@@ -69,13 +71,13 @@ const FortifyBar: React.FC<FortifyBarProps> = ({
                 isOwned &&
                 normalizedId !== selectedSource
             ) {
-                // Verificar se é vizinho válido
                 try {
                     const gmAny = gameManager as any;
-                    const neighbors =
-                        gmAny.gameMap?.territories?.getNeighbors(selectedSource) || [];
+                    const neighbors = gmAny.getNeighbors ? gmAny.getNeighbors(selectedSource) : (gmAny.gameMap?.territories?.getNeighbors(selectedSource) || []);
+
                     const isNeighbor = neighbors.some((n: any) => {
-                        const normalizedNeighbor = n.node
+                        const name = typeof n === 'string' ? n : n.node;
+                        const normalizedNeighbor = name
                             .normalize("NFD")
                             .replace(/\p{Diacritic}+/gu, "")
                             .toLowerCase()
@@ -93,10 +95,9 @@ const FortifyBar: React.FC<FortifyBarProps> = ({
                 }
             }
         },
-        [currentPlayer, gameManager, selectedSource, fortifyPhase]
+        [currentPlayer, gameManager, selectedSource, fortifyPhase, getTroops, fortificationBudget]
     );
 
-    // Helper para encontrar o nome original do território
     const matchingTerritoryName = (territories: string[], normalizedId: string) => {
         return (
             territories.find(
@@ -119,7 +120,6 @@ const FortifyBar: React.FC<FortifyBarProps> = ({
         };
     }, [isVisible, handleTerritorySelected]);
 
-    // Reset ao fechar
     useEffect(() => {
         if (!isVisible) {
             setSelectedSource("");
@@ -133,7 +133,6 @@ const FortifyBar: React.FC<FortifyBarProps> = ({
         }
     }, [isVisible]);
 
-    // Controlar destaques de territórios baseado na fase
     useEffect(() => {
         if (!isVisible || !currentPlayer || !gameManager) {
             EventBus.emit("highlight-territories", {
@@ -149,12 +148,13 @@ const FortifyBar: React.FC<FortifyBarProps> = ({
                 .toLowerCase()
                 .replace(/\s+/g, "")
                 .replace(/[^a-z0-9]/g, "");
-        // Fase SELECT_SOURCE: destacar todos os territórios do jogador atual
+
         if (fortifyPhase === "SELECT_SOURCE") {
             const playerTerritories = currentPlayer.territories
                 .filter((t) => {
-                    const armies = currentPlayer.territoriesArmies?.[t] ?? 0;
-                    return armies > 1;
+                    const armies = getTroops(t);
+                    const budget = fortificationBudget?.[t] ?? armies;
+                    return armies > 1 && budget > 0;
                 })
                 .map(normalize);
             EventBus.emit("highlight-territories", {
@@ -162,25 +162,23 @@ const FortifyBar: React.FC<FortifyBarProps> = ({
                 mode: "fortify-source",
             });
         }
-        // Fase SELECT_TARGET: destacar origem + vizinhos próprios
         else if (fortifyPhase === "SELECT_TARGET" && selectedSource) {
-            const gmAny = gameManager as any;
-            const neighbors =
-                gmAny.gameMap?.territories?.getNeighbors(selectedSource) || [];
+            const neighbors = gameManager.getNeighbors(selectedSource);
+
             const ownNeighbors = neighbors
-                .filter((n: any) => {
+                .filter((n: string) => {
                     return currentPlayer.territories.some(
-                        (t) => normalize(t) === normalize(n.node)
+                        (t) => normalize(t) === normalize(n)
                     );
                 })
-                .map((n: any) => normalize(n.node));
+                .map((n: string) => normalize(n));
+
             const highlightList = [normalize(selectedSource), ...ownNeighbors];
             EventBus.emit("highlight-territories", {
                 territories: highlightList,
                 mode: "fortify-target",
             });
         }
-        // Fase SELECT_TROOPS: destacar origem e alvo
         else if (
             fortifyPhase === "SELECT_TROOPS" &&
             selectedSource &&
@@ -195,13 +193,18 @@ const FortifyBar: React.FC<FortifyBarProps> = ({
                 mode: "fortify-move",
             });
         }
-    }, [isVisible, fortifyPhase, selectedSource, selectedTarget, currentPlayer, gameManager]);
+    }, [isVisible, fortifyPhase, selectedSource, selectedTarget, currentPlayer, gameManager, getTroops, fortificationBudget]);
 
     const maxMovable = useMemo(() => {
         if (!selectedSource || !currentPlayer) return 0;
-        const armies = currentPlayer.territoriesArmies?.[selectedSource] ?? 0;
-        return Math.max(0, armies - 1);
-    }, [selectedSource, currentPlayer]);
+        const armies = getTroops(selectedSource);
+        const physicalMax = Math.max(0, armies - 1);
+
+        // NEW: Check budget
+        const budgetMax = fortificationBudget?.[selectedSource] ?? physicalMax;
+
+        return Math.min(physicalMax, budgetMax);
+    }, [selectedSource, currentPlayer, getTroops, fortificationBudget]);
 
     useEffect(() => {
         const currentQty = parseInt(moveQuantity) || 1;
@@ -238,16 +241,6 @@ const FortifyBar: React.FC<FortifyBarProps> = ({
 
     if (!isVisible) return null;
     if (!currentPlayer) return null;
-
-    const getPlayerColor = (color: string) => {
-        const colorMap: Record<string, string> = {
-            azul: "#2563eb",
-            vermelho: "#dc2626",
-            verde: "#16a34a",
-            branco: "#b7c0cd",
-        };
-        return colorMap[color] || "#d2d9e3ff";
-    };
 
     const hasSelection = selectedSource || selectedTarget;
     const canFortify =
@@ -294,7 +287,7 @@ const FortifyBar: React.FC<FortifyBarProps> = ({
                             <div className="selection-chip">
                                 <span className="selection-chip-label">Origem:</span>
                                 <span className="selection-chip-text">
-                                    {selectedSource} ({currentPlayer.territoriesArmies?.[selectedSource] || 0} tropas)
+                                    {selectedSource} ({getTroops(selectedSource)} tropas)
                                 </span>
                                 <button className="selection-chip-remove" onClick={handleRemoveSource} title="Remover seleção">
                                     ×
@@ -305,7 +298,7 @@ const FortifyBar: React.FC<FortifyBarProps> = ({
                             <div className="selection-chip target">
                                 <span className="selection-chip-label">Destino:</span>
                                 <span className="selection-chip-text">
-                                    {selectedTarget} ({currentPlayer.territoriesArmies?.[selectedTarget] || 0} tropas)
+                                    {selectedTarget} ({getTroops(selectedTarget)} tropas)
                                 </span>
                                 <button className="selection-chip-remove" onClick={handleRemoveTarget} title="Remover seleção">
                                     ×

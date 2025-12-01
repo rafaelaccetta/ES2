@@ -353,11 +353,11 @@ const MapSVG: React.FC<MapSVGProps> = ({
             text.setAttribute("dominant-baseline", "middle");
             text.textContent = String(count ?? 0);
             // Cor do contorno do número = cor do dono do território
-            const owner = localOwners[territoryId];
-            const color = ownerColors?.[owner] ?? "#fff";
-            text.setAttribute("stroke", color);
-            text.setAttribute("stroke-width", "2");
+            text.setAttribute("stroke", "#000");
+            text.setAttribute("stroke-width", "3.5");
             text.setAttribute("fill", "#fff");
+            text.style.paintOrder = "stroke";
+            text.style.fontWeight = "900";
             group.appendChild(text);
 
             // Nome do território abaixo do número
@@ -380,10 +380,9 @@ const MapSVG: React.FC<MapSVGProps> = ({
             nameText.textContent = displayName;
             // Estilo para legibilidade, discreto
             nameText.setAttribute("fill", "#fff");
-            nameText.setAttribute("stroke", color);
-            nameText.setAttribute("stroke-width", "2");
-            // Garante que o contorno seja pintado antes do preenchimento
-            nameText.setAttribute("style", "paint-order: stroke");
+            nameText.setAttribute("stroke", "#000");
+            nameText.setAttribute("stroke-width", "2.5");
+            nameText.setAttribute("style", "paint-order: stroke; font-weight: bold; pointer-events: none;");
             group.appendChild(nameText);
         });
         svg.appendChild(group);
@@ -456,18 +455,24 @@ const MapSVG: React.FC<MapSVGProps> = ({
 
                                 /* Rótulo de tropas: número branco com contorno para contraste */
                 .troop-label {
-                    font: 700 10px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+                    font: 900 12px system-ui, -apple-system, sans-serif;
                     fill: #fff;
                     paint-order: stroke;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
                     pointer-events: none;
                     user-select: none;
+                    filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.8));
                 }
                 .territory-name-label {
-            font: 600 8px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+                    font: 700 9px system-ui, -apple-system, sans-serif;
                     fill: #fff;
                     paint-order: stroke;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
                     pointer-events: none;
                     user-select: none;
+                    filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.8));
                 }
       `}
             </style>

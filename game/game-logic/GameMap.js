@@ -37,28 +37,34 @@ export class GameMap {
         }
     }
 
-    addArmy(territory, amount) {
-        this.armies[territory] = this.armies[territory] + amount;
+    getArmies(territory) {
+        return this.armies[territory] || 0;
     }
 
-    removeArmy(territory, amount) {
+    setArmies(territory, count) {
+        this.armies[territory] = count;
+    }
+
+    addArmy(territory, amount = 1) {
+        this.armies[territory] = (this.armies[territory] || 0) + amount;
+    }
+
+    removeArmy(territory, amount = 1) {
         if (amount <= 0) {
             throw new Error("Amount to remove must be a positive number.");
         }
         const currentArmies = this.armies[territory];
         const resultingArmies = currentArmies - amount;
-        if (resultingArmies < 1) {
-            throw new Error(
-                `Invalid move: Cannot remove ${amount} armies from ${territory}. ` +
-                `This would leave ${resultingArmies} armies, but at least 1 must remain.`
-            );
+
+        if (resultingArmies < 0) {
+            console.error(`Error: Attempted to remove ${amount} from ${territory} (has ${currentArmies})`);
+            this.armies[territory] = 0;
+            return;
         }
         this.armies[territory] = resultingArmies;
     }
 
-    // cria um objeto continents que armazena os territórios de acordo com o continente que pertencem (será usado para verificar se um jogador já conquistou um continente e consequentemente o bônus)
     getTerritoriesByContinent() {
-        // se já tiver sido calculado, retorna o valor armazenado
         if (this.territoriesBycontinents) {
             return this.territoriesBycontinents;
         }
@@ -75,41 +81,41 @@ export class GameMap {
         return this.territoriesBycontinents;
     }
 
-
     distributeTerritories(players) {
         var territoriesKeys = Object.keys(territoriesJson);
         territoriesKeys = territoriesKeys.sort(() => Math.random() - 0.5);
-        
+
         var territoriesPerPlayer = Math.floor(territoriesKeys.length / players.length);
         var currentIndex = 0;
-        
+
         for (var i = 0; i < players.length; i++) {
             for (var j = 0; j < territoriesPerPlayer; j++) {
                 players[i].addTerritory(territoriesKeys[currentIndex]);
                 currentIndex++;
             }
         }
-        
+
         while (currentIndex < territoriesKeys.length) {
             var playerIndex = currentIndex % players.length;
             players[playerIndex].addTerritory(territoriesKeys[currentIndex]);
             currentIndex++;
         }
-        
-        for (var i = 0; i < players.length; i++) {
-            for (var j = 0; j < players[i].territories.length; j++) {
-                players[i].addArmiesToTerritory(players[i].territories[j], 1);
-            }
-        }
     }
 
     getContinentBonusForPlayer(player) {
-        // verificar se um jogador domina algum continente e retornar o bônus
+        // Logic handled in GameManager
+    }
+
+    // Proxy method to allow mocking in tests without exposing 'this.territories' property
+    getNeighbors(territory) {
+        if (this.territories) {
+            return this.territories.getNeighbors(territory);
+        }
+        return [];
     }
 
     areAdjacent(territory1, territory2) {
-        const neighbors = this.territories.getNeighbors(territory1); //
+        const neighbors = this.getNeighbors(territory1);
         return neighbors.some(neighbor => neighbor.node === territory2);
     }
 }
-
