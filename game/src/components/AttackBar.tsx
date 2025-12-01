@@ -57,7 +57,6 @@ const AttackBar: React.FC<AttackBarProps> = ({
     const [showPostConquest, setShowPostConquest] = useState(false);
     const [postConquestData, setPostConquestData] =
         useState<PostConquestPayload | null>(null);
-    // FIX: Default to "0" since 1 troop already auto-moves
     const [moveCount, setMoveCount] = useState("0");
 
     const getTroops = useCallback((territory: string) => {
@@ -190,7 +189,6 @@ const AttackBar: React.FC<AttackBarProps> = ({
             }
 
             setPostConquestData(p);
-            // Default to 0 additional troops
             setMoveCount("0");
             setShowPostConquest(true);
             setShowAttackResult(false);
@@ -247,6 +245,7 @@ const AttackBar: React.FC<AttackBarProps> = ({
                     return armies > 1;
                 })
                 .map(normalize);
+
             EventBus.emit("highlight-territories", {
                 territories: playerTerritories,
                 mode: "player-territories",
@@ -494,11 +493,10 @@ const AttackBar: React.FC<AttackBarProps> = ({
                     </span>
                     <div className="troop-move-controls">
                         <div className="troop-buttons-inline">
-                            {/* FIX: Added option to move 0 */}
+                            {/* FIX: Removed the "3" button */}
                             <button className={`troop-btn-small ${moveCount === "0" ? "selected" : ""}`} onClick={() => setMoveCount("0")}>0</button>
                             <button className={`troop-btn-small ${moveCount === "1" ? "selected" : ""}`} onClick={() => setMoveCount("1")} disabled={postConquestData.maxCanMove < 1}>1</button>
                             <button className={`troop-btn-small ${moveCount === "2" ? "selected" : ""}`} onClick={() => setMoveCount("2")} disabled={postConquestData.maxCanMove < 2}>2</button>
-                            <button className={`troop-btn-small ${moveCount === "3" ? "selected" : ""}`} onClick={() => setMoveCount("3")} disabled={postConquestData.maxCanMove < 3}>3</button>
                         </div>
                         <button className="confirm-move-btn" onClick={handleConfirmMove}>
                             {moveCount === "0" ? "Concluir sem mover" : `Mover ${moveCount} extra(s)`}

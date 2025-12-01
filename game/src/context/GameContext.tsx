@@ -13,15 +13,6 @@ import { EventBus } from "../game/EventBus";
 import { CardManager } from "../../game-logic/CardManager.js";
 import { PlayerCards } from "../../game-logic/PlayerCards.js";
 
-// --- TYPES ---
-export interface LogEntry {
-    turn: number;
-    round: number;
-    phase: string;
-    message: string;
-    timestamp: number;
-}
-
 export interface Objective {
     id: number;
     type: string;
@@ -47,8 +38,6 @@ export interface GameState {
     firstRoundObjectiveShown: Set<number>;
     territorySelectionCallback: ((territory: string) => void) | null;
     fortificationBudget: Record<string, number>;
-    // NEW: Logs state
-    logs: LogEntry[];
 }
 
 interface GameContextType extends GameState {
@@ -82,7 +71,6 @@ const initialState: GameState = {
     firstRoundObjectiveShown: new Set(),
     territorySelectionCallback: null,
     fortificationBudget: {},
-    logs: [], // Init empty
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -102,7 +90,6 @@ interface GameProviderProps {
 export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const [gameState, setGameState] = useState<GameState>(initialState);
 
-    // --- HELPER: Build snapshot for UI consumption ---
     const broadcastGameState = useCallback(() => {
         if (!gameState.gameManager) return;
 
@@ -128,14 +115,10 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
         const budget = { ...((gameState.gameManager as any).fortificationBudget || {}) };
 
-        // NEW: Pull logs from manager. Create a new array reference to trigger re-render.
-        const currentLogs = [...(gameState.gameManager.getLogs() || [])];
-
         setGameState(prev => ({
             ...prev,
             players: playersPayload,
-            fortificationBudget: budget,
-            logs: currentLogs
+            fortificationBudget: budget
         }));
 
         EventBus.emit("players-updated", {
@@ -182,7 +165,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
             gameState.gameManager.executeAITurn();
 
-            // Sync after AI moves
             setGameState((prevState) => ({
                 ...prevState,
                 currentPlayerIndex: gameState.gameManager!.turn,
@@ -241,7 +223,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentRound: gameManager.round,
             gameStarted: true,
             firstRoundObjectiveShown: new Set(),
-            logs: [] // Reset logs
         }));
 
         const playersPayload = gamePlayers.map((p) => {
@@ -374,13 +355,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     useEffect(() => {
         const handleAttackRequest = (data: { source: string; target: string; troops: number }) => {
             if (!gameState.gameManager) return;
+            const gm = gameState.gameManager;
 
             try {
                 const { source, target, troops } = data as any;
                 const currentPlayer = getCurrentPlayer();
                 if (!currentPlayer) return;
 
-                const result = gameState.gameManager.resolveAttack(source, target, troops);
+                const result = gm.resolveAttack(source, target, troops);
 
                 if (!result.success) {
                     console.warn("Attack failed validation in backend");
@@ -389,7 +371,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
                 const aDice = (result as any).attackRolls || [];
                 const dDice = (result as any).defenseRolls || [];
-                const defender = gameState.gameManager.getTerritoryOwner(target);
+                const defender = gm.getTerritoryOwner(target);
 
                 EventBus.emit('attack-result', {
                     source,
@@ -405,6 +387,18 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                 });
 
                 if (result.conquered) {
+                    // FIX: Calculate maxCanMove based on attacking troops, not total armies.
+                    // This enforces the rule that only participating troops can move.
+                    const armiesLeftAtSource = gm.getTerritoryArmies(source);
+                    // The number of optional troops you can move is the number you attacked with,
+                    // minus any losses, minus the one that MUST stay behind.
+                    // However, a simpler interpretation is troops you attacked with, minus 1 (the auto-move).
+                    const optionalMoves = troops - 1;
+
+                    // Ensure you can't move more than what's physically left.
+                    const physicalLimit = armiesLeftAtSource - 1;
+                    const maxCanMove = Math.min(optionalMoves, physicalLimit);
+
                     EventBus.emit('post-conquest', {
                         source,
                         target,
@@ -412,17 +406,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                         attackerLoss: result.attackLosses,
                         defenderLoss: result.defenseLosses,
                         survivors: troops - result.attackLosses,
-                        maxCanMove: gameState.gameManager.getTerritoryArmies(source) - 1,
+                        maxCanMove: Math.max(0, maxCanMove)
                     });
 
-                    // Check Win Conditions
+                    // --- MERGED VICTORY LOGIC ---
                     try {
                         const objectiveGameState: any = {
-                            players: gameState.gameManager.players,
-                            getTerritoriesByContinent: () => gameState.gameManager?.gameMap?.getTerritoriesByContinent?.(),
+                            players: gm.players,
+                            getTerritoriesByContinent: () => gm.gameMap?.getTerritoriesByContinent?.(),
                         };
 
-                        for (const p of gameState.gameManager.players) {
+                        for (const p of gm.players) {
                             if (!p.isActive) continue;
 
                             const hasWon = p.checkWin(objectiveGameState);
