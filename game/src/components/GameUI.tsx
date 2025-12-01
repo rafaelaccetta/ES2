@@ -331,7 +331,7 @@ const GameUI: React.FC = () => {
                                 className={`player-item ${
                                     player.id === currentPlayer.id ? "active" : ""
                                 } ${
-                                    !player.isActive ? "eliminated" : "" // NEW: Class for eliminated players
+                                    !player.isActive ? "eliminated" : ""
                                 }`}
                             >
                                 <div
