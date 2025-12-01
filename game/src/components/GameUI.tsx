@@ -6,8 +6,8 @@ import TroopAllocation from "./TroopAllocation";
 import AttackBar from "./AttackBar";
 import "./GameUI.css";
 import FortifyBar from "./FortifyBar";
-// Removed CardAward.css import
 import CardExchange from "./CardTrade";
+import GameLog from "./GameLog";
 
 const GameUI: React.FC = () => {
     const {
@@ -34,7 +34,6 @@ const GameUI: React.FC = () => {
         return currentPlayer.armies || 0;
     };
 
-    // ESTADOS DA UI
     const [showObjective, setShowObjective] = useState(false);
     const [showStartMenu, setShowStartMenu] = useState(!gameStarted);
     const [showTransition, setShowTransition] = useState(false);
@@ -42,8 +41,6 @@ const GameUI: React.FC = () => {
     const [showAttackBar, setShowAttackBar] = useState(false);
     const [showFortifyBar, setShowFortifyBar] = useState(false);
     const [showCardExchange, setShowCardExchange] = useState(false);
-
-    // REMOVED: showCardAward, awardedCard state and useEffect listeners
 
     const lastPlayerRef = useRef<number | null>(null);
 
@@ -57,24 +54,11 @@ const GameUI: React.FC = () => {
                     currentPlayer.id
                 );
 
-                console.log(
-                    `Mudança de jogador para ${currentPlayer.id} (${currentPlayer.color}):`,
-                    {
-                        previousPlayer: lastPlayerRef.current,
-                        hasSeenObjective,
-                        willShowTransition: !hasSeenObjective,
-                    }
-                );
-
                 if (!hasSeenObjective) {
-                    console.log(
-                        `Iniciando transição para jogador ${currentPlayer.id}`
-                    );
                     setShowTransition(true);
                     setShowObjective(false);
                 }
             }
-
             lastPlayerRef.current = currentPlayer.id;
         }
     }, [
@@ -123,8 +107,6 @@ const GameUI: React.FC = () => {
         setShowTroopAllocation(true);
     };
 
-
-
     const handleShowAttackBar = () => {
         setShowAttackBar(true);
     };
@@ -141,7 +123,6 @@ const GameUI: React.FC = () => {
         setShowFortifyBar(false);
     }
     const handleCloseTroopAllocation = () => {
-        console.log("handleCloseTroopAllocation called");
         setShowTroopAllocation(false);
     };
 
@@ -232,7 +213,6 @@ const GameUI: React.FC = () => {
                 </div>
 
                 <div className="game-controls">
-                    {/* FASE REFORÇAR: Alocar Tropas, Trocar Cartas, Meu Objetivo, Próxima Fase */}
                     {currentPhase === "REFORÇAR" && (
                         <button
                             className={`troop-allocation-btn ${
@@ -277,7 +257,6 @@ const GameUI: React.FC = () => {
                         </button>
                     )}
 
-                    {/* FASE ATACAR: Iniciar Ataque, Meu Objetivo, Próxima Fase */}
                     {currentPhase === "ATACAR" && currentRound > 0 && !showAttackBar && (
                         <button
                             className="attack-toggle-btn"
@@ -288,7 +267,6 @@ const GameUI: React.FC = () => {
                         </button>
                     )}
 
-                    {/* FASE FORTIFICAR: Movimentar Tropas, Meu Objetivo, Próxima Fase */}
                     {currentPhase === "FORTIFICAR" && (
                         <button
                             className="fortify-btn"
@@ -299,7 +277,6 @@ const GameUI: React.FC = () => {
                         </button>
                     )}
 
-                    {/* Meu Objetivo - sempre visível em todas as fases */}
                     <button
                         className="objective-btn"
                         onClick={handleShowObjective}
@@ -308,7 +285,6 @@ const GameUI: React.FC = () => {
                         Meu Objetivo
                     </button>
 
-                    {/* Próxima Fase - sempre visível em todas as fases */}
                     <button
                         className={`next-phase-btn ${
                             (currentPhase === "REFORÇAR" &&
@@ -405,8 +381,6 @@ const GameUI: React.FC = () => {
                 isDimmed={showObjective || showObjectiveConfirmation}
             />
 
-
-
             <CardExchange
                 isVisible={showCardExchange}
                 onClose={() => setShowCardExchange(false)}
@@ -417,7 +391,9 @@ const GameUI: React.FC = () => {
                 }
             />
 
-            {/* REMOVED: Card Award Modal */}
+            {/* FIX: Moved GameLog outside the main flex container */}
+            <GameLog />
+
         </>
     );
 };

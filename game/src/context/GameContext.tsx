@@ -13,6 +13,15 @@ import { EventBus } from "../game/EventBus";
 import { CardManager } from "../../game-logic/CardManager.js";
 import { PlayerCards } from "../../game-logic/PlayerCards.js";
 
+// --- TYPES ---
+export interface LogEntry {
+    turn: number;
+    round: number;
+    phase: string;
+    message: string;
+    timestamp: number;
+}
+
 export interface Objective {
     id: number;
     type: string;
@@ -38,6 +47,8 @@ export interface GameState {
     firstRoundObjectiveShown: Set<number>;
     territorySelectionCallback: ((territory: string) => void) | null;
     fortificationBudget: Record<string, number>;
+    // NEW: Logs state
+    logs: LogEntry[];
 }
 
 interface GameContextType extends GameState {
@@ -71,6 +82,7 @@ const initialState: GameState = {
     firstRoundObjectiveShown: new Set(),
     territorySelectionCallback: null,
     fortificationBudget: {},
+    logs: [], // Init empty
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -90,6 +102,7 @@ interface GameProviderProps {
 export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     const [gameState, setGameState] = useState<GameState>(initialState);
 
+    // --- HELPER: Build snapshot for UI consumption ---
     const broadcastGameState = useCallback(() => {
         if (!gameState.gameManager) return;
 
@@ -115,10 +128,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
         const budget = { ...((gameState.gameManager as any).fortificationBudget || {}) };
 
+        // NEW: Pull logs from manager. Create a new array reference to trigger re-render.
+        const currentLogs = [...(gameState.gameManager.getLogs() || [])];
+
         setGameState(prev => ({
             ...prev,
             players: playersPayload,
-            fortificationBudget: budget
+            fortificationBudget: budget,
+            logs: currentLogs
         }));
 
         EventBus.emit("players-updated", {
@@ -165,6 +182,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
             gameState.gameManager.executeAITurn();
 
+            // Sync after AI moves
             setGameState((prevState) => ({
                 ...prevState,
                 currentPlayerIndex: gameState.gameManager!.turn,
@@ -223,6 +241,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             currentRound: gameManager.round,
             gameStarted: true,
             firstRoundObjectiveShown: new Set(),
+            logs: [] // Reset logs
         }));
 
         const playersPayload = gamePlayers.map((p) => {
@@ -355,14 +374,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     useEffect(() => {
         const handleAttackRequest = (data: { source: string; target: string; troops: number }) => {
             if (!gameState.gameManager) return;
-            const gm = gameState.gameManager;
 
             try {
                 const { source, target, troops } = data as any;
                 const currentPlayer = getCurrentPlayer();
                 if (!currentPlayer) return;
 
-                const result = gm.resolveAttack(source, target, troops);
+                const result = gameState.gameManager.resolveAttack(source, target, troops);
 
                 if (!result.success) {
                     console.warn("Attack failed validation in backend");
@@ -371,7 +389,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
                 const aDice = (result as any).attackRolls || [];
                 const dDice = (result as any).defenseRolls || [];
-                const defender = gm.getTerritoryOwner(target); // Note: might be null if no one owns it (conquered)
+                const defender = gameState.gameManager.getTerritoryOwner(target);
 
                 EventBus.emit('attack-result', {
                     source,
@@ -394,18 +412,18 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
                         attackerLoss: result.attackLosses,
                         defenderLoss: result.defenseLosses,
                         survivors: troops - result.attackLosses,
-                        maxCanMove: gm.getTerritoryArmies(source) - 1,
+                        maxCanMove: gameState.gameManager.getTerritoryArmies(source) - 1,
                     });
 
-                    // --- MERGED VICTORY LOGIC ---
+                    // Check Win Conditions
                     try {
                         const objectiveGameState: any = {
-                            players: gm.players,
-                            getTerritoriesByContinent: () => gm.gameMap?.getTerritoriesByContinent?.(),
+                            players: gameState.gameManager.players,
+                            getTerritoriesByContinent: () => gameState.gameManager?.gameMap?.getTerritoriesByContinent?.(),
                         };
 
-                        for (const p of gm.players) {
-                            if (!p.isActive) continue; // Skip defeated players
+                        for (const p of gameState.gameManager.players) {
+                            if (!p.isActive) continue;
 
                             const hasWon = p.checkWin(objectiveGameState);
                             if (hasWon) {

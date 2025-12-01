@@ -29,8 +29,9 @@ export class Jogo extends Scene {
             document.body.appendChild(mapContainer);
         }
 
+        // FIX: Changed coordinates from (150, 630) to (980, 50) for top-right placement
         this.add
-            .image(150, 630, "botaoX")
+            .image(1150, 50, "botaoX")
             .setInteractive({ useHandCursor: true })
             .on("pointerdown", () => {
                 // Emite evento para esconder o GameUI e voltar ao menu
@@ -51,12 +52,10 @@ export class Jogo extends Scene {
         const root = ReactDOM.createRoot(mapContainer);
 
         const AppOverlay: React.FC = () => {
-            // Usar estado para controlar o número de jogadores e seus territórios
             const [playerCount, setPlayerCount] = React.useState<number>(0);
             const [playersData, setPlayersData] = React.useState<any[]>([]);
 
             React.useEffect(() => {
-                // Escutar evento do EventBus para saber quantos jogadores há e seus territórios
                 const handlePlayersUpdate = (data: {
                     playerCount: number;
                     players?: any[];
@@ -68,7 +67,6 @@ export class Jogo extends Scene {
                 }) => {
                     console.log("Jogo: players-updated received", data);
 
-                    // Also print a JSON string so collapsed objects are visible in logs
                     try {
                         console.log("Jogo: players-updated (json)");
                         console.log(JSON.stringify(data, null, 2));
@@ -76,7 +74,6 @@ export class Jogo extends Scene {
                         // ignore
                     }
 
-                    // If the emitter provided lastMove info, try to locate the owner and print the exact army value
                     if (data.lastMove && data.lastMove.target) {
                         const targetName = data.lastMove.target;
                         console.log("Jogo: lastMove info:", data.lastMove);
@@ -101,7 +98,6 @@ export class Jogo extends Scene {
                             console.log(
                                 "Jogo: no owner found for target territory (string match). Will also try normalized ids."
                             );
-                            // Try normalizing names as MapSVG does
                             try {
                                 const normalize = (name: string) =>
                                     name
@@ -115,10 +111,8 @@ export class Jogo extends Scene {
                                     "Jogo: normalized target:",
                                     normTarget
                                 );
-                                // Inspect players' territoriesArmies keys
                                 playersArr.forEach((p: any, idx: number) => {
                                     const armies = p.territoriesArmies || {};
-                                    // find any key that normalizes to the same id
                                     const matchingKey = Object.keys(
                                         armies
                                     ).find((k) => normalize(k) === normTarget);
@@ -145,8 +139,6 @@ export class Jogo extends Scene {
                 };
 
                 EventBus.on("players-updated", handlePlayersUpdate as any);
-
-                // NEW: Request initial state immediately
                 EventBus.emit("request-game-state");
 
                 return () => {
@@ -160,7 +152,6 @@ export class Jogo extends Scene {
                 "#16a34a",
                 "#b7c0cd",
             ];
-            // converte nomes de cores vindos do GameManager (azul, vermelho, etc.) para hex
             const colorByName: Record<string, string> = React.useMemo(
                 () => ({
                     azul: "#2563eb",
@@ -185,7 +176,6 @@ export class Jogo extends Scene {
 
             const activePlayer: string = "";
 
-            // normaliza nomes dos territórios (acentos, espaços) para bater com IDs do SVG
             const normalizeId = React.useCallback((name: string) => {
                 return name
                     .normalize("NFD")
@@ -195,7 +185,6 @@ export class Jogo extends Scene {
                     .replace(/[^a-z0-9]/g, "");
             }, []);
 
-            // Criar mapa de owners baseado nos territórios distribuídos (normalizados para IDs do SVG)
             const owners = React.useMemo(() => {
                 const ownersMap: Record<string, string> = {};
                 playersData.forEach((player, index) => {
@@ -209,13 +198,10 @@ export class Jogo extends Scene {
                 return ownersMap;
             }, [playersData, normalizeId]);
 
-            // Territórios selecionados - agora controlado por eventos
             const [selectedTerritories, setSelectedTerritories] =
                 React.useState<string[]>([]);
-            // Hide the overlay (used when GameOver is shown)
             const [hidden, setHidden] = React.useState<boolean>(false);
 
-            // Listener para highlight-territories
             React.useEffect(() => {
                 const handleHighlight = (data: any) => {
                     const { territories } = data;
@@ -243,9 +229,6 @@ export class Jogo extends Scene {
                 };
             }, []);
 
-            // Removido: mapeamento de territórios por jogador para os badges laterais
-
-            // Mapa de tropas por território
             const troopCounts = React.useMemo(() => {
                 const counts: Record<string, number> = {};
                 playersData.forEach((player) => {
@@ -260,11 +243,9 @@ export class Jogo extends Scene {
                 return counts;
             }, [playersData, normalizeId]);
 
-            // Callback para quando um território for clicado
             const handleTerritoryClick = React.useCallback(
                 (territoryId: string) => {
                     console.log("Jogo: territory clicked:", territoryId);
-                    // Emitir evento para o contexto React processar
                     EventBus.emit("territory-selected", territoryId);
                 },
                 []
@@ -278,7 +259,7 @@ export class Jogo extends Scene {
                 React.createElement(MapSVG, {
                     owners,
                     highlightOwner: activePlayer,
-                    allowEditOwner: false, // Desabilitar edição já que territórios são pré-distribuídos
+                    allowEditOwner: false,
                     selectedTerritories,
                     ownerColors: colors,
                     troopCounts,
